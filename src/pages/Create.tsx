@@ -94,7 +94,9 @@ export default function Create() {
       // Ensure profile exists (in case trigger hasn't run locally)
       await supabase.from('profiles').upsert({ id: user.id, username: user.email?.split('@')[0] || `user_${user.id.slice(0,8)}` }, { onConflict: 'id' });
 
-      const { error } = await supabase.from('games').insert({
+      // Attempt to insert with enhanced fields; if the remote DB hasn't been migrated yet,
+      // fall back to the minimal schema so users can still publish.
+      const fullPayload = {
         title: title.trim(),
         description: description.trim(),
         game_code: generatedCode,
@@ -104,15 +106,28 @@ export default function Create() {
         graphics_quality: graphicsQuality,
         thumbnail_url: thumbnailUrl || null,
         cover_url: coverUrl || thumbnailUrl || null,
-      });
+      } as any;
 
-      if (error) throw error;
+      let { error } = await supabase.from('games').insert(fullPayload);
+      if (error) {
+        // Retry with minimal set of columns expected to exist
+        const minimalPayload = {
+          title: title.trim(),
+          description: description.trim(),
+          game_code: generatedCode,
+          creator_id: user.id,
+          thumbnail_url: thumbnailUrl || null,
+        };
+        const retry = await supabase.from('games').insert(minimalPayload);
+        if (retry.error) throw retry.error;
+      }
 
       toast.success("Game published successfully!");
       navigate("/feed");
     } catch (error: any) {
       console.error('Publish error:', error);
-      toast.error("Failed to publish game");
+      const message = typeof error?.message === 'string' ? error.message : 'Failed to publish game';
+      toast.error(message);
     }
   };
 
