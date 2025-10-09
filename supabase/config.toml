@@ -1,0 +1,4 @@
+project_id = "uvmkkyvysyvdcalfhziy"
+
+[functions.generate-game]
+verify_jwt = true

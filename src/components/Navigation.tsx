@@ -1,0 +1,60 @@
+import { Home, Sparkles, User, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+export const Navigation = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    toast.success("Signed out successfully");
+    navigate("/auth");
+  };
+
+  const navItems = [
+    { icon: Home, label: "Feed", path: "/feed" },
+    { icon: Sparkles, label: "Create", path: "/create" },
+    { icon: User, label: "Profile", path: "/profile" },
+  ];
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 border-t border-border/50 bg-card/80 backdrop-blur-lg z-40 md:top-0 md:bottom-auto">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          <div className="hidden md:flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center font-bold">
+              PG
+            </div>
+            <span className="text-xl font-bold">PlayGen</span>
+          </div>
+
+          <div className="flex items-center justify-around md:justify-center gap-2 w-full md:w-auto">
+            {navItems.map(({ icon: Icon, label, path }) => (
+              <Button
+                key={path}
+                variant={location.pathname === path ? "default" : "ghost"}
+                onClick={() => navigate(path)}
+                className={location.pathname === path ? "gradient-primary" : ""}
+              >
+                <Icon className="h-5 w-5 md:mr-2" />
+                <span className="hidden md:inline">{label}</span>
+              </Button>
+            ))}
+          </div>
+
+          <Button
+            variant="ghost"
+            onClick={handleSignOut}
+            className="hidden md:flex"
+          >
+            <LogOut className="h-5 w-5 mr-2" />
+            Sign Out
+          </Button>
+        </div>
+      </div>
+    </nav>
+  );
+};
