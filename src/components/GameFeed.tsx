@@ -15,6 +15,9 @@ interface Game {
   likes_count: number;
   plays_count: number;
   creator_id: string;
+  is_multiplayer?: boolean | null;
+  multiplayer_type?: string | null;
+  graphics_quality?: string | null;
 }
 
 export const GameFeed = () => {
@@ -137,32 +140,71 @@ export const GameFeed = () => {
     );
   }
 
+  // TikTok-style vertical snapping feed
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="relative h-[calc(100vh-8rem)] w-full">
+      <div className="absolute inset-0 overflow-y-auto no-scrollbar snap-y snap-mandatory">
         {games?.map((game) => (
-          <GameCard
-            key={game.id}
-            id={game.id}
-            title={game.title}
-            description={game.description || ""}
-            thumbnailUrl={game.thumbnail_url || ""}
-            likesCount={game.likes_count}
-            playsCount={game.plays_count}
-            isLiked={likedGames.has(game.id)}
-            onLike={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
-            onPlay={() => handlePlay(game)}
-            onShare={() => handleShare(game)}
-          />
+          <section key={game.id} className="relative h-[calc(100vh-8rem)] w-full snap-start">
+            <img
+              src={game.thumbnail_url || "/placeholder.svg"}
+              alt={game.title}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/70" />
+
+            {/* Right-side actions */}
+            <div className="absolute right-3 bottom-32 flex flex-col items-center gap-4">
+              <button
+                aria-label={likedGames.has(game.id) ? 'Unlike' : 'Like'}
+                onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
+                className={`h-12 w-12 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 transition-smooth ${likedGames.has(game.id) ? 'ring-2 ring-red-500' : ''}`}
+              >
+                <svg viewBox="0 0 24 24" className={`h-6 w-6 ${likedGames.has(game.id) ? 'fill-red-500 text-red-500' : 'text-white'}`}>
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1.01 4.22 2.53C11.09 5.01 12.76 4 14.5 4 17 4 19 6 19 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
+                <span className="sr-only">Like</span>
+              </button>
+
+              <button
+                onClick={() => handleShare(game)}
+                className="h-12 w-12 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 transition-smooth text-white"
+                aria-label="Share"
+              >
+                <svg viewBox="0 0 24 24" className="h-6 w-6">
+                  <path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7a3.27 3.27 0 000-1.39l7.02-4.11A3 3 0 0018 7.91a3.09 3.09 0 10-3.09-3.09c0 .23.03.45.08.66L7.91 9.59A3.09 3.09 0 004.91 9a3.09 3.09 0 103.09 3.09c0-.23-.03-.45-.08-.66l7.08 4.15c.49.45 1.14.73 1.86.73a3.09 3.09 0 103.09-3.09 3.09 3.09 0 00-3.09-3.09z"/>
+                </svg>
+              </button>
+
+              <button
+                onClick={() => handlePlay(game)}
+                className="h-12 w-12 rounded-full flex items-center justify-center bg-primary hover:opacity-90 transition-smooth text-white"
+                aria-label="Play"
+              >
+                <svg viewBox="0 0 24 24" className="h-6 w-6">
+                  <path fill="currentColor" d="M8 5v14l11-7z" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Bottom details */}
+            <div className="absolute left-4 right-20 bottom-8 text-white">
+              <h3 className="text-2xl font-bold mb-2 drop-shadow-md">{game.title}</h3>
+              <p className="text-white/80 line-clamp-2 max-w-xl mb-3">{game.description || ''}</p>
+              <div className="text-sm text-white/70">{game.plays_count} plays • {game.likes_count} likes</div>
+            </div>
+          </section>
         ))}
+
+        {games?.length === 0 && (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center">
+              <h3 className="text-2xl font-bold mb-2">No games yet</h3>
+              <p className="text-muted-foreground">Be the first to create a game!</p>
+            </div>
+          </div>
+        )}
       </div>
-      
-      {games?.length === 0 && (
-        <div className="text-center py-16">
-          <h3 className="text-2xl font-bold mb-2">No games yet</h3>
-          <p className="text-muted-foreground">Be the first to create a game!</p>
-        </div>
-      )}
     </div>
   );
 };
