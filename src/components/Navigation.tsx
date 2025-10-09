@@ -1,12 +1,14 @@
-import { Home, Sparkles, User, LogOut } from "lucide-react";
+import { Home, Sparkles, User, LogOut, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useTheme } from "next-themes";
 
 export const Navigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { theme, setTheme } = useTheme();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -25,8 +27,9 @@ export const Navigation = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="hidden md:flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center font-bold">
-              PG
+            <div className="relative h-8 w-8 rounded-lg overflow-hidden">
+              <div className="absolute inset-0 animate-pulse-slow bg-gradient-to-br from-primary/30 to-accent/30" />
+              <img src="/logo.png" alt="Logo" className="relative z-10 h-full w-full object-contain" />
             </div>
             <span className="text-xl font-bold">PlayGen</span>
           </div>
@@ -45,14 +48,22 @@ export const Navigation = () => {
             ))}
           </div>
 
-          <Button
-            variant="ghost"
-            onClick={handleSignOut}
-            className="hidden md:flex"
-          >
-            <LogOut className="h-5 w-5 mr-2" />
-            Sign Out
-          </Button>
+          <div className="hidden md:flex items-center gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              title="Toggle theme"
+            >
+              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={handleSignOut}
+            >
+              <LogOut className="h-5 w-5 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </div>
     </nav>

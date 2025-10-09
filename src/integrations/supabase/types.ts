@@ -66,6 +66,9 @@ export type Database = {
           cover_url: string | null
           thumbnail_url: string | null
           title: string
+          sound_enabled: boolean | null
+          sound_theme: string | null
+          sound_volume: number | null
         }
         Insert: {
           created_at?: string | null
@@ -82,6 +85,9 @@ export type Database = {
           cover_url?: string | null
           thumbnail_url?: string | null
           title: string
+          sound_enabled?: boolean | null
+          sound_theme?: string | null
+          sound_volume?: number | null
         }
         Update: {
           created_at?: string | null
@@ -98,6 +104,9 @@ export type Database = {
           cover_url?: string | null
           thumbnail_url?: string | null
           title?: string
+          sound_enabled?: boolean | null
+          sound_theme?: string | null
+          sound_volume?: number | null
         }
         Relationships: [
           {
@@ -117,6 +126,7 @@ export type Database = {
           total_likes: number | null
           total_plays: number | null
           username: string
+          bio: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -125,6 +135,7 @@ export type Database = {
           total_likes?: number | null
           total_plays?: number | null
           username: string
+          bio?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -133,8 +144,81 @@ export type Database = {
           total_likes?: number | null
           total_plays?: number | null
           username?: string
+          bio?: string | null
         }
         Relationships: []
+      }
+      user_follows: {
+        Row: {
+          follower_id: string
+          following_id: string
+          created_at: string | null
+        }
+        Insert: {
+          follower_id: string
+          following_id: string
+          created_at?: string | null
+        }
+        Update: {
+          follower_id?: string
+          following_id?: string
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_follows_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_follows_following_id_fkey"
+            columns: ["following_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_comments: {
+        Row: {
+          id: string
+          game_id: string
+          user_id: string
+          content: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          game_id: string
+          user_id: string
+          content: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          game_id?: string
+          user_id?: string
+          content?: string
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_comments_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
