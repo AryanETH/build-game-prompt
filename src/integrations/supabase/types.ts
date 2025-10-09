@@ -63,6 +63,7 @@ export type Database = {
           multiplayer_type: string | null
           plays_count: number | null
           graphics_quality: string | null
+          cover_url: string | null
           thumbnail_url: string | null
           title: string
         }
@@ -78,6 +79,7 @@ export type Database = {
           multiplayer_type?: string | null
           plays_count?: number | null
           graphics_quality?: string | null
+          cover_url?: string | null
           thumbnail_url?: string | null
           title: string
         }
@@ -93,6 +95,7 @@ export type Database = {
           multiplayer_type?: string | null
           plays_count?: number | null
           graphics_quality?: string | null
+          cover_url?: string | null
           thumbnail_url?: string | null
           title?: string
         }

@@ -12,6 +12,7 @@ interface Game {
   description: string;
   game_code: string;
   thumbnail_url: string;
+  cover_url?: string | null;
   likes_count: number;
   plays_count: number;
   creator_id: string;
@@ -147,7 +148,7 @@ export const GameFeed = () => {
         {games?.map((game) => (
           <section key={game.id} className="relative h-[calc(100vh-8rem)] w-full snap-start">
             <img
-              src={game.thumbnail_url || "/placeholder.svg"}
+              src={game.cover_url || game.thumbnail_url || "/placeholder.svg"}
               alt={game.title}
               className="absolute inset-0 h-full w-full object-cover"
             />

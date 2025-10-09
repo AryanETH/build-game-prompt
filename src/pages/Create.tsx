@@ -18,6 +18,8 @@ export default function Create() {
   const [description, setDescription] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedCode, setGeneratedCode] = useState("");
+  const [thumbnailUrl, setThumbnailUrl] = useState<string>("");
+  const [coverUrl, setCoverUrl] = useState<string>("");
   const [isMultiplayer, setIsMultiplayer] = useState(false);
   const [multiplayerType, setMultiplayerType] = useState<string>("co-op");
   const [graphicsQuality, setGraphicsQuality] = useState<string>("realistic");
@@ -45,6 +47,13 @@ export default function Create() {
       if (error) throw error;
 
       setGeneratedCode(data.gameCode);
+
+      // Try to find first image or canvas frame as a thumbnail placeholder
+      try {
+        // naive preview snapshot using a placeholder if none
+        setThumbnailUrl("/placeholder.svg");
+        setCoverUrl("/placeholder.svg");
+      } catch {}
       
       // Auto-generate title and description if not provided
       if (!title) {
@@ -69,6 +78,51 @@ export default function Create() {
     }
   };
 
+  const ensureProfileExistsForUser = async (userId: string, suggestedUsername: string) => {
+    // Check if profile already exists
+    const { data: existing, error: fetchError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
+    if (existing) return; // Nothing to do
+
+    // Sanitize and constrain base username
+    const base = (suggestedUsername || `user_${userId.slice(0, 8)}`)
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 24) || `user_${userId.slice(0, 8)}`;
+
+    let attempt = 0;
+    let candidate = base;
+    // Find an available username to avoid unique constraint violations
+    // Limit attempts to a reasonable number to avoid infinite loops
+    while (attempt < 50) {
+      const { data: usernameRow, error: usernameCheckError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', candidate)
+        .maybeSingle();
+
+      if (usernameCheckError) throw usernameCheckError;
+      if (!usernameRow) break;
+
+      attempt += 1;
+      const suffix = `_${attempt}`;
+      const maxBaseLength = Math.max(1, 24 - suffix.length);
+      candidate = `${base.slice(0, maxBaseLength)}${suffix}`;
+    }
+
+    const { error: insertError } = await supabase
+      .from('profiles')
+      .insert({ id: userId, username: candidate });
+    if (insertError) throw insertError;
+  };
+
   const handlePublish = async () => {
     if (!generatedCode || !title.trim()) {
       toast.error("Please generate a game and provide a title");
@@ -82,7 +136,13 @@ export default function Create() {
         return;
       }
 
-      const { error } = await supabase.from('games').insert({
+      // Ensure profile exists and avoid username unique conflicts
+      const baseUsername = user.email?.split('@')[0] || `user_${user.id.slice(0,8)}`;
+      await ensureProfileExistsForUser(user.id, baseUsername);
+
+      // Attempt to insert with enhanced fields; if the remote DB hasn't been migrated yet,
+      // fall back to the minimal schema so users can still publish.
+      const fullPayload = {
         title: title.trim(),
         description: description.trim(),
         game_code: generatedCode,
@@ -90,15 +150,30 @@ export default function Create() {
         is_multiplayer: isMultiplayer,
         multiplayer_type: isMultiplayer ? multiplayerType : null,
         graphics_quality: graphicsQuality,
-      });
+        thumbnail_url: thumbnailUrl || null,
+        cover_url: coverUrl || thumbnailUrl || null,
+      } as any;
 
-      if (error) throw error;
+      let { error } = await supabase.from('games').insert(fullPayload);
+      if (error) {
+        // Retry with minimal set of columns expected to exist
+        const minimalPayload = {
+          title: title.trim(),
+          description: description.trim(),
+          game_code: generatedCode,
+          creator_id: user.id,
+          thumbnail_url: thumbnailUrl || null,
+        };
+        const retry = await supabase.from('games').insert(minimalPayload);
+        if (retry.error) throw retry.error;
+      }
 
       toast.success("Game published successfully!");
       navigate("/feed");
     } catch (error: any) {
       console.error('Publish error:', error);
-      toast.error("Failed to publish game");
+      const message = typeof error?.message === 'string' ? error.message : 'Failed to publish game';
+      toast.error(message);
     }
   };
 
@@ -163,6 +238,28 @@ export default function Create() {
                       <SelectItem value="realistic">Realistic</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="thumbnailUrl">Thumbnail URL (optional)</Label>
+                  <Input
+                    id="thumbnailUrl"
+                    value={thumbnailUrl}
+                    onChange={(e) => setThumbnailUrl(e.target.value)}
+                    placeholder="https://.../thumbnail.jpg"
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="coverUrl">Cover Image URL (optional)</Label>
+                  <Input
+                    id="coverUrl"
+                    value={coverUrl}
+                    onChange={(e) => setCoverUrl(e.target.value)}
+                    placeholder="https://.../cover.jpg"
+                    className="mt-2"
+                  />
                 </div>
 
                 <div>
