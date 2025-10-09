@@ -78,6 +78,51 @@ export default function Create() {
     }
   };
 
+  const ensureProfileExistsForUser = async (userId: string, suggestedUsername: string) => {
+    // Check if profile already exists
+    const { data: existing, error: fetchError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
+    if (existing) return; // Nothing to do
+
+    // Sanitize and constrain base username
+    const base = (suggestedUsername || `user_${userId.slice(0, 8)}`)
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 24) || `user_${userId.slice(0, 8)}`;
+
+    let attempt = 0;
+    let candidate = base;
+    // Find an available username to avoid unique constraint violations
+    // Limit attempts to a reasonable number to avoid infinite loops
+    while (attempt < 50) {
+      const { data: usernameRow, error: usernameCheckError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', candidate)
+        .maybeSingle();
+
+      if (usernameCheckError) throw usernameCheckError;
+      if (!usernameRow) break;
+
+      attempt += 1;
+      const suffix = `_${attempt}`;
+      const maxBaseLength = Math.max(1, 24 - suffix.length);
+      candidate = `${base.slice(0, maxBaseLength)}${suffix}`;
+    }
+
+    const { error: insertError } = await supabase
+      .from('profiles')
+      .insert({ id: userId, username: candidate });
+    if (insertError) throw insertError;
+  };
+
   const handlePublish = async () => {
     if (!generatedCode || !title.trim()) {
       toast.error("Please generate a game and provide a title");
@@ -91,8 +136,9 @@ export default function Create() {
         return;
       }
 
-      // Ensure profile exists (in case trigger hasn't run locally)
-      await supabase.from('profiles').upsert({ id: user.id, username: user.email?.split('@')[0] || `user_${user.id.slice(0,8)}` }, { onConflict: 'id' });
+      // Ensure profile exists and avoid username unique conflicts
+      const baseUsername = user.email?.split('@')[0] || `user_${user.id.slice(0,8)}`;
+      await ensureProfileExistsForUser(user.id, baseUsername);
 
       // Attempt to insert with enhanced fields; if the remote DB hasn't been migrated yet,
       // fall back to the minimal schema so users can still publish.
