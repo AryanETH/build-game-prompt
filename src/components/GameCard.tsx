@@ -7,6 +7,7 @@ interface GameCardProps {
   title: string;
   description: string;
   thumbnailUrl: string;
+  coverUrl?: string;
   likesCount: number;
   playsCount: number;
   isLiked: boolean;
@@ -19,6 +20,7 @@ export const GameCard = ({
   title,
   description,
   thumbnailUrl,
+  coverUrl,
   likesCount,
   playsCount,
   isLiked,
@@ -30,7 +32,7 @@ export const GameCard = ({
     <Card className="gradient-card border-border/50 overflow-hidden hover:border-primary/50 transition-smooth group">
       <div className="relative aspect-video overflow-hidden">
         <img
-          src={thumbnailUrl || "/placeholder.svg"}
+          src={thumbnailUrl || coverUrl || "/placeholder.svg"}
           alt={title}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />

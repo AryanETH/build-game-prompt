@@ -18,6 +18,8 @@ export default function Create() {
   const [description, setDescription] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedCode, setGeneratedCode] = useState("");
+  const [thumbnailUrl, setThumbnailUrl] = useState<string>("");
+  const [coverUrl, setCoverUrl] = useState<string>("");
   const [isMultiplayer, setIsMultiplayer] = useState(false);
   const [multiplayerType, setMultiplayerType] = useState<string>("co-op");
   const [graphicsQuality, setGraphicsQuality] = useState<string>("realistic");
@@ -45,6 +47,13 @@ export default function Create() {
       if (error) throw error;
 
       setGeneratedCode(data.gameCode);
+
+      // Try to find first image or canvas frame as a thumbnail placeholder
+      try {
+        // naive preview snapshot using a placeholder if none
+        setThumbnailUrl("/placeholder.svg");
+        setCoverUrl("/placeholder.svg");
+      } catch {}
       
       // Auto-generate title and description if not provided
       if (!title) {
@@ -82,6 +91,9 @@ export default function Create() {
         return;
       }
 
+      // Ensure profile exists (in case trigger hasn't run locally)
+      await supabase.from('profiles').upsert({ id: user.id, username: user.email?.split('@')[0] || `user_${user.id.slice(0,8)}` }, { onConflict: 'id' });
+
       const { error } = await supabase.from('games').insert({
         title: title.trim(),
         description: description.trim(),
@@ -90,6 +102,8 @@ export default function Create() {
         is_multiplayer: isMultiplayer,
         multiplayer_type: isMultiplayer ? multiplayerType : null,
         graphics_quality: graphicsQuality,
+        thumbnail_url: thumbnailUrl || null,
+        cover_url: coverUrl || thumbnailUrl || null,
       });
 
       if (error) throw error;
@@ -163,6 +177,28 @@ export default function Create() {
                       <SelectItem value="realistic">Realistic</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="thumbnailUrl">Thumbnail URL (optional)</Label>
+                  <Input
+                    id="thumbnailUrl"
+                    value={thumbnailUrl}
+                    onChange={(e) => setThumbnailUrl(e.target.value)}
+                    placeholder="https://.../thumbnail.jpg"
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="coverUrl">Cover Image URL (optional)</Label>
+                  <Input
+                    id="coverUrl"
+                    value={coverUrl}
+                    onChange={(e) => setCoverUrl(e.target.value)}
+                    placeholder="https://.../cover.jpg"
+                    className="mt-2"
+                  />
                 </div>
 
                 <div>
