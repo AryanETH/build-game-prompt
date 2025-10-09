@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Sparkles } from "lucide-react";
+import type { SoundTheme } from "@/lib/sound";
 
 export default function Create() {
   const [prompt, setPrompt] = useState("");
@@ -23,6 +24,9 @@ export default function Create() {
   const [isMultiplayer, setIsMultiplayer] = useState(false);
   const [multiplayerType, setMultiplayerType] = useState<string>("co-op");
   const [graphicsQuality, setGraphicsQuality] = useState<string>("realistic");
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [soundTheme, setSoundTheme] = useState<SoundTheme>("arcade");
+  const [soundVolume, setSoundVolume] = useState<number>(0.7);
   const navigate = useNavigate();
 
   const handleGenerate = async () => {
@@ -40,6 +44,7 @@ export default function Create() {
             isMultiplayer,
             multiplayerType,
             graphicsQuality,
+            sound: { enabled: soundEnabled, theme: soundTheme, volume: soundVolume },
           }
         },
       });
@@ -152,6 +157,9 @@ export default function Create() {
         graphics_quality: graphicsQuality,
         thumbnail_url: thumbnailUrl || null,
         cover_url: coverUrl || thumbnailUrl || null,
+        sound_enabled: soundEnabled,
+        sound_theme: soundTheme,
+        sound_volume: soundVolume,
       } as any;
 
       let { error } = await supabase.from('games').insert(fullPayload);
@@ -163,6 +171,9 @@ export default function Create() {
           game_code: generatedCode,
           creator_id: user.id,
           thumbnail_url: thumbnailUrl || null,
+          sound_enabled: soundEnabled,
+          sound_theme: soundTheme,
+          sound_volume: soundVolume,
         };
         const retry = await supabase.from('games').insert(minimalPayload);
         if (retry.error) throw retry.error;
@@ -224,6 +235,40 @@ export default function Create() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 items-center">
+                  <div className="flex items-center gap-3">
+                    <Switch id="soundEnabled" checked={soundEnabled} onCheckedChange={setSoundEnabled} />
+                    <Label htmlFor="soundEnabled">Enable Sounds</Label>
+                  </div>
+                  <div>
+                    <Label className="mb-2 block">Sound Theme</Label>
+                    <Select value={soundTheme} onValueChange={(v) => setSoundTheme(v as any)} disabled={!soundEnabled}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Select theme" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="arcade">Arcade</SelectItem>
+                        <SelectItem value="space">Space</SelectItem>
+                        <SelectItem value="forest">Forest</SelectItem>
+                        <SelectItem value="ocean">Ocean</SelectItem>
+                        <SelectItem value="spooky">Spooky</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="mb-2 block">Sound Volume ({Math.round(soundVolume * 100)}%)</Label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={soundVolume}
+                    onChange={(e) => setSoundVolume(parseFloat(e.target.value))}
+                    className="w-full"
+                    disabled={!soundEnabled}
+                  />
                 </div>
 
                 <div>

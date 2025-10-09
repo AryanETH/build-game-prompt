@@ -19,6 +19,9 @@ interface Game {
   is_multiplayer?: boolean | null;
   multiplayer_type?: string | null;
   graphics_quality?: string | null;
+  sound_enabled?: boolean | null;
+  sound_theme?: 'arcade' | 'space' | 'forest' | 'ocean' | 'spooky' | null;
+  sound_volume?: number | null;
 }
 
 export const GameFeed = () => {
