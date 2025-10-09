@@ -58,8 +58,11 @@ export type Database = {
           duration_minutes: number | null
           game_code: string
           id: string
+          is_multiplayer: boolean | null
           likes_count: number | null
+          multiplayer_type: string | null
           plays_count: number | null
+          graphics_quality: string | null
           thumbnail_url: string | null
           title: string
         }
@@ -70,8 +73,11 @@ export type Database = {
           duration_minutes?: number | null
           game_code: string
           id?: string
+          is_multiplayer?: boolean | null
           likes_count?: number | null
+          multiplayer_type?: string | null
           plays_count?: number | null
+          graphics_quality?: string | null
           thumbnail_url?: string | null
           title: string
         }
@@ -82,8 +88,11 @@ export type Database = {
           duration_minutes?: number | null
           game_code?: string
           id?: string
+          is_multiplayer?: boolean | null
           likes_count?: number | null
+          multiplayer_type?: string | null
           plays_count?: number | null
+          graphics_quality?: string | null
           thumbnail_url?: string | null
           title?: string
         }

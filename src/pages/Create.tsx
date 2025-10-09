@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +18,9 @@ export default function Create() {
   const [description, setDescription] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedCode, setGeneratedCode] = useState("");
+  const [isMultiplayer, setIsMultiplayer] = useState(false);
+  const [multiplayerType, setMultiplayerType] = useState<string>("co-op");
+  const [graphicsQuality, setGraphicsQuality] = useState<string>("realistic");
   const navigate = useNavigate();
 
   const handleGenerate = async () => {
@@ -27,7 +32,14 @@ export default function Create() {
     setIsGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-game', {
-        body: { prompt },
+        body: { 
+          prompt,
+          options: {
+            isMultiplayer,
+            multiplayerType,
+            graphicsQuality,
+          }
+        },
       });
 
       if (error) throw error;
@@ -75,6 +87,9 @@ export default function Create() {
         description: description.trim(),
         game_code: generatedCode,
         creator_id: user.id,
+        is_multiplayer: isMultiplayer,
+        multiplayer_type: isMultiplayer ? multiplayerType : null,
+        graphics_quality: graphicsQuality,
       });
 
       if (error) throw error;
@@ -114,6 +129,40 @@ export default function Create() {
                     className="min-h-32 mt-2"
                     disabled={isGenerating}
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 items-center">
+                  <div className="flex items-center gap-3">
+                    <Switch id="isMultiplayer" checked={isMultiplayer} onCheckedChange={setIsMultiplayer} />
+                    <Label htmlFor="isMultiplayer">Multiplayer</Label>
+                  </div>
+                  <div>
+                    <Label className="mb-2 block">Multiplayer Type</Label>
+                    <Select value={multiplayerType} onValueChange={setMultiplayerType} disabled={!isMultiplayer}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Select type" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="co-op">Co-op</SelectItem>
+                        <SelectItem value="versus">Versus</SelectItem>
+                        <SelectItem value="turn-based">Turn-based</SelectItem>
+                        <SelectItem value="real-time">Real-time</SelectItem>
+                        <SelectItem value="party">Party</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="mb-2 block">Graphics Quality</Label>
+                  <Select value={graphicsQuality} onValueChange={setGraphicsQuality}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Graphics" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="ultra">Ultra</SelectItem>
+                      <SelectItem value="realistic">Realistic</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>

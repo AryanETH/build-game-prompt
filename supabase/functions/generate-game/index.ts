@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt } = await req.json();
+    const { prompt, options } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
@@ -37,7 +37,7 @@ Rules:
 - Generate a COMPLETE, self-contained HTML file with inline CSS and JavaScript
 - Game must be playable and fun (1-2 minutes duration)
 - Include clear game instructions in the HTML
-- Use simple, lightweight graphics (canvas or HTML elements)
+- Prefer realistic, high-quality visuals while keeping performance good. Use canvas/WebGL-like effects if possible within HTML/JS only (no external assets). Provide crisp animations and particles. Offer graceful fallback for low-power devices.
 - Add score tracking and game over logic
 - Make it mobile-friendly with touch controls
 - Keep the total code under 500 lines
@@ -47,7 +47,7 @@ Return ONLY the complete HTML code, nothing else. No explanations, no markdown c
           },
           {
             role: 'user',
-            content: prompt
+            content: `Prompt: ${prompt}\n\nOptions: ${JSON.stringify(options || {})}`
           }
         ],
       }),
