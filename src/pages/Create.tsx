@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ensureProfileExistsForUser } from "@/lib/profile";
 import { Loader2, Sparkles, Music } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function Create() {
   const [prompt, setPrompt] = useState("");
@@ -27,6 +28,7 @@ export default function Create() {
   const [multiplayerType, setMultiplayerType] = useState<string>("co-op");
   const [graphicsQuality, setGraphicsQuality] = useState<string>("realistic");
   const navigate = useNavigate();
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const handleSoundFileChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
     const file = e.target.files?.[0];
@@ -93,19 +95,16 @@ export default function Create() {
 
       setGeneratedCode(data.gameCode);
 
-      // Generate AI thumbnail
-      toast.info("Generating thumbnail...");
-      const thumbnailResponse = await supabase.functions.invoke('generate-thumbnail', {
-        body: { prompt }
-      });
-
-      if (thumbnailResponse.data?.thumbnailUrl) {
-        setThumbnailUrl(thumbnailResponse.data.thumbnailUrl);
-        setCoverUrl(thumbnailResponse.data.thumbnailUrl);
-      } else {
-        setThumbnailUrl("/placeholder.svg");
-        setCoverUrl("/placeholder.svg");
-      }
+      // Generate AI thumbnail in the background (no manual inputs shown)
+      supabase.functions
+        .invoke('generate-thumbnail', { body: { prompt } })
+        .then((thumbnailResponse) => {
+          if (thumbnailResponse.data?.thumbnailUrl) {
+            setThumbnailUrl(thumbnailResponse.data.thumbnailUrl);
+            setCoverUrl(thumbnailResponse.data.thumbnailUrl);
+          }
+        })
+        .catch(() => {});
       
       // Auto-generate title and description if not provided
       if (!title) {
@@ -147,7 +146,7 @@ export default function Create() {
 
       // Ensure profile exists and avoid username unique conflicts
       const baseUsername = user.email?.split('@')[0] || `user_${user.id.slice(0,8)}`;
-      await ensureProfileExistsForUser(user.id, baseUsername);
+      await ensureProfileExistsForUser(supabase as any, user.id, baseUsername);
 
       // Attempt to insert with enhanced fields; if the remote DB hasn't been migrated yet,
       // fall back to the minimal schema so users can still publish.
@@ -201,7 +200,7 @@ export default function Create() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-1 gap-6">
             {/* Input Panel */}
             <Card className="gradient-card border-border/50 p-6">
               <div className="space-y-4">
@@ -249,28 +248,6 @@ export default function Create() {
                       <SelectItem value="realistic">Realistic</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="thumbnailUrl">Thumbnail URL (optional)</Label>
-                  <Input
-                    id="thumbnailUrl"
-                    value={thumbnailUrl}
-                    onChange={(e) => setThumbnailUrl(e.target.value)}
-                    placeholder="https://.../thumbnail.jpg"
-                    className="mt-2"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="coverUrl">Cover Image URL (optional)</Label>
-                  <Input
-                    id="coverUrl"
-                    value={coverUrl}
-                    onChange={(e) => setCoverUrl(e.target.value)}
-                    placeholder="https://.../cover.jpg"
-                    className="mt-2"
-                  />
                 </div>
 
                 <div>
@@ -339,41 +316,45 @@ export default function Create() {
                 </Button>
 
                 {generatedCode && (
-                  <Button
-                    onClick={handlePublish}
-                    className="w-full"
-                    variant="outline"
-                  >
-                    Publish to Feed
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button onClick={() => setPreviewOpen(true)} className="flex-1 gradient-primary glow-primary">
+                      Preview (9:16)
+                    </Button>
+                    <Button onClick={handlePublish} className="flex-1" variant="outline">
+                      Publish to Feed
+                    </Button>
+                  </div>
                 )}
               </div>
-            </Card>
-
-            {/* Preview Panel */}
-            <Card className="gradient-card border-border/50 p-6">
-              <h3 className="text-lg font-semibold mb-4">Preview</h3>
-              {generatedCode ? (
-                <div className="aspect-video bg-background rounded-lg overflow-hidden">
-                  <iframe
-                    srcDoc={generatedCode}
-                    className="w-full h-full border-0"
-                    title="Game Preview"
-                    sandbox="allow-scripts allow-same-origin"
-                  />
-                </div>
-              ) : (
-                <div className="aspect-video bg-background rounded-lg flex items-center justify-center text-muted-foreground">
-                  <div className="text-center">
-                    <Sparkles className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Your game will appear here</p>
-                  </div>
-                </div>
-              )}
             </Card>
           </div>
         </div>
       </div>
+
+      {/* Fullscreen 9:16 preview dialog */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-[420px] sm:max-w-[440px] p-0 overflow-hidden">
+          <DialogHeader className="px-4 pt-4">
+            <DialogTitle>Preview</DialogTitle>
+          </DialogHeader>
+          <div className="px-4 pb-4">
+            <div className="w-full aspect-[9/16] bg-background overflow-hidden rounded-xl border">
+              {generatedCode ? (
+                <iframe
+                  srcDoc={generatedCode}
+                  className="w-full h-full border-0"
+                  title="Game Preview"
+                  sandbox="allow-scripts allow-same-origin"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                  <Sparkles className="h-6 w-6 mr-2" /> Generate a game first
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
