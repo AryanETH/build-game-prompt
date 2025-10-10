@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Heart, Play, Loader2, Pencil } from "lucide-react";
+import { User, Heart, Play, Loader2, Pencil, UserPlus, UserCheck, Star } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { GamePlayer } from "@/components/GamePlayer";
 
 export default function Profile() {
   const [profile, setProfile] = useState<any>(null);
@@ -18,11 +19,53 @@ export default function Profile() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<any>(null);
 
   useEffect(() => {
     fetchProfile();
     fetchUserGames();
+    checkFollowStatus();
   }, []);
+
+  const checkFollowStatus = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !profile) return;
+
+    const { data } = await supabase
+      .from('follows')
+      .select('*')
+      .eq('follower_id', user.id)
+      .eq('following_id', profile.id)
+      .single();
+
+    setIsFollowing(!!data);
+  };
+
+  const toggleFollow = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !profile) return;
+
+    if (isFollowing) {
+      await supabase
+        .from('follows')
+        .delete()
+        .eq('follower_id', user.id)
+        .eq('following_id', profile.id);
+      
+      toast.success("Unfollowed user");
+      setIsFollowing(false);
+    } else {
+      await supabase
+        .from('follows')
+        .insert({ follower_id: user.id, following_id: profile.id });
+      
+      toast.success("Following user");
+      setIsFollowing(true);
+    }
+    
+    fetchProfile();
+  };
 
   const fetchProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -143,125 +186,181 @@ export default function Profile() {
     }
   };
 
+  const getLevelInfo = (xp: number) => {
+    const level = Math.floor(xp / 100) + 1;
+    const currentLevelXp = xp % 100;
+    return { level, progress: currentLevelXp };
+  };
+
+  const levelInfo = profile ? getLevelInfo(profile.xp || 0) : { level: 1, progress: 0 };
+
+  if (selectedGame) {
+    return <GamePlayer game={selectedGame} onClose={() => setSelectedGame(null)} />;
+  }
+
   return (
-    <div className="min-h-screen pb-16 md:pt-16">
+    <div className="min-h-screen pb-16 md:pt-16 gradient-hero">
       <Navigation />
       
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Profile Header */}
-          <Card className="gradient-card border-border/50 p-8 mb-8">
-            <div className="flex items-center gap-6">
-              <div className="h-24 w-24 rounded-full overflow-hidden border border-border/60">
-                <Avatar className="h-24 w-24">
-                  <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.username || 'avatar'} />
-                  <AvatarFallback className="bg-muted">
-                    <User className="h-10 w-10" />
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <h1 className="text-3xl font-bold mb-2">
-                      {profile?.username || 'Loading...'}
-                    </h1>
-                    <div className="flex gap-6 text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <Play className="h-4 w-4" />
-                        <span>{profile?.total_plays || 0} plays</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Heart className="h-4 w-4" />
-                        <span>{profile?.total_likes || 0} likes</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <Button variant="secondary" onClick={handleOpenEdit} className="flex items-center gap-2">
-                      <Pencil className="h-4 w-4" />
-                      Edit Profile
-                    </Button>
-                  </div>
+      <div className="max-w-4xl mx-auto p-4 space-y-6">
+        {/* Profile Header */}
+        <Card className="p-6 gradient-card border-primary/20">
+          <div className="flex flex-col items-center text-center gap-4">
+            <Avatar className="w-32 h-32 ring-4 ring-primary/30">
+              <AvatarImage src={profile?.avatar_url || undefined} />
+              <AvatarFallback className="text-3xl bg-primary/20">
+                {profile?.username?.[0]?.toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            
+            <div className="w-full">
+              <h1 className="text-3xl font-bold mb-2">{profile?.username}</h1>
+              
+              {/* Level Badge */}
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-accent/20 border border-accent/50">
+                  <Star className="w-4 h-4 text-accent fill-accent" />
+                  <span className="font-bold text-accent">Level {levelInfo.level}</span>
                 </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Edit Profile Dialog */}
-          <Dialog open={editOpen} onOpenChange={setEditOpen}>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Edit Profile</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4 py-2">
-                <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 rounded-full overflow-hidden border border-border/60">
-                    <Avatar className="h-16 w-16">
-                      <AvatarImage src={previewUrl || undefined} alt="preview" />
-                      <AvatarFallback className="bg-muted">
-                        <User className="h-6 w-6" />
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                  <div>
-                    <Label htmlFor="avatar">Profile image</Label>
-                    <Input id="avatar" type="file" accept="image/*" onChange={handleFileChange} className="mt-2" />
-                  </div>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="username">Username</Label>
-                  <Input
-                    id="username"
-                    value={formUsername}
-                    onChange={(e) => setFormUsername(e.target.value)}
-                    placeholder="Your username"
+                <div className="flex-1 max-w-[200px] h-2 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-accent transition-all"
+                    style={{ width: `${levelInfo.progress}%` }}
                   />
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>Cancel</Button>
-                <Button onClick={handleSaveProfile} disabled={saving} className="flex items-center gap-2">
-                  {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                  Save changes
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              
+              <div className="flex justify-center gap-8 mb-4 text-sm">
+                <div className="text-center">
+                  <div className="font-bold text-xl">{profile?.followers_count || 0}</div>
+                  <div className="text-muted-foreground">Followers</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-bold text-xl">{profile?.following_count || 0}</div>
+                  <div className="text-muted-foreground">Following</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-bold text-xl">{userGames.length}</div>
+                  <div className="text-muted-foreground">Games</div>
+                </div>
+              </div>
 
-          {/* User Games */}
-          <div>
-            <h2 className="text-2xl font-bold mb-4">My Games</h2>
-            {userGames.length === 0 ? (
-              <Card className="gradient-card border-border/50 p-8 text-center">
-                <p className="text-muted-foreground">
-                  You haven't created any games yet.
-                </p>
-              </Card>
-            ) : (
-              <div className="grid md:grid-cols-2 gap-4">
-                {userGames.map((game) => (
-                  <Card key={game.id} className="gradient-card border-border/50 p-4">
-                    <h3 className="font-semibold mb-2">{game.title}</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      {game.description}
-                    </p>
-                    <div className="flex gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Heart className="h-4 w-4" />
-                        <span>{game.likes_count}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Play className="h-4 w-4" />
-                        <span>{game.plays_count}</span>
+              <div className="flex gap-2 justify-center">
+                <Button onClick={handleOpenEdit} className="gap-2">
+                  <Pencil className="w-4 h-4" />
+                  Edit Profile
+                </Button>
+                <Button 
+                  onClick={toggleFollow}
+                  variant={isFollowing ? "outline" : "default"}
+                  className="gap-2"
+                >
+                  {isFollowing ? (
+                    <>
+                      <UserCheck className="w-4 h-4" />
+                      Following
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4" />
+                      Follow
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Edit Profile Dialog */}
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Edit Profile</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-2">
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-16 rounded-full overflow-hidden border border-border/60">
+                  <Avatar className="h-16 w-16">
+                    <AvatarImage src={previewUrl || undefined} alt="preview" />
+                    <AvatarFallback className="bg-muted">
+                      <User className="h-6 w-6" />
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                <div>
+                  <Label htmlFor="avatar">Profile image</Label>
+                  <Input id="avatar" type="file" accept="image/*" onChange={handleFileChange} className="mt-2" />
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  value={formUsername}
+                  onChange={(e) => setFormUsername(e.target.value)}
+                  placeholder="Your username"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>Cancel</Button>
+              <Button onClick={handleSaveProfile} disabled={saving} className="flex items-center gap-2">
+                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                Save changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* User's Games Grid */}
+        <div>
+          <h2 className="text-2xl font-bold mb-4">Created Games</h2>
+          {userGames.length === 0 ? (
+            <Card className="p-12 text-center gradient-card">
+              <p className="text-muted-foreground text-lg">No games created yet</p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {userGames.map((game) => (
+                <div
+                  key={game.id}
+                  onClick={() => setSelectedGame(game)}
+                  className="aspect-[9/16] relative group cursor-pointer overflow-hidden rounded-lg border border-border hover:border-primary transition-all"
+                >
+                  {game.thumbnail_url ? (
+                    <img 
+                      src={game.thumbnail_url} 
+                      alt={game.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                    />
+                  ) : (
+                    <div className="w-full h-full gradient-primary flex items-center justify-center">
+                      <Play className="w-12 h-12 text-white" />
+                    </div>
+                  )}
+                  
+                  {/* Overlay with stats */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
+                      <p className="font-bold text-sm mb-1 truncate">{game.title}</p>
+                      <div className="flex gap-3 text-xs">
+                        <span className="flex items-center gap-1">
+                          <Heart className="w-3 h-3" />
+                          {game.likes_count}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Play className="w-3 h-3" />
+                          {game.plays_count}
+                        </span>
                       </div>
                     </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      follows: {
+        Row: {
+          created_at: string | null
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follows_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follows_following_id_fkey"
+            columns: ["following_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_likes: {
         Row: {
           created_at: string | null
@@ -58,12 +94,9 @@ export type Database = {
           duration_minutes: number | null
           game_code: string
           id: string
-          is_multiplayer: boolean | null
           likes_count: number | null
-          multiplayer_type: string | null
           plays_count: number | null
-          graphics_quality: string | null
-          cover_url: string | null
+          sound_url: string | null
           thumbnail_url: string | null
           title: string
         }
@@ -74,12 +107,9 @@ export type Database = {
           duration_minutes?: number | null
           game_code: string
           id?: string
-          is_multiplayer?: boolean | null
           likes_count?: number | null
-          multiplayer_type?: string | null
           plays_count?: number | null
-          graphics_quality?: string | null
-          cover_url?: string | null
+          sound_url?: string | null
           thumbnail_url?: string | null
           title: string
         }
@@ -90,12 +120,9 @@ export type Database = {
           duration_minutes?: number | null
           game_code?: string
           id?: string
-          is_multiplayer?: boolean | null
           likes_count?: number | null
-          multiplayer_type?: string | null
           plays_count?: number | null
-          graphics_quality?: string | null
-          cover_url?: string | null
+          sound_url?: string | null
           thumbnail_url?: string | null
           title?: string
         }
@@ -113,26 +140,38 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string | null
+          followers_count: number | null
+          following_count: number | null
           id: string
+          level: number | null
           total_likes: number | null
           total_plays: number | null
           username: string
+          xp: number | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string | null
+          followers_count?: number | null
+          following_count?: number | null
           id: string
+          level?: number | null
           total_likes?: number | null
           total_plays?: number | null
           username: string
+          xp?: number | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string | null
+          followers_count?: number | null
+          following_count?: number | null
           id?: string
+          level?: number | null
           total_likes?: number | null
           total_plays?: number | null
           username?: string
+          xp?: number | null
         }
         Relationships: []
       }

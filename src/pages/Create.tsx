@@ -33,6 +33,7 @@ export default function Create() {
 
     setIsGenerating(true);
     try {
+      // Generate game code
       const { data, error } = await supabase.functions.invoke('generate-game', {
         body: { 
           prompt,
@@ -48,12 +49,19 @@ export default function Create() {
 
       setGeneratedCode(data.gameCode);
 
-      // Try to find first image or canvas frame as a thumbnail placeholder
-      try {
-        // naive preview snapshot using a placeholder if none
+      // Generate AI thumbnail
+      toast.info("Generating thumbnail...");
+      const thumbnailResponse = await supabase.functions.invoke('generate-thumbnail', {
+        body: { prompt }
+      });
+
+      if (thumbnailResponse.data?.thumbnailUrl) {
+        setThumbnailUrl(thumbnailResponse.data.thumbnailUrl);
+        setCoverUrl(thumbnailResponse.data.thumbnailUrl);
+      } else {
         setThumbnailUrl("/placeholder.svg");
         setCoverUrl("/placeholder.svg");
-      } catch {}
+      }
       
       // Auto-generate title and description if not provided
       if (!title) {
@@ -63,7 +71,7 @@ export default function Create() {
         setDescription(`An AI-generated game based on: ${prompt}`);
       }
       
-      toast.success("Game generated! Preview and publish when ready.");
+      toast.success("Game and thumbnail generated! Preview and publish when ready.");
     } catch (error: any) {
       console.error('Generation error:', error);
       if (error.message?.includes('429')) {

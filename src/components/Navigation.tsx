@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ThemeToggle } from "./ThemeToggle";
 
 export const Navigation = () => {
   const navigate = useNavigate();
@@ -46,14 +47,16 @@ export const Navigation = () => {
             ))}
           </div>
 
-          <Button
-            variant="ghost"
-            onClick={handleSignOut}
-            className="hidden md:flex"
-          >
-            <LogOut className="h-5 w-5 mr-2" />
-            Sign Out
-          </Button>
+          <div className="hidden md:flex items-center gap-2">
+            <ThemeToggle />
+            <Button
+              variant="ghost"
+              onClick={handleSignOut}
+            >
+              <LogOut className="h-5 w-5 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </div>
     </nav>
