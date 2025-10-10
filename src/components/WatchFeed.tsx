@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { isApiMode, apiGetGames, apiGetComments, apiPostComment } from "@/integrations/api";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,10 @@ export const WatchFeed = () => {
   const { data: games = [] } = useQuery({
     queryKey: ["watch-games"],
     queryFn: async () => {
+      if (isApiMode()) {
+        const arr = await apiGetGames();
+        return arr as Game[];
+      }
       const { data, error } = await supabase
         .from("games")
         .select("id,title,description,game_code,creator_id")
@@ -64,6 +69,9 @@ export const WatchFeed = () => {
     queryKey: ["watch-comments", selected?.id],
     enabled: !!selected?.id,
     queryFn: async () => {
+      if (isApiMode()) {
+        return await apiGetComments(selected!.id) as unknown as CommentRow[];
+      }
       const { data, error } = await supabase
         .from("game_comments")
         .select("id, content, created_at, user:profiles!game_comments_user_id_fkey(id, username, avatar_url)")
@@ -86,12 +94,12 @@ export const WatchFeed = () => {
   const [text, setText] = useState("");
   const send = async () => {
     if (!text.trim() || !selected) return;
+    if (isApiMode()) {
+      try { await apiPostComment(selected.id, text.trim()); setText(""); } catch {}
+      return;
+    }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    try {
-      const baseUsername = user.email?.split('@')[0] || `user_${user.id.slice(0,8)}`;
-      await ensureProfileExistsForUser(supabase, user.id, baseUsername);
-    } catch {}
     const { error } = await supabase.from("game_comments").insert({ game_id: selected.id, user_id: user.id, content: text.trim() });
     if (!error) setText("");
   };

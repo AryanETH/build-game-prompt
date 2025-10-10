@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { isApiMode, apiGetMyProfile, apiUpdateMyProfile, apiGetMyGames, apiUpload } from "@/integrations/api";
 import { User, Heart, Play, Loader2, Pencil, UserPlus, UserCheck, Star } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,14 @@ export default function Profile() {
   };
 
   const fetchProfile = async () => {
+    if (isApiMode()) {
+      const data = await apiGetMyProfile();
+      setCurrentUserId(data?.id || null);
+      setProfile(data);
+      if (data?.username) setFormUsername(data.username);
+      if (data?.avatar_url) setPreviewUrl(data.avatar_url);
+      return;
+    }
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       setCurrentUserId(user.id);
@@ -84,6 +93,11 @@ export default function Profile() {
   };
 
   const fetchUserGames = async () => {
+    if (isApiMode()) {
+      const data = await apiGetMyGames();
+      setUserGames(data || []);
+      return;
+    }
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { data } = await supabase
@@ -121,24 +135,15 @@ export default function Profile() {
   };
 
   const uploadAvatarAndGetUrl = async (userId: string, file: File): Promise<string> => {
+    if (isApiMode()) {
+      const url = await apiUpload(file, 'avatar');
+      return `${url}${url.includes('?') ? '&' : '?'}v=${Date.now()}`;
+    }
     const ext = file.name.includes('.') ? file.name.substring(file.name.lastIndexOf('.') + 1) : 'png';
     const safeExt = ext.toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
     const path = `${userId}/${Date.now()}.${safeExt}`;
-    const { error: uploadError } = await supabase
-      .storage
-      .from('avatars')
-      .upload(path, file, {
-        cacheControl: '3600',
-        upsert: true,
-        contentType: file.type || 'image/png',
-      });
-    if (uploadError) {
-      // Common case: bucket not found or not public
-      if (uploadError.message?.toLowerCase().includes('not found') || uploadError.message?.toLowerCase().includes('bucket')) {
-        toast.error("Avatar storage bucket 'avatars' is missing or not accessible. Make sure it's public.");
-      }
-      throw uploadError;
-    }
+    const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { cacheControl: '3600', upsert: true, contentType: file.type || 'image/png' });
+    if (uploadError) throw uploadError;
     const { data } = supabase.storage.from('avatars').getPublicUrl(path);
     return `${data.publicUrl}?v=${Date.now()}`;
   };
@@ -146,36 +151,29 @@ export default function Profile() {
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error('Please sign in to update your profile');
-        return;
+      let userId = currentUserId;
+      if (!isApiMode()) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { toast.error('Please sign in to update your profile'); return; }
+        userId = user.id;
       }
 
       let avatarUrl = profile?.avatar_url || null;
-      if (selectedFile) {
-        avatarUrl = await uploadAvatarAndGetUrl(user.id, selectedFile);
+      if (selectedFile && userId) {
+        avatarUrl = await uploadAvatarAndGetUrl(userId, selectedFile);
       }
 
       const newUsername = formUsername.trim();
-      if (!newUsername) {
-        toast.error('Username cannot be empty');
-        return;
-      }
+      if (!newUsername) { toast.error('Username cannot be empty'); return; }
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({ username: newUsername, avatar_url: avatarUrl })
-        .eq('id', user.id);
-
-      if (error) {
-        const msg = (error.message || '').toLowerCase();
-        if (msg.includes('duplicate') || msg.includes('unique')) {
-          toast.error('That username is taken. Please choose another.');
-        } else {
-          toast.error('Failed to update profile');
-        }
-        throw error;
+      if (isApiMode()) {
+        await apiUpdateMyProfile({ username: newUsername, avatar_url: avatarUrl });
+      } else {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ username: newUsername, avatar_url: avatarUrl })
+          .eq('id', userId);
+        if (error) throw error;
       }
 
       toast.success('Profile updated');

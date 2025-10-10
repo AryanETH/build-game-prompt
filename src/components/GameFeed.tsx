@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { isApiMode, apiGetGames, apiToggleLike, apiGetComments, apiPostComment } from "@/integrations/api";
 import { GameCard } from "./GameCard";
 import { GamePlayer } from "./GamePlayer";
 import { Loader2, MessageCircle } from "lucide-react";
@@ -59,11 +60,14 @@ export const GameFeed = () => {
   const { data: games, isLoading } = useQuery({
     queryKey: ['games'],
     queryFn: async () => {
+      if (isApiMode()) {
+        const list = await apiGetGames();
+        return list as GameWithCreator[];
+      }
       const { data, error } = await supabase
         .from('games')
         .select('*, creator:profiles!games_creator_id_fkey(id, username, avatar_url)')
         .order('created_at', { ascending: false });
-      
       if (error) throw error;
       return data as unknown as GameWithCreator[];
     },
@@ -92,24 +96,16 @@ export const GameFeed = () => {
 
   const likeMutation = useMutation({
     mutationFn: async ({ gameId, isLiked }: { gameId: string; isLiked: boolean }) => {
-      if (!userId) {
-        toast.error("Please sign in to like games");
+      if (isApiMode()) {
+        await apiToggleLike(gameId, isLiked ? 'unlike' : 'like');
         return;
       }
-
+      if (!userId) { toast.error("Please sign in to like games"); return; }
       if (isLiked) {
-        const { error } = await supabase
-          .from('game_likes')
-          .delete()
-          .eq('game_id', gameId)
-          .eq('user_id', userId);
-        
+        const { error } = await supabase.from('game_likes').delete().eq('game_id', gameId).eq('user_id', userId);
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('game_likes')
-          .insert({ game_id: gameId, user_id: userId });
-        
+        const { error } = await supabase.from('game_likes').insert({ game_id: gameId, user_id: userId });
         if (error) throw error;
       }
     },
@@ -156,8 +152,10 @@ export const GameFeed = () => {
     enabled: !!commentsOpenFor?.id,
     queryFn: async () => {
       const gid = commentsOpenFor!.id;
-      const { data, error } = await supabase
-        .from('game_comments')
+      if (isApiMode()) {
+        return await apiGetComments(gid) as unknown as CommentRow[];
+      }
+      const { data, error } = await supabase.from('game_comments')
         .select('*, user:profiles!game_comments_user_id_fkey(id, username, avatar_url)')
         .eq('game_id', gid)
         .order('created_at', { ascending: true });
@@ -181,27 +179,14 @@ export const GameFeed = () => {
 
   const handleSendComment = async () => {
     if (!newComment.trim() || !commentsOpenFor) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast.error('Please sign in to comment');
+    if (isApiMode()) {
+      try { await apiPostComment(commentsOpenFor.id, newComment.trim()); setNewComment(""); } catch { toast.error('Failed to send comment'); }
       return;
     }
-    try {
-      const baseUsername = user.email?.split('@')[0] || `user_${user.id.slice(0,8)}`;
-      await ensureProfileExistsForUser(supabase, user.id, baseUsername);
-    } catch {}
-    const { error } = await supabase
-      .from('game_comments')
-      .insert({
-        game_id: commentsOpenFor.id,
-        user_id: user.id,
-        content: newComment.trim(),
-      });
-    if (error) {
-      toast.error('Failed to send comment');
-    } else {
-      setNewComment("");
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { toast.error('Please sign in to comment'); return; }
+    const { error } = await supabase.from('game_comments').insert({ game_id: commentsOpenFor.id, user_id: user.id, content: newComment.trim() });
+    if (error) { toast.error('Failed to send comment'); } else { setNewComment(""); }
   };
 
   if (isLoading) {

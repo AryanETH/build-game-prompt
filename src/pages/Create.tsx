@@ -9,8 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { ensureProfileExistsForUser } from "@/lib/profile";
+import { isApiMode, apiUpload, apiCreateGame, apiGenerateGame, apiGenerateThumbnail } from "@/integrations/api";
 import { Loader2, Sparkles, Music } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -39,29 +38,25 @@ export default function Create() {
     }
     setSoundUploading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("Please sign in to upload sounds");
-        return;
-      }
-
-      const ext = file.name.includes('.') ? file.name.substring(file.name.lastIndexOf('.') + 1) : 'mp3';
-      const safeExt = ext.toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp3';
-      const path = `${user.id}/${Date.now()}.${safeExt}`;
-      // Use upsert=false to avoid 409 conflicts; ensure unique path via timestamp above
-      const { error: uploadError } = await supabase.storage.from('sounds').upload(path, file, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: file.type || 'audio/mpeg',
-      });
-      if (uploadError) {
-        if (uploadError.message?.toLowerCase().includes('not found')) {
-          toast.error("Sounds storage bucket 'sounds' is missing or not accessible. Make sure it's public.");
+      if (isApiMode()) {
+        const url = await apiUpload(file, 'audio');
+        setSoundUrl(`${url}${url.includes('?') ? '&' : '?'}v=${Date.now()}`);
+      } else {
+        // Supabase fallback (dev/demo)
+        const { data: { user } } = await (await import("@/integrations/supabase/client")).supabase.auth.getUser();
+        if (!user) {
+          toast.error("Please sign in to upload sounds");
+          return;
         }
-        throw uploadError;
+        const ext = file.name.includes('.') ? file.name.substring(file.name.lastIndexOf('.') + 1) : 'mp3';
+        const safeExt = ext.toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp3';
+        const path = `${user.id}/${Date.now()}.${safeExt}`;
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { error: uploadError } = await supabase.storage.from('sounds').upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type || 'audio/mpeg' });
+        if (uploadError) throw uploadError;
+        const { data } = supabase.storage.from('sounds').getPublicUrl(path);
+        setSoundUrl(`${data.publicUrl}?v=${Date.now()}`);
       }
-      const { data } = supabase.storage.from('sounds').getPublicUrl(path);
-      setSoundUrl(`${data.publicUrl}?v=${Date.now()}`);
       toast.success('Sound uploaded');
     } catch (err: any) {
       console.error(err);
@@ -79,32 +74,32 @@ export default function Create() {
 
     setIsGenerating(true);
     try {
-      // Generate game code
-      const { data, error } = await supabase.functions.invoke('generate-game', {
-        body: { 
-          prompt,
-          options: {
-            isMultiplayer,
-            multiplayerType,
-            graphicsQuality,
-          }
-        },
-      });
-
-      if (error) throw error;
-
-      setGeneratedCode(data.gameCode);
+      // Generate game code via your cloud API or Supabase fallback
+      if (isApiMode()) {
+        const data = await apiGenerateGame(prompt, { isMultiplayer, multiplayerType, graphicsQuality });
+        setGeneratedCode(data.gameCode);
+      } else {
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { data, error } = await supabase.functions.invoke('generate-game', { body: { prompt, options: { isMultiplayer, multiplayerType, graphicsQuality } } });
+        if (error) throw error;
+        setGeneratedCode(data.gameCode);
+      }
 
       // Generate AI thumbnail in the background (no manual inputs shown)
-      supabase.functions
-        .invoke('generate-thumbnail', { body: { prompt } })
-        .then((thumbnailResponse) => {
-          if (thumbnailResponse.data?.thumbnailUrl) {
-            setThumbnailUrl(thumbnailResponse.data.thumbnailUrl);
-            setCoverUrl(thumbnailResponse.data.thumbnailUrl);
-          }
-        })
-        .catch(() => {});
+      if (isApiMode()) {
+        apiGenerateThumbnail(prompt)
+          .then((r) => {
+            if (r.thumbnailUrl) { setThumbnailUrl(r.thumbnailUrl); setCoverUrl(r.thumbnailUrl); }
+          })
+          .catch(() => {});
+      } else {
+        const { supabase } = await import("@/integrations/supabase/client");
+        supabase.functions.invoke('generate-thumbnail', { body: { prompt } })
+          .then((resp) => {
+            if (resp.data?.thumbnailUrl) { setThumbnailUrl(resp.data.thumbnailUrl); setCoverUrl(resp.data.thumbnailUrl); }
+          })
+          .catch(() => {});
+      }
       
       // Auto-generate title and description if not provided
       if (!title) {
@@ -138,23 +133,10 @@ export default function Create() {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("Please sign in to publish games");
-        return;
-      }
-
-      // Ensure profile exists and avoid username unique conflicts
-      const baseUsername = user.email?.split('@')[0] || `user_${user.id.slice(0,8)}`;
-      await ensureProfileExistsForUser(supabase as any, user.id, baseUsername);
-
-      // Attempt to insert with enhanced fields; if the remote DB hasn't been migrated yet,
-      // fall back to the minimal schema so users can still publish.
       const fullPayload = {
         title: title.trim(),
         description: description.trim(),
         game_code: generatedCode,
-        creator_id: user.id,
         is_multiplayer: isMultiplayer,
         multiplayer_type: isMultiplayer ? multiplayerType : null,
         graphics_quality: graphicsQuality,
@@ -162,20 +144,18 @@ export default function Create() {
         cover_url: coverUrl || thumbnailUrl || null,
         sound_url: soundUrl || null,
       } as any;
-
-      let { error } = await supabase.from('games').insert(fullPayload);
-      if (error) {
-        // Retry with minimal set of columns expected to exist
-        const minimalPayload = {
-          title: title.trim(),
-          description: description.trim(),
-          game_code: generatedCode,
-          creator_id: user.id,
-          thumbnail_url: thumbnailUrl || null,
-          sound_url: soundUrl || null,
-        };
-        const retry = await supabase.from('games').insert(minimalPayload);
-        if (retry.error) throw retry.error;
+      if (isApiMode()) {
+        await apiCreateGame(fullPayload);
+      } else {
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { toast.error('Please sign in to publish games'); return; }
+        const payload = { ...fullPayload, creator_id: user.id };
+        let { error } = await supabase.from('games').insert(payload);
+        if (error) {
+          const retry = await supabase.from('games').insert({ title: title.trim(), description: description.trim(), game_code: generatedCode, creator_id: user.id, thumbnail_url: thumbnailUrl || null, sound_url: soundUrl || null });
+          if (retry.error) throw retry.error;
+        }
       }
 
       toast.success("Game published successfully!");
