@@ -21,7 +21,6 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
     const ref = useRef<HTMLAudioElement | null>(null);
     useEffect(() => {
       if (ref.current) {
-        // @ts-expect-error - srcObject exists on HTMLMediaElement
         ref.current.srcObject = stream;
       }
     }, [stream]);

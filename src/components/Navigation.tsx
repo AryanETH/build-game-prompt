@@ -1,4 +1,4 @@
-import { Home, Sparkles, User, LogOut } from "lucide-react";
+import { Home, Sparkles, User, LogOut, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,7 @@ export const Navigation = () => {
 
   const navItems = [
     { icon: Home, label: "Feed", path: "/feed" },
+    { icon: Search, label: "Search", path: "/search" },
     { icon: Sparkles, label: "Create", path: "/create" },
     { icon: User, label: "Profile", path: "/profile" },
   ];
