@@ -1,4 +1,4 @@
-import { X, Timer, Mic, MicOff, Users } from "lucide-react";
+import { X, Timer, Mic, MicOff, Users, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 import { useVoiceChat } from "@/hooks/use-voice-chat";
@@ -8,6 +8,7 @@ interface GamePlayerProps {
     id: string;
     title: string;
     game_code: string;
+    sound_url?: string | null;
   };
   onClose: () => void;
 }
@@ -16,6 +17,8 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
   const [timeLeft, setTimeLeft] = useState(120); // 2 minutes
   const roomId = `game-${game.id}`;
   const { isReady, isMicOn, remoteAudios, participants, toggleMic, error } = useVoiceChat(roomId);
+  const [soundOn, setSoundOn] = useState(true);
+  const bgAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const AudioStream = ({ stream }: { stream: MediaStream }) => {
     const ref = useRef<HTMLAudioElement | null>(null);
@@ -41,6 +44,12 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (!game.sound_url) return;
+    if (!bgAudioRef.current) return;
+    bgAudioRef.current.muted = !soundOn;
+  }, [soundOn, game.sound_url]);
+
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
 
@@ -62,6 +71,17 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
             <div className="text-xs text-muted-foreground hidden md:flex items-center gap-1 mr-2">
               <Users className="h-4 w-4" /> {participants.length}
             </div>
+            {game.sound_url && (
+              <Button
+                variant={soundOn ? "default" : "secondary"}
+                size="icon"
+                onClick={() => setSoundOn((v) => !v)}
+                title={soundOn ? "Sound off" : "Sound on"}
+                className={soundOn ? "gradient-primary" : ""}
+              >
+                {soundOn ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+              </Button>
+            )}
             <Button
               variant={isMicOn ? "default" : "secondary"}
               size="icon"
@@ -90,6 +110,9 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
             title={game.title}
             sandbox="allow-scripts allow-same-origin"
           />
+          {game.sound_url && (
+            <audio ref={bgAudioRef} src={game.sound_url || undefined} autoPlay loop />
+          )}
           {/* Hidden remote audio elements */}
           <div className="sr-only">
             {remoteAudios.map((ra) => (

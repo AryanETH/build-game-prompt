@@ -21,6 +21,7 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [selectedGame, setSelectedGame] = useState<any>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProfile();
@@ -70,6 +71,7 @@ export default function Profile() {
   const fetchProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      setCurrentUserId(user.id);
       const { data } = await supabase
         .from('profiles')
         .select('*')
@@ -250,23 +252,25 @@ export default function Profile() {
                   <Pencil className="w-4 h-4" />
                   Edit Profile
                 </Button>
-                <Button 
-                  onClick={toggleFollow}
-                  variant={isFollowing ? "outline" : "default"}
-                  className="gap-2"
-                >
-                  {isFollowing ? (
-                    <>
-                      <UserCheck className="w-4 h-4" />
-                      Following
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="w-4 h-4" />
-                      Follow
-                    </>
-                  )}
-                </Button>
+                {profile?.id !== currentUserId && (
+                  <Button 
+                    onClick={toggleFollow}
+                    variant={isFollowing ? "outline" : "default"}
+                    className="gap-2"
+                  >
+                    {isFollowing ? (
+                      <>
+                        <UserCheck className="w-4 h-4" />
+                        Following
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4" />
+                        Follow
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
           </div>

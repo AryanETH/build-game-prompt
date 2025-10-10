@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, Music } from "lucide-react";
 
 export default function Create() {
   const [prompt, setPrompt] = useState("");
@@ -20,10 +20,52 @@ export default function Create() {
   const [generatedCode, setGeneratedCode] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState<string>("");
   const [coverUrl, setCoverUrl] = useState<string>("");
+  const [soundUrl, setSoundUrl] = useState<string>("");
+  const [soundUploading, setSoundUploading] = useState(false);
   const [isMultiplayer, setIsMultiplayer] = useState(false);
   const [multiplayerType, setMultiplayerType] = useState<string>("co-op");
   const [graphicsQuality, setGraphicsQuality] = useState<string>("realistic");
   const navigate = useNavigate();
+
+  const handleSoundFileChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("audio/")) {
+      toast.error("Please select a valid audio file");
+      return;
+    }
+    setSoundUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Please sign in to upload sounds");
+        return;
+      }
+
+      const ext = file.name.includes('.') ? file.name.substring(file.name.lastIndexOf('.') + 1) : 'mp3';
+      const safeExt = ext.toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp3';
+      const path = `${user.id}/${Date.now()}.${safeExt}`;
+      const { error: uploadError } = await supabase.storage.from('sounds').upload(path, file, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: file.type || 'audio/mpeg',
+      });
+      if (uploadError) {
+        if (uploadError.message?.toLowerCase().includes('not found')) {
+          toast.error("Sounds storage bucket 'sounds' is missing or not accessible. Make sure it's public.");
+        }
+        throw uploadError;
+      }
+      const { data } = supabase.storage.from('sounds').getPublicUrl(path);
+      setSoundUrl(data.publicUrl);
+      toast.success('Sound uploaded');
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Failed to upload sound');
+    } finally {
+      setSoundUploading(false);
+    }
+  };
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -160,6 +202,7 @@ export default function Create() {
         graphics_quality: graphicsQuality,
         thumbnail_url: thumbnailUrl || null,
         cover_url: coverUrl || thumbnailUrl || null,
+        sound_url: soundUrl || null,
       } as any;
 
       let { error } = await supabase.from('games').insert(fullPayload);
@@ -171,6 +214,7 @@ export default function Create() {
           game_code: generatedCode,
           creator_id: user.id,
           thumbnail_url: thumbnailUrl || null,
+          sound_url: soundUrl || null,
         };
         const retry = await supabase.from('games').insert(minimalPayload);
         if (retry.error) throw retry.error;
@@ -290,6 +334,31 @@ export default function Create() {
                     placeholder="Brief description of your game"
                     className="mt-2"
                   />
+                </div>
+
+                {/* Custom Sound */}
+                <div className="grid gap-2">
+                  <Label htmlFor="soundUrl">Custom Sound (optional)</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="soundUrl"
+                      value={soundUrl}
+                      onChange={(e) => setSoundUrl(e.target.value)}
+                      placeholder="Paste an audio URL (mp3, wav, ogg)"
+                    />
+                    <div className="relative">
+                      <Input id="soundFile" type="file" accept="audio/*" onChange={handleSoundFileChange} className="hidden" />
+                      <Button asChild variant="outline" disabled={soundUploading}>
+                        <label htmlFor="soundFile" className="cursor-pointer flex items-center gap-2">
+                          <Music className="h-4 w-4" />
+                          {soundUploading ? 'Uploading...' : 'Upload'}
+                        </label>
+                      </Button>
+                    </div>
+                  </div>
+                  {soundUrl && (
+                    <audio src={soundUrl} controls className="mt-2 w-full" />
+                  )}
                 </div>
 
                 <Button
