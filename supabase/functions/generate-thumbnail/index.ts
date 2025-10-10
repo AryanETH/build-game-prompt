@@ -32,10 +32,14 @@ serve(async (req) => {
         messages: [
           {
             role: 'user',
-            content: `Create a vibrant, eye-catching 9:16 portrait game thumbnail for: ${prompt}. Make it colorful, gaming-style, with dynamic composition and bold visual elements. High quality, professional game cover art style.`
+            content: `Create a vibrant, eye-catching portrait game thumbnail for: ${prompt}.
+Strictly output a 9:16 portrait image (aspect_ratio=9:16). The art should be colorful, gaming-style, with dynamic composition, readable focal subject, and bold UI elements reminiscent of modern game covers. High quality, professional look. No text watermarks.`
           }
         ],
-        modalities: ['image', 'text']
+        modalities: ['image', 'text'],
+        image_generation: {
+          aspect_ratio: '9:16'
+        }
       }),
     });
 

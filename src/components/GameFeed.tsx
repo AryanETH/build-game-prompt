@@ -1,10 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { GameCard } from "./GameCard";
 import { GamePlayer } from "./GamePlayer";
-import { Loader2 } from "lucide-react";
+import { Loader2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
+import { Input } from "./ui/input";
+import { Button } from "./ui/button";
 
 interface Game {
   id: string;
@@ -19,6 +23,24 @@ interface Game {
   is_multiplayer?: boolean | null;
   multiplayer_type?: string | null;
   graphics_quality?: string | null;
+  sound_url?: string | null;
+}
+
+type GameWithCreator = Game & {
+  creator?: {
+    id: string;
+    username: string;
+    avatar_url: string | null;
+  } | null;
+};
+
+interface CommentRow {
+  id: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  game_id: string;
+  user?: { id: string; username: string; avatar_url: string | null } | null;
 }
 
 export const GameFeed = () => {
@@ -38,11 +60,11 @@ export const GameFeed = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('games')
-        .select('*')
+        .select('*, creator:profiles!games_creator_id_fkey(id, username, avatar_url)')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as Game[];
+      return data as unknown as GameWithCreator[];
     },
   });
 
@@ -124,6 +146,59 @@ export const GameFeed = () => {
     toast.success("Game link copied to clipboard!");
   };
 
+  // Comments state
+  const [commentsOpenFor, setCommentsOpenFor] = useState<GameWithCreator | null>(null);
+  const [newComment, setNewComment] = useState("");
+
+  const { data: comments = [], refetch: refetchComments } = useQuery({
+    queryKey: ['comments', commentsOpenFor?.id],
+    enabled: !!commentsOpenFor?.id,
+    queryFn: async () => {
+      const gid = commentsOpenFor!.id;
+      const { data, error } = await supabase
+        .from('game_comments')
+        .select('*, user:profiles!game_comments_user_id_fkey(id, username, avatar_url)')
+        .eq('game_id', gid)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data as unknown as CommentRow[];
+    },
+  });
+
+  useEffect(() => {
+    if (!commentsOpenFor) return;
+    const channel = supabase
+      .channel(`comments:${commentsOpenFor.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'game_comments', filter: `game_id=eq.${commentsOpenFor.id}` }, () => {
+        refetchComments();
+      })
+      .subscribe();
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [commentsOpenFor, refetchComments]);
+
+  const handleSendComment = async () => {
+    if (!newComment.trim() || !commentsOpenFor) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error('Please sign in to comment');
+      return;
+    }
+    const { error } = await supabase
+      .from('game_comments')
+      .insert({
+        game_id: commentsOpenFor.id,
+        user_id: user.id,
+        content: newComment.trim(),
+      });
+    if (error) {
+      toast.error('Failed to send comment');
+    } else {
+      setNewComment("");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -143,6 +218,7 @@ export const GameFeed = () => {
 
   // TikTok-style vertical snapping feed
   return (
+    <>
     <div className="relative h-[calc(100vh-8rem)] w-full">
       <div className="absolute inset-0 overflow-y-auto no-scrollbar snap-y snap-mandatory">
         {games?.map((game) => (
@@ -178,6 +254,14 @@ export const GameFeed = () => {
               </button>
 
               <button
+                onClick={() => setCommentsOpenFor(game)}
+                className="h-12 w-12 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 transition-smooth text-white"
+                aria-label="Comments"
+              >
+                <MessageCircle className="h-6 w-6" />
+              </button>
+
+              <button
                 onClick={() => handlePlay(game)}
                 className="h-12 w-12 rounded-full flex items-center justify-center bg-primary hover:opacity-90 transition-smooth text-white"
                 aria-label="Play"
@@ -190,7 +274,16 @@ export const GameFeed = () => {
 
             {/* Bottom details */}
             <div className="absolute left-4 right-20 bottom-8 text-white">
-              <h3 className="text-2xl font-bold mb-2 drop-shadow-md">{game.title}</h3>
+              <div className="flex items-center gap-3 mb-2">
+                <Avatar className="h-10 w-10 ring-2 ring-white/30">
+                  <AvatarImage src={game.creator?.avatar_url || undefined} />
+                  <AvatarFallback>{game.creator?.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="text-2xl font-bold drop-shadow-md">{game.title}</h3>
+                  <div className="text-sm text-white/80">by {game.creator?.username || 'Unknown'}</div>
+                </div>
+              </div>
               <p className="text-white/80 line-clamp-2 max-w-xl mb-3">{game.description || ''}</p>
               <div className="text-sm text-white/70">{game.plays_count} plays • {game.likes_count} likes</div>
             </div>
@@ -207,5 +300,42 @@ export const GameFeed = () => {
         )}
       </div>
     </div>
+
+    {/* Comments Panel */}
+    <Sheet open={!!commentsOpenFor} onOpenChange={(o) => !o && setCommentsOpenFor(null)}>
+      <SheetContent side="right" className="w-[420px] sm:w-[480px]">
+        <SheetHeader>
+          <SheetTitle>Comments</SheetTitle>
+        </SheetHeader>
+        <div className="mt-4 flex flex-col h-full">
+          <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+            {comments.map((c) => (
+              <div key={c.id} className="flex items-start gap-3">
+                <Avatar className="h-9 w-9">
+                  <AvatarImage src={c.user?.avatar_url || undefined} />
+                  <AvatarFallback>{c.user?.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="text-sm font-semibold">{c.user?.username || 'User'}</div>
+                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">{c.content}</div>
+                </div>
+              </div>
+            ))}
+            {comments.length === 0 && (
+              <div className="text-sm text-muted-foreground">No comments yet. Be the first!</div>
+            )}
+          </div>
+          <div className="mt-4 flex gap-2">
+            <Input
+              placeholder="Add a comment..."
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+            />
+            <Button onClick={handleSendComment} disabled={!newComment.trim()}>Send</Button>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+    </>
   );
 };
