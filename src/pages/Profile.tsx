@@ -140,7 +140,7 @@ export default function Profile() {
       throw uploadError;
     }
     const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-    return data.publicUrl;
+    return `${data.publicUrl}?v=${Date.now()}`;
   };
 
   const handleSaveProfile = async () => {
@@ -286,7 +286,7 @@ export default function Profile() {
               <div className="flex items-center gap-4">
                 <div className="h-16 w-16 rounded-full overflow-hidden border border-border/60">
                   <Avatar className="h-16 w-16">
-                    <AvatarImage src={previewUrl || undefined} alt="preview" />
+                    <AvatarImage src={previewUrl || undefined} alt="preview" onError={(e:any)=>{ e.currentTarget.src='/placeholder.svg'; }} />
                     <AvatarFallback className="bg-muted">
                       <User className="h-6 w-6" />
                     </AvatarFallback>

@@ -23,7 +23,7 @@ export const Navigation = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 border-t border-border/50 bg-card/80 backdrop-blur-lg z-40 md:top-0 md:bottom-auto">
+    <nav className="fixed bottom-0 left-0 right-0 border-t border-border/50 bg-card/80 backdrop-blur-lg z-40 md:top-0 md:bottom-auto rounded-2xl md:rounded-none">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="hidden md:flex items-center gap-2">

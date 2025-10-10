@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
+import { ensureProfileExistsForUser } from "@/lib/profile";
 
 interface Game {
   id: string;
@@ -185,6 +186,10 @@ export const GameFeed = () => {
       toast.error('Please sign in to comment');
       return;
     }
+    try {
+      const baseUsername = user.email?.split('@')[0] || `user_${user.id.slice(0,8)}`;
+      await ensureProfileExistsForUser(supabase, user.id, baseUsername);
+    } catch {}
     const { error } = await supabase
       .from('game_comments')
       .insert({

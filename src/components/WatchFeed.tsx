@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tv, Users } from "lucide-react";
+import { ensureProfileExistsForUser } from "@/lib/profile";
 
 interface Game {
   id: string;
@@ -87,6 +88,10 @@ export const WatchFeed = () => {
     if (!text.trim() || !selected) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+    try {
+      const baseUsername = user.email?.split('@')[0] || `user_${user.id.slice(0,8)}`;
+      await ensureProfileExistsForUser(supabase, user.id, baseUsername);
+    } catch {}
     const { error } = await supabase.from("game_comments").insert({ game_id: selected.id, user_id: user.id, content: text.trim() });
     if (!error) setText("");
   };

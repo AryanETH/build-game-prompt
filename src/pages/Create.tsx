@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { ensureProfileExistsForUser } from "@/lib/profile";
 import { Loader2, Sparkles, Music } from "lucide-react";
 
 export default function Create() {
@@ -45,9 +46,10 @@ export default function Create() {
       const ext = file.name.includes('.') ? file.name.substring(file.name.lastIndexOf('.') + 1) : 'mp3';
       const safeExt = ext.toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp3';
       const path = `${user.id}/${Date.now()}.${safeExt}`;
+      // Use upsert=false to avoid 409 conflicts; ensure unique path via timestamp above
       const { error: uploadError } = await supabase.storage.from('sounds').upload(path, file, {
         cacheControl: '3600',
-        upsert: true,
+        upsert: false,
         contentType: file.type || 'audio/mpeg',
       });
       if (uploadError) {
@@ -57,7 +59,7 @@ export default function Create() {
         throw uploadError;
       }
       const { data } = supabase.storage.from('sounds').getPublicUrl(path);
-      setSoundUrl(data.publicUrl);
+      setSoundUrl(`${data.publicUrl}?v=${Date.now()}`);
       toast.success('Sound uploaded');
     } catch (err: any) {
       console.error(err);
@@ -128,50 +130,7 @@ export default function Create() {
     }
   };
 
-  const ensureProfileExistsForUser = async (userId: string, suggestedUsername: string) => {
-    // Check if profile already exists
-    const { data: existing, error: fetchError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (fetchError) throw fetchError;
-    if (existing) return; // Nothing to do
-
-    // Sanitize and constrain base username
-    const base = (suggestedUsername || `user_${userId.slice(0, 8)}`)
-      .toLowerCase()
-      .replace(/[^a-z0-9_]/g, '_')
-      .replace(/_+/g, '_')
-      .replace(/^_+|_+$/g, '')
-      .slice(0, 24) || `user_${userId.slice(0, 8)}`;
-
-    let attempt = 0;
-    let candidate = base;
-    // Find an available username to avoid unique constraint violations
-    // Limit attempts to a reasonable number to avoid infinite loops
-    while (attempt < 50) {
-      const { data: usernameRow, error: usernameCheckError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('username', candidate)
-        .maybeSingle();
-
-      if (usernameCheckError) throw usernameCheckError;
-      if (!usernameRow) break;
-
-      attempt += 1;
-      const suffix = `_${attempt}`;
-      const maxBaseLength = Math.max(1, 24 - suffix.length);
-      candidate = `${base.slice(0, maxBaseLength)}${suffix}`;
-    }
-
-    const { error: insertError } = await supabase
-      .from('profiles')
-      .insert({ id: userId, username: candidate });
-    if (insertError) throw insertError;
-  };
+  // inlined earlier helper moved to lib/profile.ts
 
   const handlePublish = async () => {
     if (!generatedCode || !title.trim()) {
