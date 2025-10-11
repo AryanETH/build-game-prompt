@@ -6,7 +6,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tv, Users, Play } from "lucide-react";
-import { useLocationContext } from "@/context/LocationContext";
 import { useNavigate } from "react-router-dom";
 
 interface Game {
@@ -28,18 +27,14 @@ interface CommentRow {
 
 export const WatchFeed = () => {
   const navigate = useNavigate();
-  const { mode, city, country } = useLocationContext();
   const { data: games = [] } = useQuery({
-    queryKey: ["watch-games", mode, city, country],
+    queryKey: ["watch-games"],
     queryFn: async () => {
-      let query = supabase
+      const { data, error } = await supabase
         .from("games")
         .select("id,title,description,creator_id,city,country")
         .order("plays_count", { ascending: false })
         .limit(20);
-      if (mode === 'city' && city) query = query.eq('city', city);
-      else if (mode === 'country' && country) query = query.eq('country', country);
-      const { data, error } = await query;
       if (error) throw error;
       return data as Game[];
     },

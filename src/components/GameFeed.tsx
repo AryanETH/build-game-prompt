@@ -76,25 +76,16 @@ export const GameFeed = () => {
 
   const pageSize = 10;
   const { data: pages, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = useInfiniteQuery({
-    queryKey: ['games', locationMode, locationFilter],
+    queryKey: ['games'],
     queryFn: async ({ pageParam = 0 }) => {
       const from = pageParam * pageSize;
       const to = from + pageSize - 1;
-      let query = supabase
+      const { data, error } = await supabase
         .from('games')
         .select('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, creator_id, is_multiplayer, multiplayer_type, graphics_quality, sound_url, country, city, original_game_id, creator:profiles!games_creator_id_fkey(id, username, avatar_url)')
         .order('created_at', { ascending: false })
         .range(from, to);
 
-      // Apply location filters based on mode
-      if (locationMode === 'country' && locationFilter) {
-        query = query.or(`country.is.null,country.eq.${locationFilter}`);
-      } else if (locationMode === 'city' && locationFilter) {
-        query = query.or(`city.is.null,city.eq.${locationFilter}`);
-      }
-      // For global mode, no additional filtering needed - show all games
-
-      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as unknown as GameWithCreator[];
     },

@@ -6,6 +6,7 @@ import { User, Heart, Play, Loader2, Pencil, UserPlus, UserCheck, Star, Trash2 }
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -33,27 +34,6 @@ export default function Profile() {
     checkFollowStatus();
   }, []);
 
-  // Set up real-time subscription for games when user ID is available
-  useEffect(() => {
-    if (!currentUserId) return;
-
-    const channel = supabase
-      .channel('profile-games')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'games',
-        filter: `creator_id=eq.${currentUserId}`
-      }, () => {
-        fetchUserGames();
-        fetchRemixedGames();
-      })
-      .subscribe();
-
-    return () => {
-      channel.unsubscribe();
-    };
-  }, [currentUserId]);
 
   const checkFollowStatus = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -385,24 +365,6 @@ export default function Profile() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        {/* Games Tabs */}
-        <Card className="p-6">
-          <h2 className="text-2xl font-bold mb-4">Your Games</h2>
-          <Tabs defaultValue="created" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="created">Created Games ({userGames.length})</TabsTrigger>
-              <TabsTrigger value="remixes">Remixes ({remixedGames.length})</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="created" className="mt-6">
-              {userGames.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-muted-foreground mb-4">No games created yet</div>
-                  <Button onClick={() => window.location.href = '/create'}>Create Your First Game</Button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {userGames.map((game) => (
                     <div
                       key={game.id}
@@ -410,15 +372,9 @@ export default function Profile() {
                       className="aspect-[9/16] relative group cursor-pointer overflow-hidden rounded-lg border border-border hover:border-primary transition-all"
                     >
                       {game.thumbnail_url ? (
-                        <img 
-                          src={game.thumbnail_url} 
-                          alt={game.title}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                        />
+                        <img src={game.thumbnail_url} alt={game.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                       ) : (
-                        <div className="w-full h-full gradient-primary flex items-center justify-center">
-                          <Play className="w-12 h-12 text-white" />
-                        </div>
+                        <div className="w-full h-full gradient-primary flex items-center justify-center"><Play className="w-12 h-12 text-white" /></div>
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
@@ -444,15 +400,7 @@ export default function Profile() {
                 </div>
               )}
             </TabsContent>
-            
-            <TabsContent value="remixes" className="mt-6">
-              {remixedGames.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-muted-foreground mb-4">No remixes yet</div>
-                  <p className="text-sm text-muted-foreground">Find games in the feed and remix them to create your own versions!</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+
                   {remixedGames.map((game) => (
                     <div
                       key={game.id}
@@ -460,15 +408,9 @@ export default function Profile() {
                       className="aspect-[9/16] relative group cursor-pointer overflow-hidden rounded-lg border border-border hover:border-primary transition-all"
                     >
                       {game.thumbnail_url ? (
-                        <img 
-                          src={game.thumbnail_url} 
-                          alt={game.title}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                        />
+                        <img src={game.thumbnail_url} alt={game.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                       ) : (
-                        <div className="w-full h-full gradient-primary flex items-center justify-center">
-                          <Play className="w-12 h-12 text-white" />
-                        </div>
+                        <div className="w-full h-full gradient-primary flex items-center justify-center"><Play className="w-12 h-12 text-white" /></div>
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
@@ -486,7 +428,6 @@ export default function Profile() {
               )}
             </TabsContent>
           </Tabs>
-        </Card>
       </div>
     </div>
   );
