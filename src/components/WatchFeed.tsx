@@ -33,6 +33,7 @@ export const WatchFeed = () => {
       const { data, error } = await supabase
         .from("games")
         .select("id,title,description,creator_id,city,country")
+        .eq('is_public', true)
         .order("plays_count", { ascending: false })
         .limit(20);
       if (error) throw error;
