@@ -50,6 +50,12 @@ interface CommentRow {
   user?: { id: string; username: string; avatar_url: string | null } | null;
 }
 
+interface Profile {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+}
+
 export const GameFeed = () => {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [likedGames, setLikedGames] = useState<Set<string>>(new Set());
@@ -82,7 +88,7 @@ export const GameFeed = () => {
       const to = from + pageSize - 1;
       const { data, error } = await supabase
         .from('games')
-        .select('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, creator_id, is_multiplayer, multiplayer_type, graphics_quality, sound_url, country, city, original_game_id, creator:profiles!games_creator_id_fkey(id, username, avatar_url)')
+        .select('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, creator_id, is_multiplayer, multiplayer_type, graphics_quality, sound_url, country, city, original_game_id')
         .order('created_at', { ascending: false })
         .range(from, to);
 
@@ -94,6 +100,36 @@ export const GameFeed = () => {
   });
 
   const games = useMemo(() => (pages?.pages || []).flat(), [pages]);
+
+  // Hydrate creator username/avatar without joins to avoid RLS issues
+  const uniqueCreatorIds = useMemo(
+    () => Array.from(new Set(games.map((g) => g.creator_id))).filter(Boolean),
+    [games]
+  );
+
+  const { data: creatorProfiles = [] } = useQuery({
+    queryKey: ['creatorProfiles', uniqueCreatorIds],
+    enabled: uniqueCreatorIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .in('id', uniqueCreatorIds as string[]);
+      if (error) return [] as Profile[]; // fail-soft: keep feed rendering
+      return (data || []) as Profile[];
+    },
+  });
+
+  const creatorById = useMemo(() => {
+    const map = new Map<string, Profile>();
+    for (const p of creatorProfiles) map.set(p.id, p);
+    return map;
+  }, [creatorProfiles]);
+
+  const hydratedGames: GameWithCreator[] = useMemo(
+    () => games.map((g) => ({ ...g, creator: creatorById.get(g.creator_id) ?? null })),
+    [games, creatorById]
+  );
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -359,7 +395,7 @@ export const GameFeed = () => {
     />
     <div className="relative h-[calc(100vh-8rem)] w-full">
       <div className="absolute inset-0 overflow-y-auto no-scrollbar snap-y snap-mandatory">
-        {games?.map((game) => (
+        {hydratedGames?.map((game) => (
           <section key={game.id} className="relative h-[calc(100vh-8rem)] w-full snap-start">
             <img
               src={game.cover_url || game.thumbnail_url || "/placeholder.svg"}
