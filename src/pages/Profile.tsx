@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Heart, Play, Loader2, Pencil, UserPlus, UserCheck, Star } from "lucide-react";
+import { User, Heart, Play, Loader2, Pencil, UserPlus, UserCheck, Star, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,6 +22,7 @@ export default function Profile() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [selectedGame, setSelectedGame] = useState<any>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProfile();
@@ -92,6 +93,26 @@ export default function Profile() {
         .eq('creator_id', user.id)
         .order('created_at', { ascending: false });
       setUserGames(data || []);
+    }
+  };
+
+  const deleteGame = async (gameId: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    setDeletingId(gameId);
+    try {
+      const { error } = await supabase
+        .from('games')
+        .delete()
+        .eq('id', gameId)
+        .eq('creator_id', user.id);
+      if (error) throw error;
+      setUserGames((prev) => prev.filter((g) => g.id !== gameId));
+      toast.success('Game deleted');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to delete game');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -358,6 +379,20 @@ export default function Profile() {
                           <Play className="w-3 h-3" />
                           {game.plays_count}
                         </span>
+                        <Button
+                          size="icon"
+                          variant="destructive"
+                          className="ml-auto h-7 w-7 opacity-90"
+                          onClick={(e) => { e.stopPropagation(); deleteGame(game.id); }}
+                          disabled={deletingId === game.id}
+                          title="Delete game"
+                        >
+                          {deletingId === game.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3 h-3" />
+                          )}
+                        </Button>
                       </div>
                     </div>
                   </div>

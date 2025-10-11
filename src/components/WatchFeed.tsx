@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Tv, Users } from "lucide-react";
+import { Tv, Users, Play } from "lucide-react";
+import { useLocationContext } from "@/context/LocationContext";
+import { useNavigate } from "react-router-dom";
 
 interface Game {
   id: string;
@@ -13,6 +15,8 @@ interface Game {
   description: string | null;
   game_code?: string;
   creator_id: string;
+  city?: string | null;
+  country?: string | null;
 }
 
 interface CommentRow {
@@ -23,14 +27,19 @@ interface CommentRow {
 }
 
 export const WatchFeed = () => {
+  const navigate = useNavigate();
+  const { mode, city, country } = useLocationContext();
   const { data: games = [] } = useQuery({
-    queryKey: ["watch-games"],
+    queryKey: ["watch-games", mode, city, country],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("games")
-        .select("id,title,description,creator_id")
+        .select("id,title,description,creator_id,city,country")
         .order("plays_count", { ascending: false })
-        .limit(10);
+        .limit(20);
+      if (mode === 'city' && city) query = query.eq('city', city);
+      else if (mode === 'country' && country) query = query.eq('country', country);
+      const { data, error } = await query;
       if (error) throw error;
       return data as Game[];
     },
@@ -111,71 +120,142 @@ export const WatchFeed = () => {
     if (!error) setText("");
   };
 
+  // Live detection via presence counts per game
+  const [liveGameIds, setLiveGameIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const channels = games.map((g) => {
+      const ch = supabase.channel(`playing:${g.id}`, { config: { presence: { key: `watch_${Math.random().toString(36).slice(2)}` } } });
+      ch.on("presence", { event: "sync" }, () => {
+        const size = Object.keys(ch.presenceState() as Record<string, any[]>).length;
+        setLiveGameIds((prev) => {
+          const next = new Set(prev);
+          if (size > 0) next.add(g.id); else next.delete(g.id);
+          return next;
+        });
+      });
+      ch.subscribe((status) => { if (status === "SUBSCRIBED") ch.track({ watching: true }); });
+      return ch;
+    });
+    return () => { channels.forEach((c) => c.unsubscribe()); };
+  }, [JSON.stringify(games.map((g) => g.id))]);
+
+  const liveGames = games.filter((g) => liveGameIds.has(g.id));
+  const nonLiveGames = games.filter((g) => !liveGameIds.has(g.id));
+
+  // Flip-to-play 9:16 tile: clicking flips from watch to play (load iframe)
+  const [flippedId, setFlippedId] = useState<string | null>(null);
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4">
-      {/* Player */}
-      <div className="lg:col-span-2">
-        {!selected ? (
-          <Card className="p-12 text-center gradient-card">
-            <Tv className="w-16 h-16 mx-auto mb-4 text-primary" />
-            <h3 className="text-2xl font-bold mb-2">Choose a game to watch</h3>
-          </Card>
-        ) : (
-          <Card className="overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-2 border-b">
-              <div className="font-semibold">{selected.title}</div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Users className="h-4 w-4" />{viewerCount}</div>
-            </div>
-            <div className="aspect-video bg-background">
-              {fullGameData?.game_code ? (
-                <iframe title={selected.title} srcDoc={fullGameData.game_code} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+    <div className="p-4 space-y-6">
+      {/* 9:16 grid of up to 4 live streams visible; scroll for more */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {liveGames.map((g) => (
+          <div key={g.id} className="aspect-[9/16] [perspective:1000px]">
+            <div className={`relative w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${flippedId === g.id ? '[transform:rotateY(180deg)]' : ''}`}>
+              {/* front: watch preview */}
+              <Card className="absolute inset-0 overflow-hidden group cursor-pointer [backface-visibility:hidden]" onClick={() => { setFlippedId(g.id); setSelected(g); }}>
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white">
+                  <div className="text-center">
+                    <div className="text-sm opacity-80 mb-1">Live viewers</div>
+                    <div className="flex items-center justify-center gap-2">
+                      <Users className="h-4 w-4" />
+                      <span>{viewerCount}</span>
+                    </div>
+                    <div className="mt-2 text-xs opacity-90">Tap to play</div>
+                  </div>
                 </div>
-              )}
+                <div className="absolute bottom-0 left-0 right-0 p-2 text-white text-sm bg-gradient-to-t from-black/70 to-transparent">
+                  {g.title}
+                </div>
+              </Card>
+              {/* back: playing iframe */}
+              <Card className="absolute inset-0 overflow-hidden [transform:rotateY(180deg)] [backface-visibility:hidden]">
+                <div className="absolute inset-0">
+                  {selected?.id === g.id && fullGameData?.game_code ? (
+                    <iframe title={g.title} srcDoc={fullGameData.game_code} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    </div>
+                  )}
+                </div>
+              </Card>
             </div>
-          </Card>
-        )}
+          </div>
+        ))}
       </div>
 
-      {/* Live chat */}
-      <Card className="flex flex-col overflow-hidden">
-        <div className="px-4 py-2 border-b font-semibold">Live Chat</div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {comments.map((c) => (
-            <div key={c.id} className="flex items-start gap-3">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={c.user?.avatar_url || undefined} />
-                <AvatarFallback>{c.user?.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
-              </Avatar>
-              <div>
-                <div className="text-sm font-medium">{c.user?.username || 'User'}</div>
-                <div className="text-sm text-muted-foreground whitespace-pre-wrap">{c.content}</div>
+      {/* Player area */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          {!selected ? (
+            <Card className="p-12 text-center gradient-card">
+              <Tv className="w-16 h-16 mx-auto mb-4 text-primary" />
+              <h3 className="text-2xl font-bold mb-2">Choose a game to watch</h3>
+            </Card>
+          ) : (
+            <Card className="overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2 border-b">
+                <div className="font-semibold">{selected.title}</div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Users className="h-4 w-4" />{viewerCount}</div>
               </div>
-            </div>
-          ))}
-          {comments.length === 0 && (
-            <div className="text-sm text-muted-foreground">Be the first to chat.</div>
+              <div className="aspect-video bg-background">
+                {fullGameData?.game_code ? (
+                  <iframe title={selected.title} srcDoc={fullGameData.game_code} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                  </div>
+                )}
+              </div>
+            </Card>
           )}
         </div>
-        <div className="p-3 flex gap-2 border-t">
-          <Input placeholder="Say something..." value={text} onChange={(e) => setText(e.target.value)} />
-          <Button onClick={send} disabled={!text.trim()}>Send</Button>
-        </div>
-      </Card>
 
-      {/* Selector */}
-      <div className="lg:col-span-3">
-        <div className="flex gap-3 overflow-x-auto no-scrollbar">
-          {games.map((g) => (
-            <Card key={g.id} className={`min-w-[200px] p-3 cursor-pointer ${selected?.id === g.id ? 'ring-2 ring-primary' : ''}`} onClick={() => setSelected(g)}>
-              <div className="font-semibold line-clamp-1">{g.title}</div>
-              <div className="text-xs text-muted-foreground line-clamp-2">{g.description || ''}</div>
-            </Card>
-          ))}
-        </div>
+        {/* Live chat */}
+        <Card className="flex flex-col overflow-hidden">
+          <div className="px-4 py-2 border-b font-semibold">Live Chat</div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {comments.map((c) => (
+              <div key={c.id} className="flex items-start gap-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={c.user?.avatar_url || undefined} />
+                  <AvatarFallback>{c.user?.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="text-sm font-medium">{c.user?.username || 'User'}</div>
+                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">{c.content}</div>
+                </div>
+              </div>
+            ))}
+            {comments.length === 0 && (
+              <div className="text-sm text-muted-foreground">Be the first to chat.</div>
+            )}
+          </div>
+          <div className="p-3 flex gap-2 border-t">
+            <Input placeholder="Say something..." value={text} onChange={(e) => setText(e.target.value)} />
+            <Button onClick={send} disabled={!text.trim()}>Send</Button>
+          </div>
+        </Card>
       </div>
+
+      {/* Non-live games row: show Play button to redirect */}
+      {nonLiveGames.length > 0 && (
+        <div>
+          <div className="font-semibold mb-2">Not live right now</div>
+          <div className="flex gap-3 overflow-x-auto no-scrollbar">
+            {nonLiveGames.map((g) => (
+              <Card key={g.id} className="min-w-[200px] p-3">
+                <div className="font-semibold line-clamp-1 mb-2">{g.title}</div>
+                <Button size="sm" className="gap-2" onClick={() => navigate(`/feed?game=${g.id}`)}>
+                  <Play className="h-4 w-4" />
+                  Play
+                </Button>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

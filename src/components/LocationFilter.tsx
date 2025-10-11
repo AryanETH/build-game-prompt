@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import { Globe, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { useLocationContext } from "@/context/LocationContext";
 
 type LocationMode = "global" | "country" | "city";
 
@@ -19,52 +20,33 @@ interface LocationFilterProps {
 export const LocationFilter = ({ onLocationChange }: LocationFilterProps) => {
   const [mode, setMode] = useState<LocationMode>("global");
   const [country, setCountry] = useState("");
+  const { setGlobal, setCountry: setGlobalCountry, setCity, requestCityFromBrowser, city, country: ctxCountry } = useLocationContext();
 
   const handleModeChange = async (newMode: LocationMode) => {
     setMode(newMode);
 
     if (newMode === "global") {
+      setGlobal();
       onLocationChange("global");
     } else if (newMode === "country") {
       // User will select country from dropdown
       if (country) {
+        setGlobalCountry(country);
         onLocationChange("country", country);
       }
     } else if (newMode === "city") {
       // Get user's location
-      if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            try {
-              // Reverse geocode to get city name
-              const response = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`
-              );
-              const data = await response.json();
-              const city = data.address?.city || data.address?.town || data.address?.village;
-              
-              if (city) {
-                onLocationChange("city", city);
-                toast.success(`Showing games from ${city}`);
-              } else {
-                toast.error("Could not determine your city");
-                setMode("global");
-                onLocationChange("global");
-              }
-            } catch (error) {
-              toast.error("Failed to get location details");
-              setMode("global");
-              onLocationChange("global");
-            }
-          },
-          (error) => {
-            toast.error("Please enable location access");
-            setMode("global");
-            onLocationChange("global");
-          }
-        );
-      } else {
-        toast.error("Location not supported by your browser");
+      try {
+        await requestCityFromBrowser();
+        if (city) {
+          onLocationChange("city", city);
+          toast.success(`Showing games from ${city}`);
+        } else if (ctxCountry) {
+          onLocationChange("country", ctxCountry);
+        } else {
+          onLocationChange("global");
+        }
+      } catch {
         setMode("global");
         onLocationChange("global");
       }
