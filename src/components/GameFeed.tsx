@@ -63,7 +63,7 @@ export const GameFeed = () => {
     queryFn: async () => {
       let query = supabase
         .from('games')
-        .select('*, creator:profiles!games_creator_id_fkey(id, username, avatar_url)');
+        .select('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, creator_id, is_multiplayer, multiplayer_type, graphics_quality, sound_url, country, city, creator:profiles!games_creator_id_fkey(id, username, avatar_url)');
       
       // Apply location filters
       if (locationMode === 'country' && locationFilter) {
@@ -138,7 +138,19 @@ export const GameFeed = () => {
   });
 
   const handlePlay = async (game: Game) => {
-    setSelectedGame(game);
+    // Fetch full game data including game_code
+    const { data: fullGame, error } = await supabase
+      .from('games')
+      .select('*')
+      .eq('id', game.id)
+      .single();
+    
+    if (error || !fullGame) {
+      toast.error("Failed to load game");
+      return;
+    }
+    
+    setSelectedGame(fullGame as Game);
     
     // Increment play count
     if (userId) {

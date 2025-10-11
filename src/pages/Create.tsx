@@ -190,6 +190,41 @@ export default function Create() {
       const baseUsername = user.email?.split('@')[0] || `user_${user.id.slice(0,8)}`;
       await ensureProfileExistsForUser(user.id, baseUsername);
 
+      // Get user's location
+      let userLocation = { country: null, city: null };
+      try {
+        if ("geolocation" in navigator) {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject);
+          });
+          
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`
+          );
+          const data = await response.json();
+          userLocation.country = data.address?.country || null;
+          userLocation.city = data.address?.city || data.address?.town || data.address?.village || null;
+        }
+      } catch (err) {
+        console.log("Location not available, proceeding without it");
+      }
+
+      // Auto-generate sound if not provided
+      let finalSoundUrl = soundUrl;
+      if (!finalSoundUrl) {
+        toast.info("Generating background music...");
+        try {
+          const { data: soundData, error: soundError } = await supabase.functions.invoke('generate-music', {
+            body: { prompt: title.trim() }
+          });
+          if (soundData?.musicUrl) {
+            finalSoundUrl = soundData.musicUrl;
+          }
+        } catch (err) {
+          console.log("Could not generate music, proceeding without it");
+        }
+      }
+
       // Attempt to insert with enhanced fields; if the remote DB hasn't been migrated yet,
       // fall back to the minimal schema so users can still publish.
       const fullPayload = {
@@ -202,7 +237,9 @@ export default function Create() {
         graphics_quality: graphicsQuality,
         thumbnail_url: thumbnailUrl || null,
         cover_url: coverUrl || thumbnailUrl || null,
-        sound_url: soundUrl || null,
+        sound_url: finalSoundUrl || null,
+        country: userLocation.country,
+        city: userLocation.city,
       } as any;
 
       let { error } = await supabase.from('games').insert(fullPayload);
@@ -214,7 +251,7 @@ export default function Create() {
           game_code: generatedCode,
           creator_id: user.id,
           thumbnail_url: thumbnailUrl || null,
-          sound_url: soundUrl || null,
+          sound_url: finalSoundUrl || null,
         };
         const retry = await supabase.from('games').insert(minimalPayload);
         if (retry.error) throw retry.error;

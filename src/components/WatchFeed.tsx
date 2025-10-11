@@ -11,7 +11,7 @@ interface Game {
   id: string;
   title: string;
   description: string | null;
-  game_code: string;
+  game_code?: string;
   creator_id: string;
 }
 
@@ -28,7 +28,7 @@ export const WatchFeed = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("games")
-        .select("id,title,description,game_code,creator_id")
+        .select("id,title,description,creator_id")
         .order("plays_count", { ascending: false })
         .limit(10);
       if (error) throw error;
@@ -37,6 +37,22 @@ export const WatchFeed = () => {
   });
 
   const [selected, setSelected] = useState<Game | null>(null);
+  
+  // Fetch full game data when selected changes
+  const { data: fullGameData } = useQuery({
+    queryKey: ["watch-game-full", selected?.id],
+    enabled: !!selected?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("games")
+        .select("game_code")
+        .eq("id", selected!.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   useEffect(() => {
     if (!selected && games.length > 0) setSelected(games[0]);
   }, [games, selected]);
@@ -111,7 +127,13 @@ export const WatchFeed = () => {
               <div className="flex items-center gap-2 text-sm text-muted-foreground"><Users className="h-4 w-4" />{viewerCount}</div>
             </div>
             <div className="aspect-video bg-background">
-              <iframe title={selected.title} srcDoc={selected.game_code} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" />
+              {fullGameData?.game_code ? (
+                <iframe title={selected.title} srcDoc={fullGameData.game_code} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                </div>
+              )}
             </div>
           </Card>
         )}
