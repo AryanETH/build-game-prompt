@@ -91,19 +91,12 @@ export default function Create() {
 
       setGeneratedCode(data.gameCode);
 
-      // Generate AI thumbnail
+      // Generate AI thumbnail automatically
       toast.info("Generating thumbnail...");
-      const thumbnailResponse = await supabase.functions.invoke('generate-thumbnail', {
-        body: { prompt }
-      });
-
-      if (thumbnailResponse.data?.thumbnailUrl) {
-        setThumbnailUrl(thumbnailResponse.data.thumbnailUrl);
-        setCoverUrl(thumbnailResponse.data.thumbnailUrl);
-      } else {
-        setThumbnailUrl("/placeholder.svg");
-        setCoverUrl("/placeholder.svg");
-      }
+      const thumbnailResponse = await supabase.functions.invoke('generate-thumbnail', { body: { prompt } });
+      const autoThumb = thumbnailResponse.data?.thumbnailUrl || "/placeholder.svg";
+      setThumbnailUrl(autoThumb);
+      setCoverUrl(autoThumb);
       
       // Auto-generate title and description if not provided
       if (!title) {
@@ -329,27 +322,7 @@ export default function Create() {
                   </Select>
                 </div>
 
-                <div>
-                  <Label htmlFor="thumbnailUrl">Thumbnail URL (optional)</Label>
-                  <Input
-                    id="thumbnailUrl"
-                    value={thumbnailUrl}
-                    onChange={(e) => setThumbnailUrl(e.target.value)}
-                    placeholder="https://.../thumbnail.jpg"
-                    className="mt-2"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="coverUrl">Cover Image URL (optional)</Label>
-                  <Input
-                    id="coverUrl"
-                    value={coverUrl}
-                    onChange={(e) => setCoverUrl(e.target.value)}
-                    placeholder="https://.../cover.jpg"
-                    className="mt-2"
-                  />
-                </div>
+                {/* Thumbnail and cover URLs are auto-generated; inputs removed per requirements */}
 
                 <div>
                   <Label htmlFor="title">Game Title</Label>
