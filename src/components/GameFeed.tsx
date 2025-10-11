@@ -78,22 +78,40 @@ export const GameFeed = () => {
   }, []);
 
   const pageSize = 10;
-  const { data: pages, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = useInfiniteQuery({
+  const { data: pages, isLoading, isError, error, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = useInfiniteQuery({
     queryKey: ['games'],
     queryFn: async ({ pageParam = 0 }) => {
       const from = pageParam * pageSize;
       const to = from + pageSize - 1;
-      const { data, error } = await supabase
-        .from('games')
-        .select('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, creator_id, is_multiplayer, multiplayer_type, graphics_quality, sound_url, country, city, original_game_id')
-        .order('created_at', { ascending: false })
-        .range(from, to);
 
-      if (error) throw error;
+      // Try full select first; fall back to minimal columns if remote DB lags migrations
+      const attemptSelect = async (columns: string, orderBy: string = 'created_at') =>
+        supabase
+          .from('games')
+          .select(columns)
+          .order(orderBy as any, { ascending: false })
+          .range(from, to);
+
+      // 1) Full schema
+      let { data, error } = await attemptSelect('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, creator_id, is_multiplayer, multiplayer_type, graphics_quality, sound_url, country, city, original_game_id');
+      if (error) {
+        // 2) Minimal columns widely available
+        const minimal = await attemptSelect('id, title, description, thumbnail_url, creator_id, likes_count, plays_count');
+        if (minimal.error) {
+          // 3) Last resort: wildcard select (includes game_code); tolerate heavier payload to avoid empty feed
+          const wildcard = await attemptSelect('*');
+          if (wildcard.error) throw wildcard.error;
+          data = wildcard.data as any[];
+        } else {
+          data = minimal.data as any[];
+        }
+      }
+
       return (data || []) as unknown as GameWithCreator[];
     },
     getNextPageParam: (lastPage, allPages) => (lastPage.length === pageSize ? allPages.length : undefined),
     initialPageParam: 0,
+    retry: 1,
   });
 
   const games = useMemo(() => (pages?.pages || []).flat(), [pages]);
@@ -368,6 +386,17 @@ export const GameFeed = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h3 className="text-2xl font-bold mb-2">Failed to load games</h3>
+          <p className="text-muted-foreground text-sm">{(error as any)?.message || 'Please try again.'}</p>
+        </div>
       </div>
     );
   }
