@@ -86,12 +86,13 @@ export const GameFeed = () => {
         .order('created_at', { ascending: false })
         .range(from, to);
 
-      // Include global games (null location) alongside the selected location
+      // Apply location filters based on mode
       if (locationMode === 'country' && locationFilter) {
         query = query.or(`country.is.null,country.eq.${locationFilter}`);
       } else if (locationMode === 'city' && locationFilter) {
         query = query.or(`city.is.null,city.eq.${locationFilter}`);
       }
+      // For global mode, no additional filtering needed - show all games
 
       const { data, error } = await query;
       if (error) throw error;

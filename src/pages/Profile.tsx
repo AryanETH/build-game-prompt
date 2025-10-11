@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { GamePlayer } from "@/components/GamePlayer";
 
@@ -31,6 +32,28 @@ export default function Profile() {
     fetchRemixedGames();
     checkFollowStatus();
   }, []);
+
+  // Set up real-time subscription for games when user ID is available
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const channel = supabase
+      .channel('profile-games')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'games',
+        filter: `creator_id=eq.${currentUserId}`
+      }, () => {
+        fetchUserGames();
+        fetchRemixedGames();
+      })
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [currentUserId]);
 
   const checkFollowStatus = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -89,12 +112,16 @@ export default function Profile() {
   const fetchUserGames = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('games')
         .select('*')
         .eq('creator_id', user.id)
         .is('original_game_id', null)
         .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching user games:', error);
+      }
       setUserGames(data || []);
     }
   };
@@ -102,12 +129,16 @@ export default function Profile() {
   const fetchRemixedGames = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('games')
         .select('*')
         .eq('creator_id', user.id)
         .not('original_game_id', 'is', null)
         .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching remixed games:', error);
+      }
       setRemixedGames(data || []);
     }
   };
@@ -355,16 +386,23 @@ export default function Profile() {
           </DialogContent>
         </Dialog>
 
-        {/* Created and Remixed tabs */}
-        <div>
+        {/* Games Tabs */}
+        <Card className="p-6">
           <h2 className="text-2xl font-bold mb-4">Your Games</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="p-4">
-              <h3 className="font-semibold mb-3">Created</h3>
+          <Tabs defaultValue="created" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="created">Created Games ({userGames.length})</TabsTrigger>
+              <TabsTrigger value="remixes">Remixes ({remixedGames.length})</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="created" className="mt-6">
               {userGames.length === 0 ? (
-                <div className="text-muted-foreground">No games created yet</div>
+                <div className="text-center py-12">
+                  <div className="text-muted-foreground mb-4">No games created yet</div>
+                  <Button onClick={() => window.location.href = '/create'}>Create Your First Game</Button>
+                </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {userGames.map((game) => (
                     <div
                       key={game.id}
@@ -385,10 +423,17 @@ export default function Profile() {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
                           <p className="font-bold text-sm mb-1 truncate">{game.title}</p>
-                          <div className="flex gap-3 text-xs">
+                          <div className="flex gap-3 text-xs items-center">
                             <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{game.likes_count}</span>
                             <span className="flex items-center gap-1"><Play className="w-3 h-3" />{game.plays_count}</span>
-                            <Button size="icon" variant="destructive" className="ml-auto h-7 w-7 opacity-90" onClick={(e) => { e.stopPropagation(); deleteGame(game.id); }} disabled={deletingId === game.id} title="Delete game">
+                            <Button 
+                              size="icon" 
+                              variant="destructive" 
+                              className="ml-auto h-6 w-6 opacity-90" 
+                              onClick={(e) => { e.stopPropagation(); deleteGame(game.id); }} 
+                              disabled={deletingId === game.id} 
+                              title="Delete game"
+                            >
                               {deletingId === game.id ? (<Loader2 className="w-3 h-3 animate-spin" />) : (<Trash2 className="w-3 h-3" />)}
                             </Button>
                           </div>
@@ -398,13 +443,16 @@ export default function Profile() {
                   ))}
                 </div>
               )}
-            </Card>
-            <Card className="p-4">
-              <h3 className="font-semibold mb-3">Remixed</h3>
+            </TabsContent>
+            
+            <TabsContent value="remixes" className="mt-6">
               {remixedGames.length === 0 ? (
-                <div className="text-muted-foreground">No remixes yet</div>
+                <div className="text-center py-12">
+                  <div className="text-muted-foreground mb-4">No remixes yet</div>
+                  <p className="text-sm text-muted-foreground">Find games in the feed and remix them to create your own versions!</p>
+                </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {remixedGames.map((game) => (
                     <div
                       key={game.id}
@@ -425,7 +473,7 @@ export default function Profile() {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
                           <p className="font-bold text-sm mb-1 truncate">{game.title}</p>
-                          <div className="flex gap-3 text-xs">
+                          <div className="flex gap-2 text-xs items-center flex-wrap">
                             <span className="px-2 py-0.5 text-[10px] rounded-full bg-white/20 text-white/90">Remix</span>
                             <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{game.likes_count}</span>
                             <span className="flex items-center gap-1"><Play className="w-3 h-3" />{game.plays_count}</span>
@@ -436,9 +484,9 @@ export default function Profile() {
                   ))}
                 </div>
               )}
-            </Card>
-          </div>
-        </div>
+            </TabsContent>
+          </Tabs>
+        </Card>
       </div>
     </div>
   );
