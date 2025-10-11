@@ -6,7 +6,6 @@ import { User, Heart, Play, Loader2, Pencil, UserPlus, UserCheck, Star, Trash2 }
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -365,69 +364,86 @@ export default function Profile() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-                  {userGames.map((game) => (
-                    <div
-                      key={game.id}
-                      onClick={() => setSelectedGame(game)}
-                      className="aspect-[9/16] relative group cursor-pointer overflow-hidden rounded-lg border border-border hover:border-primary transition-all"
-                    >
-                      {game.thumbnail_url ? (
-                        <img src={game.thumbnail_url} alt={game.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                      ) : (
-                        <div className="w-full h-full gradient-primary flex items-center justify-center"><Play className="w-12 h-12 text-white" /></div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
-                          <p className="font-bold text-sm mb-1 truncate">{game.title}</p>
-                          <div className="flex gap-3 text-xs items-center">
-                            <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{game.likes_count}</span>
-                            <span className="flex items-center gap-1"><Play className="w-3 h-3" />{game.plays_count}</span>
-                            <Button 
-                              size="icon" 
-                              variant="destructive" 
-                              className="ml-auto h-6 w-6 opacity-90" 
-                              onClick={(e) => { e.stopPropagation(); deleteGame(game.id); }} 
-                              disabled={deletingId === game.id} 
-                              title="Delete game"
-                            >
-                              {deletingId === game.id ? (<Loader2 className="w-3 h-3 animate-spin" />) : (<Trash2 className="w-3 h-3" />)}
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
 
-                  {remixedGames.map((game) => (
-                    <div
-                      key={game.id}
-                      onClick={() => setSelectedGame(game)}
-                      className="aspect-[9/16] relative group cursor-pointer overflow-hidden rounded-lg border border-border hover:border-primary transition-all"
-                    >
-                      {game.thumbnail_url ? (
-                        <img src={game.thumbnail_url} alt={game.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                      ) : (
-                        <div className="w-full h-full gradient-primary flex items-center justify-center"><Play className="w-12 h-12 text-white" /></div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
-                          <p className="font-bold text-sm mb-1 truncate">{game.title}</p>
-                          <div className="flex gap-2 text-xs items-center flex-wrap">
-                            <span className="px-2 py-0.5 text-[10px] rounded-full bg-white/20 text-white/90">Remix</span>
-                            <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{game.likes_count}</span>
-                            <span className="flex items-center gap-1"><Play className="w-3 h-3" />{game.plays_count}</span>
-                          </div>
+        <Tabs defaultValue="my-games" className="mt-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="my-games">My Games</TabsTrigger>
+            <TabsTrigger value="remixes">Remixes</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="my-games">
+            {userGames.length === 0 ? (
+              <div className="text-center text-muted-foreground py-8">No games yet.</div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {userGames.map((game) => (
+                  <div
+                    key={game.id}
+                    onClick={() => setSelectedGame(game)}
+                    className="aspect-[9/16] relative group cursor-pointer overflow-hidden rounded-lg border border-border hover:border-primary transition-all"
+                  >
+                    {game.thumbnail_url ? (
+                      <img src={game.thumbnail_url} alt={game.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                    ) : (
+                      <div className="w-full h-full gradient-primary flex items-center justify-center"><Play className="w-12 h-12 text-white" /></div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
+                        <p className="font-bold text-sm mb-1 truncate">{game.title}</p>
+                        <div className="flex gap-3 text-xs items-center">
+                          <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{game.likes_count}</span>
+                          <span className="flex items-center gap-1"><Play className="w-3 h-3" />{game.plays_count}</span>
+                          <Button 
+                            size="icon" 
+                            variant="destructive" 
+                            className="ml-auto h-6 w-6 opacity-90" 
+                            onClick={(e) => { e.stopPropagation(); deleteGame(game.id); }} 
+                            disabled={deletingId === game.id} 
+                            title="Delete game"
+                          >
+                            {deletingId === game.id ? (<Loader2 className="w-3 h-3 animate-spin" />) : (<Trash2 className="w-3 h-3" />)}
+                          </Button>
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="remixes">
+            {remixedGames.length === 0 ? (
+              <div className="text-center text-muted-foreground py-8">No remixes yet.</div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {remixedGames.map((game) => (
+                  <div
+                    key={game.id}
+                    onClick={() => setSelectedGame(game)}
+                    className="aspect-[9/16] relative group cursor-pointer overflow-hidden rounded-lg border border-border hover:border-primary transition-all"
+                  >
+                    {game.thumbnail_url ? (
+                      <img src={game.thumbnail_url} alt={game.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                    ) : (
+                      <div className="w-full h-full gradient-primary flex items-center justify-center"><Play className="w-12 h-12 text-white" /></div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
+                        <p className="font-bold text-sm mb-1 truncate">{game.title}</p>
+                        <div className="flex gap-2 text-xs items-center flex-wrap">
+                          <span className="px-2 py-0.5 text-[10px] rounded-full bg-white/20 text-white/90">Remix</span>
+                          <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{game.likes_count}</span>
+                          <span className="flex items-center gap-1"><Play className="w-3 h-3" />{game.plays_count}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
