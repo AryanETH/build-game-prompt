@@ -6,6 +6,7 @@ import { User, Heart, Play, Loader2, Pencil, UserPlus, UserCheck, Star, Trash2 }
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -30,6 +31,25 @@ export default function Profile() {
     fetchUserGames();
     fetchRemixedGames();
     checkFollowStatus();
+  }, []);
+
+  // Realtime refresh when user's games change
+  useEffect(() => {
+    const subscribe = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const channel = supabase
+        .channel(`profile-games:${user.id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'games', filter: `creator_id=eq.${user.id}` }, () => {
+          fetchUserGames();
+          fetchRemixedGames();
+        })
+        .subscribe();
+      return () => { channel.unsubscribe(); };
+    };
+    let cleanup: (() => void) | undefined;
+    subscribe().then((fn) => { cleanup = fn; });
+    return () => { cleanup && cleanup(); };
   }, []);
 
   const checkFollowStatus = async () => {
@@ -355,16 +375,19 @@ export default function Profile() {
           </DialogContent>
         </Dialog>
 
-        {/* Created and Remixed tabs */}
+        {/* Created/Remixed as tabs */}
         <div>
           <h2 className="text-2xl font-bold mb-4">Your Games</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="p-4">
-              <h3 className="font-semibold mb-3">Created</h3>
+          <Tabs defaultValue="created">
+            <TabsList className="w-full">
+              <TabsTrigger value="created" className="flex-1">Created</TabsTrigger>
+              <TabsTrigger value="remixed" className="flex-1">Remixed</TabsTrigger>
+            </TabsList>
+            <TabsContent value="created">
               {userGames.length === 0 ? (
-                <div className="text-muted-foreground">No games created yet</div>
+                <Card className="p-12 text-center gradient-card">No games created yet</Card>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   {userGames.map((game) => (
                     <div
                       key={game.id}
@@ -372,15 +395,9 @@ export default function Profile() {
                       className="aspect-[9/16] relative group cursor-pointer overflow-hidden rounded-lg border border-border hover:border-primary transition-all"
                     >
                       {game.thumbnail_url ? (
-                        <img 
-                          src={game.thumbnail_url} 
-                          alt={game.title}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                        />
+                        <img src={game.thumbnail_url} alt={game.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                       ) : (
-                        <div className="w-full h-full gradient-primary flex items-center justify-center">
-                          <Play className="w-12 h-12 text-white" />
-                        </div>
+                        <div className="w-full h-full gradient-primary flex items-center justify-center"><Play className="w-12 h-12 text-white" /></div>
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
@@ -398,13 +415,12 @@ export default function Profile() {
                   ))}
                 </div>
               )}
-            </Card>
-            <Card className="p-4">
-              <h3 className="font-semibold mb-3">Remixed</h3>
+            </TabsContent>
+            <TabsContent value="remixed">
               {remixedGames.length === 0 ? (
-                <div className="text-muted-foreground">No remixes yet</div>
+                <Card className="p-12 text-center gradient-card">No remixes yet</Card>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   {remixedGames.map((game) => (
                     <div
                       key={game.id}
@@ -412,15 +428,9 @@ export default function Profile() {
                       className="aspect-[9/16] relative group cursor-pointer overflow-hidden rounded-lg border border-border hover:border-primary transition-all"
                     >
                       {game.thumbnail_url ? (
-                        <img 
-                          src={game.thumbnail_url} 
-                          alt={game.title}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                        />
+                        <img src={game.thumbnail_url} alt={game.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                       ) : (
-                        <div className="w-full h-full gradient-primary flex items-center justify-center">
-                          <Play className="w-12 h-12 text-white" />
-                        </div>
+                        <div className="w-full h-full gradient-primary flex items-center justify-center"><Play className="w-12 h-12 text-white" /></div>
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
@@ -436,8 +446,8 @@ export default function Profile() {
                   ))}
                 </div>
               )}
-            </Card>
-          </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
