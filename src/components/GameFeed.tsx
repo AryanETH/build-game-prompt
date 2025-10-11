@@ -3,13 +3,12 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tansta
 import { supabase } from "@/integrations/supabase/client";
 import { GameCard } from "./GameCard";
 import { GamePlayer } from "./GamePlayer";
-import { Loader2, MessageCircle } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { LocationFilter } from "./LocationFilter";
 import { useLocationContext } from "@/context/LocationContext";
 import { useLocation as useRouterLocation, useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
@@ -62,16 +61,14 @@ export const GameFeed = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { mode: globalMode, city: globalCity, country: globalCountry } = useLocationContext();
-  const [locationMode, setLocationMode] = useState<"global" | "country" | "city">(globalMode);
-  const [locationFilter, setLocationFilter] = useState<string | undefined>(globalMode === 'city' ? globalCity ?? undefined : globalMode === 'country' ? globalCountry ?? undefined : undefined);
   const routerLocation = useRouterLocation();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Keep local filters synced with global context changes
-    setLocationMode(globalMode);
-    const nextFilter = globalMode === 'city' ? (globalCity ?? undefined) : globalMode === 'country' ? (globalCountry ?? undefined) : undefined;
-    setLocationFilter(nextFilter);
+  // Decorative-only location label for UI; does not affect data
+  const decorativeLocation = useMemo(() => {
+    if (globalMode === 'city' && globalCity) return globalCity;
+    if (globalMode === 'country' && globalCountry) return globalCountry;
+    return 'Global';
   }, [globalMode, globalCity, globalCountry]);
 
   useEffect(() => {
@@ -384,106 +381,35 @@ export const GameFeed = () => {
     );
   }
 
-  // TikTok-style vertical snapping feed
+  // Scrollable list feed (decorative location only)
   return (
     <>
-    <LocationFilter
-      onLocationChange={(mode, location) => {
-        setLocationMode(mode);
-        setLocationFilter(location);
-      }}
-    />
+    <div className="flex items-center gap-2 p-4 border-b">
+      <MapPin className="h-4 w-4 text-muted-foreground" />
+      <span className="text-sm text-muted-foreground">Location:</span>
+      <span className="text-sm font-medium">{decorativeLocation}</span>
+      <span className="text-xs text-muted-foreground">(decorative)</span>
+    </div>
     <div className="relative h-[calc(100vh-8rem)] w-full">
-      <div className="absolute inset-0 overflow-y-auto no-scrollbar snap-y snap-mandatory">
-        {hydratedGames?.map((game) => (
-          <section key={game.id} className="relative h-[calc(100vh-8rem)] w-full snap-start">
-            <img
-              src={game.cover_url || game.thumbnail_url || "/placeholder.svg"}
-              alt={game.title}
-              loading="lazy"
-              className="absolute inset-0 h-full w-full object-cover"
+      <div className="absolute inset-0 overflow-y-auto no-scrollbar">
+        <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {hydratedGames?.map((game) => (
+            <GameCard
+              key={game.id}
+              id={game.id}
+              title={game.title}
+              description={game.description || ''}
+              thumbnailUrl={game.thumbnail_url || game.cover_url || "/placeholder.svg"}
+              coverUrl={game.cover_url || undefined}
+              likesCount={game.likes_count ?? 0}
+              playsCount={game.plays_count ?? 0}
+              isLiked={likedGames.has(game.id)}
+              onLike={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
+              onPlay={() => handlePlay(game)}
+              onShare={() => handleShare(game)}
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/70" />
-
-            {/* Right-side actions */}
-            <div className="absolute right-3 bottom-32 flex flex-col items-center gap-4">
-              <button
-                aria-label={likedGames.has(game.id) ? 'Unlike' : 'Like'}
-                onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
-                className={`h-12 w-12 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 transition-smooth ${likedGames.has(game.id) ? 'ring-2 ring-red-500' : ''}`}
-              >
-                <svg viewBox="0 0 24 24" className={`h-6 w-6 ${likedGames.has(game.id) ? 'fill-red-500 text-red-500' : 'text-white'}`}>
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1.01 4.22 2.53C11.09 5.01 12.76 4 14.5 4 17 4 19 6 19 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                </svg>
-                <span className="sr-only">Like</span>
-              </button>
-
-              <button
-                onClick={() => setRemixFor(game)}
-                className="h-12 w-12 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 transition-smooth text-white"
-                aria-label="Remix"
-              >
-                <svg viewBox="0 0 24 24" className="h-6 w-6">
-                  <path fill="currentColor" d="M7 7h6v2H9v6H7V7zm10 10h-6v-2h4V9h2v8z"/>
-                </svg>
-              </button>
-
-              <button
-                onClick={() => handleShare(game)}
-                className="h-12 w-12 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 transition-smooth text-white"
-                aria-label="Share"
-              >
-                <svg viewBox="0 0 24 24" className="h-6 w-6">
-                  <path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7a3.27 3.27 0 000-1.39l7.02-4.11A3 3 0 0018 7.91a3.09 3.09 0 10-3.09-3.09c0 .23.03.45.08.66L7.91 9.59A3.09 3.09 0 004.91 9a3.09 3.09 0 103.09 3.09c0-.23-.03-.45-.08-.66l7.08 4.15c.49.45 1.14.73 1.86.73a3.09 3.09 0 103.09-3.09 3.09 3.09 0 00-3.09-3.09z"/>
-                </svg>
-              </button>
-
-              <button
-                onClick={() => setCommentsOpenFor(game)}
-                className="h-12 w-12 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 transition-smooth text-white"
-                aria-label="Comments"
-              >
-                <MessageCircle className="h-6 w-6" />
-              </button>
-
-              <button
-                onClick={() => handlePlay(game)}
-                className="h-12 w-12 rounded-full flex items-center justify-center bg-primary hover:opacity-90 transition-smooth text-white"
-                aria-label="Play"
-              >
-                <svg viewBox="0 0 24 24" className="h-6 w-6">
-                  <path fill="currentColor" d="M8 5v14l11-7z" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Bottom details */}
-            <div className="absolute left-4 right-20 bottom-8 text-white">
-              <div className="flex items-center gap-3 mb-2">
-                <Avatar className="h-10 w-10 ring-2 ring-white/30">
-                  <AvatarImage src={game.creator?.avatar_url || undefined} />
-                  <AvatarFallback>{game.creator?.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="text-2xl font-bold drop-shadow-md">{game.title}</h3>
-                    <div 
-                      className="text-sm text-white/80 hover:underline cursor-pointer"
-                      onClick={() => game.creator?.username && navigate(`/u/${game.creator.username}`)}
-                    >
-                      by {game.creator?.username || 'Unknown'}
-                    </div>
-                </div>
-              </div>
-                <div className="flex items-center gap-2 mb-2">
-                  {game.original_game_id && (
-                    <span className="px-2 py-0.5 text-xs rounded-full bg-white/20 text-white/90">Remix</span>
-                  )}
-                </div>
-              <p className="text-white/80 line-clamp-2 max-w-xl mb-3">{game.description || ''}</p>
-              <div className="text-sm text-white/70">{game.plays_count} plays • {game.likes_count} likes</div>
-            </div>
-          </section>
-        ))}
+          ))}
+        </div>
 
         {games?.length === 0 && (
           <div className="h-full flex items-center justify-center">
