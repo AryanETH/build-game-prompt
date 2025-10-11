@@ -50,6 +50,38 @@ export type Database = {
           },
         ]
       }
+      game_comments: {
+        Row: {
+          content: string
+          created_at: string
+          game_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          game_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          game_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_comments_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_likes: {
         Row: {
           created_at: string | null
@@ -88,39 +120,51 @@ export type Database = {
       }
       games: {
         Row: {
+          city: string | null
+          country: string | null
           created_at: string | null
           creator_id: string
           description: string | null
           duration_minutes: number | null
           game_code: string
           id: string
+          latitude: number | null
           likes_count: number | null
+          longitude: number | null
           plays_count: number | null
           sound_url: string | null
           thumbnail_url: string | null
           title: string
         }
         Insert: {
+          city?: string | null
+          country?: string | null
           created_at?: string | null
           creator_id: string
           description?: string | null
           duration_minutes?: number | null
           game_code: string
           id?: string
+          latitude?: number | null
           likes_count?: number | null
+          longitude?: number | null
           plays_count?: number | null
           sound_url?: string | null
           thumbnail_url?: string | null
           title: string
         }
         Update: {
+          city?: string | null
+          country?: string | null
           created_at?: string | null
           creator_id?: string
           description?: string | null
           duration_minutes?: number | null
           game_code?: string
           id?: string
+          latitude?: number | null
           likes_count?: number | null
+          longitude?: number | null
           plays_count?: number | null
           sound_url?: string | null
           thumbnail_url?: string | null

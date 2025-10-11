@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
+import { LocationFilter } from "./LocationFilter";
 
 interface Game {
   id: string;
@@ -47,6 +48,8 @@ export const GameFeed = () => {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [likedGames, setLikedGames] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
+  const [locationMode, setLocationMode] = useState<"global" | "country" | "city">("global");
+  const [locationFilter, setLocationFilter] = useState<string | undefined>(undefined);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -56,12 +59,20 @@ export const GameFeed = () => {
   }, []);
 
   const { data: games, isLoading } = useQuery({
-    queryKey: ['games'],
+    queryKey: ['games', locationMode, locationFilter],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('games')
-        .select('*, creator:profiles!games_creator_id_fkey(id, username, avatar_url)')
-        .order('created_at', { ascending: false });
+        .select('*, creator:profiles!games_creator_id_fkey(id, username, avatar_url)');
+      
+      // Apply location filters
+      if (locationMode === 'country' && locationFilter) {
+        query = query.eq('country', locationFilter);
+      } else if (locationMode === 'city' && locationFilter) {
+        query = query.eq('city', locationFilter);
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
       
       if (error) throw error;
       return data as unknown as GameWithCreator[];
@@ -219,6 +230,12 @@ export const GameFeed = () => {
   // TikTok-style vertical snapping feed
   return (
     <>
+    <LocationFilter
+      onLocationChange={(mode, location) => {
+        setLocationMode(mode);
+        setLocationFilter(location);
+      }}
+    />
     <div className="relative h-[calc(100vh-8rem)] w-full">
       <div className="absolute inset-0 overflow-y-auto no-scrollbar snap-y snap-mandatory">
         {games?.map((game) => (

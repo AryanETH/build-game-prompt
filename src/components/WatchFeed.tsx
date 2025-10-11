@@ -56,7 +56,9 @@ export const WatchFeed = () => {
         channel.track({ joined_at: new Date().toISOString() });
       }
     });
-    return () => channel.unsubscribe();
+    return () => {
+      channel.unsubscribe();
+    };
   }, [selected?.id]);
 
   const { data: comments = [], refetch } = useQuery({
@@ -79,7 +81,9 @@ export const WatchFeed = () => {
       .channel(`watch-comments:${selected.id}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "game_comments", filter: `game_id=eq.${selected.id}` }, () => refetch())
       .subscribe();
-    return () => channel.unsubscribe();
+    return () => {
+      channel.unsubscribe();
+    };
   }, [selected?.id, refetch]);
 
   const [text, setText] = useState("");
