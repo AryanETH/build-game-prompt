@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useLocationContext } from "@/context/LocationContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,7 @@ import { Sparkles, Play, Users } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { requestCityFromBrowser } = useLocationContext();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -13,6 +15,8 @@ const Index = () => {
         navigate("/feed");
       }
     });
+    // Gently request location on home to personalize experience
+    requestCityFromBrowser();
   }, [navigate]);
 
   return (

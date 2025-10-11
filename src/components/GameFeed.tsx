@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { GameCard } from "./GameCard";
 import { GamePlayer } from "./GamePlayer";
@@ -10,6 +10,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { LocationFilter } from "./LocationFilter";
+import { useLocationContext } from "@/context/LocationContext";
+import { useLocation as useRouterLocation } from "react-router-dom";
 
 interface Game {
   id: string;
@@ -48,9 +50,18 @@ export const GameFeed = () => {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [likedGames, setLikedGames] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
-  const [locationMode, setLocationMode] = useState<"global" | "country" | "city">("global");
-  const [locationFilter, setLocationFilter] = useState<string | undefined>(undefined);
   const queryClient = useQueryClient();
+  const { mode: globalMode, city: globalCity, country: globalCountry } = useLocationContext();
+  const [locationMode, setLocationMode] = useState<"global" | "country" | "city">(globalMode);
+  const [locationFilter, setLocationFilter] = useState<string | undefined>(globalMode === 'city' ? globalCity ?? undefined : globalMode === 'country' ? globalCountry ?? undefined : undefined);
+  const routerLocation = useRouterLocation();
+
+  useEffect(() => {
+    // Keep local filters synced with global context changes
+    setLocationMode(globalMode);
+    const nextFilter = globalMode === 'city' ? (globalCity ?? undefined) : globalMode === 'country' ? (globalCountry ?? undefined) : undefined;
+    setLocationFilter(nextFilter);
+  }, [globalMode, globalCity, globalCountry]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -58,26 +69,48 @@ export const GameFeed = () => {
     });
   }, []);
 
-  const { data: games, isLoading } = useQuery({
+  const pageSize = 10;
+  const { data: pages, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = useInfiniteQuery({
     queryKey: ['games', locationMode, locationFilter],
-    queryFn: async () => {
+    queryFn: async ({ pageParam = 0 }) => {
+      const from = pageParam * pageSize;
+      const to = from + pageSize - 1;
       let query = supabase
         .from('games')
-        .select('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, creator_id, is_multiplayer, multiplayer_type, graphics_quality, sound_url, country, city, creator:profiles!games_creator_id_fkey(id, username, avatar_url)');
-      
-      // Apply location filters
+        .select('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, creator_id, is_multiplayer, multiplayer_type, graphics_quality, sound_url, country, city, creator:profiles!games_creator_id_fkey(id, username, avatar_url)')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
       if (locationMode === 'country' && locationFilter) {
         query = query.eq('country', locationFilter);
       } else if (locationMode === 'city' && locationFilter) {
         query = query.eq('city', locationFilter);
       }
-      
-      const { data, error } = await query.order('created_at', { ascending: false });
-      
+
+      const { data, error } = await query;
       if (error) throw error;
-      return data as unknown as GameWithCreator[];
+      return (data || []) as unknown as GameWithCreator[];
     },
+    getNextPageParam: (lastPage, allPages) => (lastPage.length === pageSize ? allPages.length : undefined),
+    initialPageParam: 0,
   });
+
+  const games = useMemo(() => (pages?.pages || []).flat(), [pages]);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const el = sentinelRef.current;
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      });
+    }, { root: null, rootMargin: "200px", threshold: 0 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [sentinelRef.current, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const { data: userLikes } = useQuery({
     queryKey: ['userLikes', userId],
@@ -169,6 +202,19 @@ export const GameFeed = () => {
     toast.success("Game link copied to clipboard!");
   };
 
+  // Auto-open a game if query param ?game=id is present
+  useEffect(() => {
+    const params = new URLSearchParams(routerLocation.search);
+    const gameId = params.get('game');
+    if (!gameId) return;
+    (async () => {
+      const { data, error } = await supabase.from('games').select('*').eq('id', gameId).maybeSingle();
+      if (!error && data) {
+        setSelectedGame(data as Game);
+      }
+    })();
+  }, [routerLocation.search]);
+
   // Comments state
   const [commentsOpenFor, setCommentsOpenFor] = useState<GameWithCreator | null>(null);
   const [newComment, setNewComment] = useState("");
@@ -255,6 +301,7 @@ export const GameFeed = () => {
             <img
               src={game.cover_url || game.thumbnail_url || "/placeholder.svg"}
               alt={game.title}
+              loading="lazy"
               className="absolute inset-0 h-full w-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/70" />
@@ -327,6 +374,9 @@ export const GameFeed = () => {
             </div>
           </div>
         )}
+        <div id="feed-sentinel" ref={sentinelRef} className="h-24 flex items-center justify-center">
+          {isFetchingNextPage && <Loader2 className="h-6 w-6 animate-spin text-primary" />}
+        </div>
       </div>
     </div>
 

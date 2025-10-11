@@ -2,6 +2,7 @@ import { X, Timer, Mic, MicOff, Users, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 import { useVoiceChat } from "@/hooks/use-voice-chat";
+import { supabase } from "@/integrations/supabase/client";
 
 interface GamePlayerProps {
   game: {
@@ -29,6 +30,22 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
     }, [stream]);
     return <audio ref={ref} autoPlay playsInline />;
   };
+
+  useEffect(() => {
+    // Mark this game as being actively played via presence
+    const presenceKey = `player_${Math.random().toString(36).slice(2)}`;
+    const channel = supabase.channel(`playing:${game.id}`, {
+      config: { presence: { key: presenceKey } },
+    });
+    channel.subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        channel.track({ started_at: new Date().toISOString() });
+      }
+    });
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [game.id]);
 
   useEffect(() => {
     const timer = setInterval(() => {
