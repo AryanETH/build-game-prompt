@@ -76,10 +76,16 @@ Strictly output a 9:16 portrait image (aspect_ratio=9:16). The art should be col
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error in generate-thumbnail function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    // Log detailed error server-side only
+    console.error('Error in generate-thumbnail function:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Return generic error to client
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'Unable to generate thumbnail. Please try again later.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
