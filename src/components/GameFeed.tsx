@@ -81,7 +81,6 @@ export const GameFeed = () => {
         supabase
           .from('games')
           .select(columns)
-          .eq('is_public', true)
           .order(orderBy as any, { ascending: false })
           .range(from, to);
 

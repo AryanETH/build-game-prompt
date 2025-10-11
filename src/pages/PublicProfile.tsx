@@ -58,7 +58,6 @@ export default function PublicProfile() {
         .select('*')
         .eq('creator_id', prof.id)
         .is('original_game_id', null)
-        .eq('is_public', true)
         .order('created_at', { ascending: false });
       setCreatedGames((created || []) as GameRow[]);
 
@@ -67,7 +66,6 @@ export default function PublicProfile() {
         .select('*')
         .eq('creator_id', prof.id)
         .not('original_game_id', 'is', null)
-        .eq('is_public', true)
         .order('created_at', { ascending: false });
   const handleRemix = async (game: GameRow) => {
     const { data: { user } } = await supabase.auth.getUser();
