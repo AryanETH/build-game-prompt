@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { GamePlayer } from "@/components/GamePlayer";
 
@@ -33,24 +34,6 @@ export default function Profile() {
     checkFollowStatus();
   }, []);
 
-  // Realtime refresh when user's games change
-  useEffect(() => {
-    const subscribe = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const channel = supabase
-        .channel(`profile-games:${user.id}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'games', filter: `creator_id=eq.${user.id}` }, () => {
-          fetchUserGames();
-          fetchRemixedGames();
-        })
-        .subscribe();
-      return () => { channel.unsubscribe(); };
-    };
-    let cleanup: (() => void) | undefined;
-    subscribe().then((fn) => { cleanup = fn; });
-    return () => { cleanup && cleanup(); };
-  }, []);
 
   const checkFollowStatus = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -109,12 +92,16 @@ export default function Profile() {
   const fetchUserGames = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('games')
         .select('*')
         .eq('creator_id', user.id)
         .is('original_game_id', null)
         .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching user games:', error);
+      }
       setUserGames(data || []);
     }
   };
@@ -122,12 +109,16 @@ export default function Profile() {
   const fetchRemixedGames = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('games')
         .select('*')
         .eq('creator_id', user.id)
         .not('original_game_id', 'is', null)
         .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching remixed games:', error);
+      }
       setRemixedGames(data || []);
     }
   };
@@ -374,20 +365,6 @@ export default function Profile() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        {/* Created/Remixed as tabs */}
-        <div>
-          <h2 className="text-2xl font-bold mb-4">Your Games</h2>
-          <Tabs defaultValue="created">
-            <TabsList className="w-full">
-              <TabsTrigger value="created" className="flex-1">Created</TabsTrigger>
-              <TabsTrigger value="remixed" className="flex-1">Remixed</TabsTrigger>
-            </TabsList>
-            <TabsContent value="created">
-              {userGames.length === 0 ? (
-                <Card className="p-12 text-center gradient-card">No games created yet</Card>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   {userGames.map((game) => (
                     <div
                       key={game.id}
@@ -402,10 +379,17 @@ export default function Profile() {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
                           <p className="font-bold text-sm mb-1 truncate">{game.title}</p>
-                          <div className="flex gap-3 text-xs">
+                          <div className="flex gap-3 text-xs items-center">
                             <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{game.likes_count}</span>
                             <span className="flex items-center gap-1"><Play className="w-3 h-3" />{game.plays_count}</span>
-                            <Button size="icon" variant="destructive" className="ml-auto h-7 w-7 opacity-90" onClick={(e) => { e.stopPropagation(); deleteGame(game.id); }} disabled={deletingId === game.id} title="Delete game">
+                            <Button 
+                              size="icon" 
+                              variant="destructive" 
+                              className="ml-auto h-6 w-6 opacity-90" 
+                              onClick={(e) => { e.stopPropagation(); deleteGame(game.id); }} 
+                              disabled={deletingId === game.id} 
+                              title="Delete game"
+                            >
                               {deletingId === game.id ? (<Loader2 className="w-3 h-3 animate-spin" />) : (<Trash2 className="w-3 h-3" />)}
                             </Button>
                           </div>
@@ -416,11 +400,7 @@ export default function Profile() {
                 </div>
               )}
             </TabsContent>
-            <TabsContent value="remixed">
-              {remixedGames.length === 0 ? (
-                <Card className="p-12 text-center gradient-card">No remixes yet</Card>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+
                   {remixedGames.map((game) => (
                     <div
                       key={game.id}
@@ -435,7 +415,7 @@ export default function Profile() {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
                           <p className="font-bold text-sm mb-1 truncate">{game.title}</p>
-                          <div className="flex gap-3 text-xs">
+                          <div className="flex gap-2 text-xs items-center flex-wrap">
                             <span className="px-2 py-0.5 text-[10px] rounded-full bg-white/20 text-white/90">Remix</span>
                             <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{game.likes_count}</span>
                             <span className="flex items-center gap-1"><Play className="w-3 h-3" />{game.plays_count}</span>
@@ -448,7 +428,6 @@ export default function Profile() {
               )}
             </TabsContent>
           </Tabs>
-        </div>
       </div>
     </div>
   );

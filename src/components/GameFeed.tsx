@@ -85,6 +85,7 @@ export const GameFeed = () => {
         .select('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, creator_id, is_multiplayer, multiplayer_type, graphics_quality, sound_url, country, city, original_game_id, creator:profiles!games_creator_id_fkey(id, username, avatar_url)')
         .order('created_at', { ascending: false })
         .range(from, to);
+
       if (error) throw error;
       return (data || []) as unknown as GameWithCreator[];
     },
