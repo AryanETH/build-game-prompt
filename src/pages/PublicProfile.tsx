@@ -4,9 +4,10 @@ import { Navigation } from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { Play, Heart, Mail, UserPlus, UserCheck } from "lucide-react";
+import { Play, Heart, Mail, UserPlus, UserCheck, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { GamePlayer } from "@/components/GamePlayer";
 
@@ -38,6 +39,8 @@ export default function PublicProfile() {
   const [messageOpen, setMessageOpen] = useState(false);
   const [messageText, setMessageText] = useState("");
   const [isFollowing, setIsFollowing] = useState(false);
+  const [remixingId, setRemixingId] = useState<string | null>(null);
+  const [remixPrompt, setRemixPrompt] = useState<string>("");
 
   useEffect(() => {
     if (!username) return;
@@ -55,6 +58,7 @@ export default function PublicProfile() {
         .select('*')
         .eq('creator_id', prof.id)
         .is('original_game_id', null)
+        .eq('is_public', true)
         .order('created_at', { ascending: false });
       setCreatedGames((created || []) as GameRow[]);
 
@@ -63,7 +67,52 @@ export default function PublicProfile() {
         .select('*')
         .eq('creator_id', prof.id)
         .not('original_game_id', 'is', null)
+        .eq('is_public', true)
         .order('created_at', { ascending: false });
+  const handleRemix = async (game: GameRow) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error('Please sign in to remix');
+      return;
+    }
+    if (!remixPrompt.trim()) {
+      toast.error('Enter a remix idea first');
+      return;
+    }
+    try {
+      setRemixingId(game.id);
+      const { data, error } = await supabase.functions.invoke('generate-game', {
+        body: { prompt: remixPrompt, options: {} },
+      });
+      if (error) throw error;
+      const gameCode: string = data.gameCode;
+      const insert = await supabase
+        .from('games')
+        .insert({
+          title: `Remix: ${game.title}`,
+          description: `Remix of ${game.title}${profile?.username ? ` by @${profile.username}` : ''}`,
+          game_code: gameCode,
+          creator_id: user.id,
+          thumbnail_url: game.thumbnail_url,
+          cover_url: game.cover_url || game.thumbnail_url,
+          sound_url: null,
+          original_game_id: game.id,
+          is_public: true,
+          country: null,
+          city: null,
+        })
+        .select('id')
+        .single();
+      if (insert.error) throw insert.error;
+      toast.success('Remix published');
+      setRemixPrompt("");
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to remix');
+    } finally {
+      setRemixingId(null);
+    }
+  };
+
       setRemixedGames((remixed || []) as GameRow[]);
 
       // Check follow status
@@ -79,6 +128,23 @@ export default function PublicProfile() {
       }
     })();
   }, [username]);
+
+  // Live-update followers count
+  useEffect(() => {
+    if (!profile?.id) return;
+    const channel = supabase
+      .channel('realtime:follows:public')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'follows', filter: `following_id=eq.${profile.id}` }, async () => {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', profile.id)
+          .maybeSingle();
+        if (data) setProfile(data as ProfileRow);
+      })
+      .subscribe();
+    return () => { channel.unsubscribe(); };
+  }, [profile?.id]);
 
   const sendMessage = async () => {
     if (!profile || !messageText.trim()) return;
@@ -174,9 +240,17 @@ export default function PublicProfile() {
               {createdGames.length === 0 ? (
                 <Card className="p-12 text-center gradient-card">No games</Card>
               ) : (
+                <>
+                <div className="flex items-center gap-2 mb-3">
+                  <Input
+                    placeholder="Describe your remix idea (optional)"
+                    value={remixPrompt}
+                    onChange={(e) => setRemixPrompt(e.target.value)}
+                  />
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   {createdGames.map((g) => (
-                    <div key={g.id} className="aspect-[9/16] relative group cursor-pointer overflow-hidden rounded-lg border border-border hover:border-primary transition-all" onClick={() => setSelectedGame(g)}>
+                    <div key={g.id} className="aspect-[9/16] relative group overflow-hidden rounded-lg border border-border hover:border-primary transition-all">
                       {g.thumbnail_url ? (
                         <img src={g.thumbnail_url} alt={g.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                       ) : (
@@ -188,12 +262,26 @@ export default function PublicProfile() {
                           <div className="flex gap-3 text-xs">
                             <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{g.likes_count || 0}</span>
                             <span className="flex items-center gap-1"><Play className="w-3 h-3" />{g.plays_count || 0}</span>
+                            <button
+                              className="ml-auto px-2 py-1 rounded bg-white/20 hover:bg-white/30 text-[11px]"
+                              onClick={() => setSelectedGame(g)}
+                            >
+                              View
+                            </button>
+                            <button
+                              className="px-2 py-1 rounded bg-primary hover:opacity-90 text-[11px]"
+                              onClick={() => handleRemix(g)}
+                              disabled={remixingId === g.id}
+                            >
+                              {remixingId === g.id ? (<span className="inline-flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin"/>Remixing</span>) : 'Remix'}
+                            </button>
                           </div>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
+                </>
               )}
             </TabsContent>
             <TabsContent value="remixed">

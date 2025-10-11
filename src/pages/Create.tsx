@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Sparkles, Music } from "lucide-react";
+import { Loader2, Sparkles, Music, Globe, Lock, Eye, Pencil } from "lucide-react";
 
 export default function Create() {
   const [prompt, setPrompt] = useState("");
@@ -25,6 +26,9 @@ export default function Create() {
   const [isMultiplayer, setIsMultiplayer] = useState(false);
   const [multiplayerType, setMultiplayerType] = useState<string>("co-op");
   const [graphicsQuality, setGraphicsQuality] = useState<string>("realistic");
+  const [isPublic, setIsPublic] = useState<boolean>(true);
+  const [previewOpen, setPreviewOpen] = useState<boolean>(false);
+  const promptRef = useRef<HTMLTextAreaElement | null>(null);
   const navigate = useNavigate();
 
   const handleSoundFileChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
@@ -231,6 +235,7 @@ export default function Create() {
         thumbnail_url: thumbnailUrl || null,
         cover_url: coverUrl || thumbnailUrl || null,
         sound_url: finalSoundUrl || null,
+        is_public: isPublic,
         country: userLocation.country,
         city: userLocation.city,
       } as any;
@@ -245,6 +250,7 @@ export default function Create() {
           creator_id: user.id,
           thumbnail_url: thumbnailUrl || null,
           sound_url: finalSoundUrl || null,
+          is_public: isPublic,
         };
         const retry = await supabase.from('games').insert(minimalPayload);
         if (retry.error) throw retry.error;
@@ -285,7 +291,18 @@ export default function Create() {
                     placeholder="e.g., 'A space shooter where you dodge asteroids and collect stars'"
                     className="min-h-32 mt-2"
                     disabled={isGenerating}
+                    ref={promptRef}
                   />
+                </div>
+
+                {/* Visibility */}
+                <div className="grid grid-cols-2 gap-4 items-center">
+                  <div className="flex items-center gap-3">
+                    <Switch id="isPublic" checked={isPublic} onCheckedChange={setIsPublic} />
+                    <Label htmlFor="isPublic" className="flex items-center gap-2">
+                      {isPublic ? (<><Globe className="h-4 w-4" /> Public</>) : (<><Lock className="h-4 w-4" /> Private</>)}
+                    </Label>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 items-center">
@@ -390,41 +407,58 @@ export default function Create() {
                 </Button>
 
                 {generatedCode && (
-                  <Button
-                    onClick={handlePublish}
-                    className="w-full"
-                    variant="outline"
-                  >
-                    Publish to Feed
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button onClick={() => setPreviewOpen(true)} variant="secondary" className="w-full gap-2">
+                      <Eye className="h-4 w-4" /> Preview
+                    </Button>
+                    <Button
+                      onClick={handlePublish}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      Publish to Feed
+                    </Button>
+                  </div>
                 )}
               </div>
             </Card>
 
-            {/* Preview Panel */}
-            <Card className="gradient-card border-border/50 p-6">
-              <h3 className="text-lg font-semibold mb-4">Preview</h3>
-              {generatedCode ? (
-                <div className="aspect-video bg-background rounded-lg overflow-hidden">
-                  <iframe
-                    srcDoc={generatedCode}
-                    className="w-full h-full border-0"
-                    title="Game Preview"
-                    sandbox="allow-scripts allow-same-origin"
-                  />
-                </div>
-              ) : (
-                <div className="aspect-video bg-background rounded-lg flex items-center justify-center text-muted-foreground">
-                  <div className="text-center">
-                    <Sparkles className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Your game will appear here</p>
-                  </div>
-                </div>
-              )}
-            </Card>
+            {/* Right column intentionally empty: preview moved to dialog */}
+            <div className="hidden md:block"></div>
           </div>
         </div>
       </div>
+
+      {/* Preview Dialog with curved 9:16 window */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Preview: {title || 'Untitled game'}</DialogTitle>
+          </DialogHeader>
+          <div className="w-full">
+            <div className="aspect-[9/16] rounded-[28px] overflow-hidden shadow-2xl ring-1 ring-border bg-background">
+              {generatedCode ? (
+                <iframe
+                  srcDoc={generatedCode}
+                  className="w-full h-full border-0"
+                  title="Game Preview"
+                  sandbox="allow-scripts allow-same-origin"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground">No preview</div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setPreviewOpen(false); promptRef.current?.scrollIntoView({ behavior: 'smooth' }); }} className="gap-2">
+              <Pencil className="h-4 w-4" /> Edit Prompt
+            </Button>
+            <Button onClick={() => { setPreviewOpen(false); handlePublish(); }} disabled={!generatedCode}>
+              Publish
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

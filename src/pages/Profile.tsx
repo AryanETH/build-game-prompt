@@ -31,6 +31,17 @@ export default function Profile() {
     fetchUserGames();
     fetchRemixedGames();
     checkFollowStatus();
+
+    // Live updates for follower counts
+    const channel = supabase
+      .channel('realtime:follows')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'follows' }, () => {
+        fetchProfile();
+      })
+      .subscribe();
+    return () => {
+      channel.unsubscribe();
+    };
   }, []);
 
 

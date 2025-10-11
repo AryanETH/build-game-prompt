@@ -1,15 +1,13 @@
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { GameCard } from "./GameCard";
 import { GamePlayer } from "./GamePlayer";
-import { Loader2, MapPin } from "lucide-react";
+import { Loader2, Heart, MessageCircle, Share2, Play } from "lucide-react";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+// avatar imports removed; not needed in vertical feed
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { useLocationContext } from "@/context/LocationContext";
 import { useLocation as useRouterLocation, useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 
@@ -60,16 +58,10 @@ export const GameFeed = () => {
   const [likedGames, setLikedGames] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
   const queryClient = useQueryClient();
-  const { mode: globalMode, city: globalCity, country: globalCountry } = useLocationContext();
   const routerLocation = useRouterLocation();
   const navigate = useNavigate();
 
-  // Decorative-only location label for UI; does not affect data
-  const decorativeLocation = useMemo(() => {
-    if (globalMode === 'city' && globalCity) return globalCity;
-    if (globalMode === 'country' && globalCountry) return globalCountry;
-    return 'Global';
-  }, [globalMode, globalCity, globalCountry]);
+  // location UI removed per TikTok-style layout
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -89,6 +81,7 @@ export const GameFeed = () => {
         supabase
           .from('games')
           .select(columns)
+          .eq('is_public', true)
           .order(orderBy as any, { ascending: false })
           .range(from, to);
 
@@ -410,35 +403,63 @@ export const GameFeed = () => {
     );
   }
 
-  // Scrollable list feed (decorative location only)
+  // TikTok-style vertical feed of 9:16 posts
   return (
     <>
-    <div className="flex items-center gap-2 p-4 border-b">
-      <MapPin className="h-4 w-4 text-muted-foreground" />
-      <span className="text-sm text-muted-foreground">Location:</span>
-      <span className="text-sm font-medium">{decorativeLocation}</span>
-      <span className="text-xs text-muted-foreground">(decorative)</span>
-    </div>
-    <div className="relative h-[calc(100vh-8rem)] w-full">
-      <div className="absolute inset-0 overflow-y-auto no-scrollbar">
-        <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {hydratedGames?.map((game) => (
-            <GameCard
-              key={game.id}
-              id={game.id}
-              title={game.title}
-              description={game.description || ''}
-              thumbnailUrl={game.thumbnail_url || game.cover_url || "/placeholder.svg"}
-              coverUrl={game.cover_url || undefined}
-              likesCount={game.likes_count ?? 0}
-              playsCount={game.plays_count ?? 0}
-              isLiked={likedGames.has(game.id)}
-              onLike={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
-              onPlay={() => handlePlay(game)}
-              onShare={() => handleShare(game)}
-            />
-          ))}
-        </div>
+    <div className="relative h-[calc(100vh-6rem)] w-full">
+      <div className="absolute inset-0 overflow-y-auto no-scrollbar space-y-6 py-6">
+        {hydratedGames?.map((game) => (
+          <div key={game.id} className="relative mx-auto w-full max-w-[420px]">
+            <div className="relative aspect-[9/16] overflow-hidden rounded-2xl border border-border/60">
+              <img
+                src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
+                alt={game.title}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+
+              {/* Bottom-left info */}
+              <div className="absolute left-0 right-20 bottom-0 p-4 text-white">
+                <div className="text-sm opacity-90">@{game.creator?.username || 'creator'}</div>
+                <div className="text-lg font-bold leading-tight">{game.title}</div>
+                <div className="text-xs text-white/80 line-clamp-2">{game.description || ''}</div>
+              </div>
+
+              {/* Action bar */}
+              <div className="absolute bottom-0 right-0 p-3 flex flex-col gap-3 items-center text-white">
+                <button
+                  aria-label="Like"
+                  className={`h-10 w-10 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 transition ${likedGames.has(game.id) ? 'text-red-500' : ''}`}
+                  onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
+                >
+                  <Heart className="h-5 w-5" />
+                  <span className="text-[10px] mt-1">{game.likes_count ?? 0}</span>
+                </button>
+                <button
+                  aria-label="Comments"
+                  className="h-10 w-10 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 transition"
+                  onClick={() => setCommentsOpenFor(game)}
+                >
+                  <MessageCircle className="h-5 w-5" />
+                </button>
+                <button
+                  aria-label="Share"
+                  className="h-10 w-10 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 transition"
+                  onClick={() => handleShare(game)}
+                >
+                  <Share2 className="h-5 w-5" />
+                </button>
+                <button
+                  aria-label="Play"
+                  className="mt-1 h-10 w-10 rounded-full flex items-center justify-center bg-primary text-primary-foreground hover:opacity-90 transition"
+                  onClick={() => handlePlay(game)}
+                >
+                  <Play className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
 
         {games?.length === 0 && (
           <div className="h-full flex items-center justify-center">
