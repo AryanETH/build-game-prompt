@@ -11,7 +11,8 @@ import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { LocationFilter } from "./LocationFilter";
 import { useLocationContext } from "@/context/LocationContext";
-import { useLocation as useRouterLocation } from "react-router-dom";
+import { useLocation as useRouterLocation, useNavigate } from "react-router-dom";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 
 interface Game {
   id: string;
@@ -27,6 +28,9 @@ interface Game {
   multiplayer_type?: string | null;
   graphics_quality?: string | null;
   sound_url?: string | null;
+  original_game_id?: string | null;
+  country?: string | null;
+  city?: string | null;
 }
 
 type GameWithCreator = Game & {
@@ -55,6 +59,7 @@ export const GameFeed = () => {
   const [locationMode, setLocationMode] = useState<"global" | "country" | "city">(globalMode);
   const [locationFilter, setLocationFilter] = useState<string | undefined>(globalMode === 'city' ? globalCity ?? undefined : globalMode === 'country' ? globalCountry ?? undefined : undefined);
   const routerLocation = useRouterLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Keep local filters synced with global context changes
@@ -77,14 +82,15 @@ export const GameFeed = () => {
       const to = from + pageSize - 1;
       let query = supabase
         .from('games')
-        .select('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, creator_id, is_multiplayer, multiplayer_type, graphics_quality, sound_url, country, city, creator:profiles!games_creator_id_fkey(id, username, avatar_url)')
+        .select('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, creator_id, is_multiplayer, multiplayer_type, graphics_quality, sound_url, country, city, original_game_id, creator:profiles!games_creator_id_fkey(id, username, avatar_url)')
         .order('created_at', { ascending: false })
         .range(from, to);
 
+      // Include global games (null location) alongside the selected location
       if (locationMode === 'country' && locationFilter) {
-        query = query.eq('country', locationFilter);
+        query = query.or(`country.is.null,country.eq.${locationFilter}`);
       } else if (locationMode === 'city' && locationFilter) {
-        query = query.eq('city', locationFilter);
+        query = query.or(`city.is.null,city.eq.${locationFilter}`);
       }
 
       const { data, error } = await query;
@@ -200,6 +206,71 @@ export const GameFeed = () => {
     const shareUrl = `${window.location.origin}?game=${game.id}`;
     navigator.clipboard.writeText(shareUrl);
     toast.success("Game link copied to clipboard!");
+  };
+
+  // Realtime: refetch feed on any games change
+  useEffect(() => {
+    const channel = supabase
+      .channel('realtime:games')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['games'] });
+      })
+      .subscribe();
+    return () => { channel.unsubscribe(); };
+  }, [queryClient]);
+
+  // Remix dialog state
+  const [remixFor, setRemixFor] = useState<GameWithCreator | null>(null);
+  const [remixPrompt, setRemixPrompt] = useState("");
+  const [remixTitle, setRemixTitle] = useState("");
+  const [isRemixing, setIsRemixing] = useState(false);
+
+  const handleSubmitRemix = async () => {
+    if (!remixFor || !remixPrompt.trim()) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error('Please sign in to remix games');
+      return;
+    }
+    try {
+      setIsRemixing(true);
+      const { data, error } = await supabase.functions.invoke('generate-game', {
+        body: { prompt: remixPrompt, options: {} },
+      });
+      if (error) throw error;
+      const gameCode: string = data.gameCode;
+
+      const newTitle = remixTitle.trim() || `Remix: ${remixFor.title}`;
+      const payload: any = {
+        title: newTitle,
+        description: `Remix of ${remixFor.title}${remixFor.creator?.username ? ` by @${remixFor.creator.username}` : ''}`,
+        game_code: gameCode,
+        creator_id: user.id,
+        thumbnail_url: remixFor.thumbnail_url || null,
+        cover_url: remixFor.cover_url || remixFor.thumbnail_url || null,
+        sound_url: null,
+        original_game_id: remixFor.id,
+        country: null,
+        city: null,
+      };
+
+      const insert = await supabase
+        .from('games')
+        .insert(payload)
+        .select('id')
+        .single();
+      if (insert.error) throw insert.error;
+      setRemixFor(null);
+      setRemixPrompt("");
+      setRemixTitle("");
+      toast.success('Remix published!');
+      const newId = insert.data?.id as string;
+      if (newId) navigate(`/feed?game=${newId}`);
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to publish remix');
+    } finally {
+      setIsRemixing(false);
+    }
   };
 
   // Auto-open a game if query param ?game=id is present
@@ -320,6 +391,16 @@ export const GameFeed = () => {
               </button>
 
               <button
+                onClick={() => setRemixFor(game)}
+                className="h-12 w-12 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 transition-smooth text-white"
+                aria-label="Remix"
+              >
+                <svg viewBox="0 0 24 24" className="h-6 w-6">
+                  <path fill="currentColor" d="M7 7h6v2H9v6H7V7zm10 10h-6v-2h4V9h2v8z"/>
+                </svg>
+              </button>
+
+              <button
                 onClick={() => handleShare(game)}
                 className="h-12 w-12 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 transition-smooth text-white"
                 aria-label="Share"
@@ -357,9 +438,19 @@ export const GameFeed = () => {
                 </Avatar>
                 <div>
                   <h3 className="text-2xl font-bold drop-shadow-md">{game.title}</h3>
-                  <div className="text-sm text-white/80">by {game.creator?.username || 'Unknown'}</div>
+                    <div 
+                      className="text-sm text-white/80 hover:underline cursor-pointer"
+                      onClick={() => game.creator?.username && navigate(`/u/${game.creator.username}`)}
+                    >
+                      by {game.creator?.username || 'Unknown'}
+                    </div>
                 </div>
               </div>
+                <div className="flex items-center gap-2 mb-2">
+                  {game.original_game_id && (
+                    <span className="px-2 py-0.5 text-xs rounded-full bg-white/20 text-white/90">Remix</span>
+                  )}
+                </div>
               <p className="text-white/80 line-clamp-2 max-w-xl mb-3">{game.description || ''}</p>
               <div className="text-sm text-white/70">{game.plays_count} plays • {game.likes_count} likes</div>
             </div>
@@ -415,6 +506,32 @@ export const GameFeed = () => {
         </div>
       </SheetContent>
     </Sheet>
+    {/* Remix Dialog */}
+    <Dialog open={!!remixFor} onOpenChange={(o) => !o && setRemixFor(null)}>
+      <DialogContent className="sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle>Remix game{remixFor ? `: ${remixFor.title}` : ''}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <Input
+            placeholder="New title (optional)"
+            value={remixTitle}
+            onChange={(e) => setRemixTitle(e.target.value)}
+          />
+          <Input
+            placeholder="Describe your remix idea (prompt)"
+            value={remixPrompt}
+            onChange={(e) => setRemixPrompt(e.target.value)}
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setRemixFor(null)} disabled={isRemixing}>Cancel</Button>
+          <Button onClick={handleSubmitRemix} disabled={!remixPrompt.trim() || isRemixing}>
+            {isRemixing ? (<><Loader2 className="h-4 w-4 animate-spin mr-2"/>Publishing...</>) : 'Publish Remix'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </>
   );
 };

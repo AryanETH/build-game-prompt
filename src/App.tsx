@@ -9,6 +9,7 @@ import Feed from "./pages/Feed";
 import Search from "./pages/Search";
 import Create from "./pages/Create";
 import Profile from "./pages/Profile";
+import PublicProfile from "./pages/PublicProfile";
 import NotFound from "./pages/NotFound";
 import { LocationProvider } from "./context/LocationContext";
 
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/search" element={<Search />} />
             <Route path="/create" element={<Create />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/u/:username" element={<PublicProfile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

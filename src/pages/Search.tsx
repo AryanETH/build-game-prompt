@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Search as SearchIcon, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GamePlayer } from "@/components/GamePlayer";
+import { useNavigate } from "react-router-dom";
 
 const categories = [
   { id: "action", label: "Action", icon: "💥" },
@@ -34,6 +35,7 @@ export default function Search() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const navigate = useNavigate();
 
   const { data: games = [], isLoading } = useQuery({
     queryKey: ['games', searchQuery, selectedCategory],
@@ -132,7 +134,7 @@ export default function Search() {
             <h2 className="text-xl font-bold mb-4">Creators</h2>
             <div className="space-y-2">
               {profiles.map((profile) => (
-                <Card key={profile.id} className="p-4 flex items-center gap-4 hover:bg-accent/50 transition-smooth cursor-pointer">
+                <Card key={profile.id} className="p-4 flex items-center gap-4 hover:bg-accent/50 transition-smooth cursor-pointer" onClick={() => navigate(`/u/${profile.username}`)}>
                   <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center text-white font-bold text-lg">
                     {profile.username[0].toUpperCase()}
                   </div>

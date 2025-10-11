@@ -120,6 +120,7 @@ export type Database = {
       }
       games: {
         Row: {
+          cover_url: string | null
           city: string | null
           country: string | null
           created_at: string | null
@@ -128,15 +129,20 @@ export type Database = {
           duration_minutes: number | null
           game_code: string
           id: string
+          is_multiplayer: boolean | null
           latitude: number | null
           likes_count: number | null
+          multiplayer_type: string | null
           longitude: number | null
+          original_game_id: string | null
           plays_count: number | null
+          graphics_quality: string | null
           sound_url: string | null
           thumbnail_url: string | null
           title: string
         }
         Insert: {
+          cover_url?: string | null
           city?: string | null
           country?: string | null
           created_at?: string | null
@@ -145,15 +151,20 @@ export type Database = {
           duration_minutes?: number | null
           game_code: string
           id?: string
+          is_multiplayer?: boolean | null
           latitude?: number | null
           likes_count?: number | null
+          multiplayer_type?: string | null
           longitude?: number | null
+          original_game_id?: string | null
           plays_count?: number | null
+          graphics_quality?: string | null
           sound_url?: string | null
           thumbnail_url?: string | null
           title: string
         }
         Update: {
+          cover_url?: string | null
           city?: string | null
           country?: string | null
           created_at?: string | null
@@ -162,10 +173,14 @@ export type Database = {
           duration_minutes?: number | null
           game_code?: string
           id?: string
+          is_multiplayer?: boolean | null
           latitude?: number | null
           likes_count?: number | null
+          multiplayer_type?: string | null
           longitude?: number | null
+          original_game_id?: string | null
           plays_count?: number | null
+          graphics_quality?: string | null
           sound_url?: string | null
           thumbnail_url?: string | null
           title?: string
@@ -174,6 +189,52 @@ export type Database = {
           {
             foreignKeyName: "games_creator_id_fkey"
             columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_original_game_id_fkey"
+            columns: ["original_game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      direct_messages: {
+        Row: {
+          id: string
+          sender_id: string
+          recipient_id: string
+          content: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          sender_id: string
+          recipient_id: string
+          content: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          sender_id?: string
+          recipient_id?: string
+          content?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "direct_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "direct_messages_recipient_id_fkey"
+            columns: ["recipient_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
