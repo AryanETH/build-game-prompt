@@ -95,7 +95,6 @@ export default function PublicProfile() {
           cover_url: game.cover_url || game.thumbnail_url,
           sound_url: null,
           original_game_id: game.id,
-          is_public: true,
           country: null,
           city: null,
         })
