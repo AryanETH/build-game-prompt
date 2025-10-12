@@ -43,7 +43,6 @@ export default function Search() {
       let query = supabase
         .from('games')
         .select('*')
-        .eq('is_public', true)
         .order('created_at', { ascending: false });
 
       if (searchQuery) {

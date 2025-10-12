@@ -29,8 +29,8 @@ export const Navigation = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="hidden md:flex items-center gap-3">
-            <div className="relative h-8 w-8">
-              <img src="/logo-playgen.svg" alt="PlayGen" className="h-8 w-8" />
+            <div className="relative h-8">
+              <div className="font-extrabold text-xl tracking-tight">Playgen</div>
               <div className="absolute inset-0 rounded-lg blur-md opacity-40 gradient-primary animate-pulse" />
             </div>
             <span className="text-xl font-bold">PlayGen</span>
