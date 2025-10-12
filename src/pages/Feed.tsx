@@ -12,10 +12,12 @@ export default function Feed() {
   return (
     <div className="min-h-screen pb-16 md:pt-16">
       <Navigation />
-      <FeedTabs 
-        playContent={<GameFeed />}
-        watchContent={<WatchFeed />}
-      />
+      <div className="md:pt-0">
+        <FeedTabs 
+          playContent={<GameFeed />}
+          watchContent={<WatchFeed />}
+        />
+      </div>
     </div>
   );
 }

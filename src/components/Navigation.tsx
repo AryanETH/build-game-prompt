@@ -54,6 +54,10 @@ export const Navigation = () => {
             ))}
           </div>
 
+          <div className="md:hidden">
+            <ThemeToggle />
+          </div>
+
           <div className="hidden md:flex items-center gap-2">
             <ThemeToggle />
             <Button

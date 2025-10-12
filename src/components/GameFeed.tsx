@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { GamePlayer } from "./GamePlayer";
-import { Loader2, Heart, MessageCircle, Share2, Play } from "lucide-react";
+import { Loader2, Heart, MessageCircle, Share2, Play, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-// avatar imports removed; not needed in vertical feed
+import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
+import { Card } from "./ui/card";
 import { useLocation as useRouterLocation, useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 
@@ -405,11 +406,12 @@ export const GameFeed = () => {
   // TikTok-style vertical feed of 9:16 posts
   return (
     <>
-    <div className="relative h-[calc(100vh-6rem)] w-full">
-      <div className="absolute inset-0 overflow-y-auto no-scrollbar space-y-6 py-6">
+    <div className="relative h-[calc(100vh-8rem)] md:h-[calc(100vh-4rem)] w-full overflow-hidden">
+      <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar" style={{ scrollSnapType: 'y mandatory' }}>
         {hydratedGames?.map((game) => (
-          <div key={game.id} className="relative mx-auto w-full max-w-[420px]">
-            <div className="relative aspect-[9/16] overflow-hidden rounded-2xl border border-border/60">
+          <div key={game.id} className="h-full w-full snap-start snap-always flex items-center justify-center">
+            <div className="relative w-full max-w-[420px] h-[90vh] md:h-[85vh]">
+              <Card className="relative h-full overflow-hidden rounded-2xl border border-border/60">
               <img
                 src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
                 alt={game.title}
@@ -417,9 +419,33 @@ export const GameFeed = () => {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
-              {/* Bottom-left info */}
+              {/* Top-right Remix button */}
+              <div className="absolute top-4 right-4 z-10">
+                <button
+                  className="px-3 py-1.5 rounded-full bg-accent/90 hover:bg-accent text-accent-foreground backdrop-blur-sm text-sm font-medium flex items-center gap-1"
+                  onClick={() => setRemixFor(game)}
+                >
+                  <Sparkles className="w-3 h-3" />
+                  Remix
+                </button>
+              </div>
+
+              {/* Bottom-left info with profile photo */}
               <div className="absolute left-0 right-20 bottom-0 p-4 text-white">
-                <div className="text-sm opacity-90">@{game.creator?.username || 'creator'}</div>
+                <div className="flex items-center gap-2 mb-1">
+                  <button 
+                    className="flex items-center gap-2"
+                    onClick={() => game.creator?.username && navigate(`/u/${game.creator.username}`)}
+                  >
+                    <Avatar className="w-8 h-8 border-2 border-white/30">
+                      <AvatarImage src={game.creator?.avatar_url || undefined} />
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                        {game.creator?.username?.[0]?.toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium opacity-90">@{game.creator?.username || 'creator'}</span>
+                  </button>
+                </div>
                 <div className="text-lg font-bold leading-tight">{game.title}</div>
                 <div className="text-xs text-white/80 line-clamp-2">{game.description || ''}</div>
               </div>
@@ -455,7 +481,7 @@ export const GameFeed = () => {
                 >
                   <Play className="h-5 w-5" />
                 </button>
-              </div>
+              </Card>
             </div>
           </div>
         ))}
@@ -468,7 +494,7 @@ export const GameFeed = () => {
             </div>
           </div>
         )}
-        <div id="feed-sentinel" ref={sentinelRef} className="h-24 flex items-center justify-center">
+        <div className="h-full flex items-center justify-center snap-start snap-always">
           {isFetchingNextPage && <Loader2 className="h-6 w-6 animate-spin text-primary" />}
         </div>
       </div>

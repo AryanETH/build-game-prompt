@@ -32,15 +32,25 @@ export default function Profile() {
     fetchRemixedGames();
     checkFollowStatus();
 
-    // Live updates for follower counts
-    const channel = supabase
+    // Live updates for follower counts and games
+    const followChannel = supabase
       .channel('realtime:follows')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'follows' }, () => {
         fetchProfile();
       })
       .subscribe();
+
+    const gamesChannel = supabase
+      .channel('realtime:games')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, () => {
+        fetchUserGames();
+        fetchRemixedGames();
+      })
+      .subscribe();
+
     return () => {
-      channel.unsubscribe();
+      followChannel.unsubscribe();
+      gamesChannel.unsubscribe();
     };
   }, []);
 

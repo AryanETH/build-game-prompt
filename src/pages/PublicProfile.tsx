@@ -42,6 +42,58 @@ export default function PublicProfile() {
   const [remixingId, setRemixingId] = useState<string | null>(null);
   const [remixPrompt, setRemixPrompt] = useState<string>("");
 
+  const handleRemix = async (game: GameRow) => {
+    setRemixingId(game.id);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Please sign in to remix games");
+        return;
+      }
+
+      const { data: fullGame } = await supabase
+        .from('games')
+        .select('*')
+        .eq('id', game.id)
+        .single();
+
+      if (!fullGame) throw new Error("Game not found");
+
+      const { data, error } = await supabase.functions.invoke('generate-game', {
+        body: { 
+          prompt: remixPrompt.trim() || fullGame.description || `Remix of ${game.title}`,
+          enhance: false 
+        }
+      });
+
+      if (error) throw error;
+
+      const { data: musicData } = await supabase.functions.invoke('generate-music', {
+        body: { title: `Remix: ${game.title}` }
+      });
+
+      const { error: insertError } = await supabase.from('games').insert({
+        title: `Remix: ${game.title}`,
+        description: remixPrompt.trim() || fullGame.description,
+        game_code: data.gameCode,
+        creator_id: user.id,
+        thumbnail_url: game.thumbnail_url,
+        sound_url: musicData?.sound_url || null,
+        original_game_id: game.id
+      });
+
+      if (insertError) throw insertError;
+
+      toast.success("Game remixed successfully!");
+      setRemixPrompt("");
+    } catch (error: any) {
+      console.error('Error remixing game:', error);
+      toast.error(error.message || "Failed to remix game");
+    } finally {
+      setRemixingId(null);
+    }
+  };
+
   useEffect(() => {
     if (!username) return;
     (async () => {

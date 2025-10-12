@@ -24,9 +24,8 @@ const Index = () => {
       {/* Hero Section */}
       <div className="container mx-auto px-4 py-16 md:py-24">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="relative inline-flex items-center justify-center rounded-2xl mb-8 animate-fade-in">
-            <div className="text-5xl md:text-6xl font-extrabold tracking-tight">Playgen</div>
-            <div className="absolute inset-0 rounded-2xl blur-xl opacity-50 gradient-primary animate-pulse" />
+          <div className="text-5xl md:text-6xl font-extrabold tracking-tight mb-8 animate-fade-in">
+            Playgen
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-fade-in">

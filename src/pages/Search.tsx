@@ -35,15 +35,21 @@ export default function Search() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const [sortBy, setSortBy] = useState<'popular' | 'newest'>('newest');
   const navigate = useNavigate();
 
   const { data: games = [], isLoading } = useQuery({
-    queryKey: ['games', searchQuery, selectedCategory],
+    queryKey: ['games', searchQuery, selectedCategory, sortBy],
     queryFn: async () => {
       let query = supabase
         .from('games')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
+
+      if (sortBy === 'popular') {
+        query = query.order('plays_count', { ascending: false });
+      } else {
+        query = query.order('created_at', { ascending: false });
+      }
 
       if (searchQuery) {
         query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
@@ -96,7 +102,7 @@ export default function Search() {
       <main className="container mx-auto px-4 py-6 max-w-7xl">
         {/* Search Bar */}
         <div className="mb-6">
-          <div className="relative">
+          <div className="relative mb-3">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
               type="text"
@@ -105,6 +111,24 @@ export default function Search() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 h-12 bg-card border-border text-lg"
             />
+          </div>
+          
+          {/* Sort Tags */}
+          <div className="flex gap-2">
+            <Badge
+              variant={sortBy === 'popular' ? "default" : "secondary"}
+              className="cursor-pointer px-4 py-2 text-sm hover:bg-primary/90"
+              onClick={() => setSortBy('popular')}
+            >
+              💥 Popular
+            </Badge>
+            <Badge
+              variant={sortBy === 'newest' ? "default" : "secondary"}
+              className="cursor-pointer px-4 py-2 text-sm hover:bg-primary/90"
+              onClick={() => setSortBy('newest')}
+            >
+              ✨ Newest
+            </Badge>
           </div>
         </div>
 
