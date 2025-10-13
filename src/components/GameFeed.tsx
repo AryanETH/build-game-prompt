@@ -410,11 +410,11 @@ export const GameFeed = () => {
   // TikTok-style vertical feed of 9:16 posts
   return (
     <>
-    <div className="relative h-[calc(100vh-8rem)] md:h-[calc(100vh-4rem)] w-full overflow-hidden">
+    <div className="relative h-[calc(100vh-8rem)] md:h-screen w-full overflow-hidden">
       <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar" style={{ scrollSnapType: 'y mandatory' }}>
         {hydratedGames?.map((game) => (
           <div key={game.id} className="h-full w-full snap-start snap-always flex items-center justify-center">
-            <div className="relative w-full max-w-[420px] h-[90vh] md:h-[85vh]">
+            <div className="relative w-full max-w-[420px] md:max-w-[600px] h-[90vh] md:h-[90vh]">
               <Card className="relative h-full overflow-hidden rounded-2xl border border-border/60">
               <img
                 src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
@@ -435,7 +435,7 @@ export const GameFeed = () => {
               </div>
 
               {/* Bottom-left info with profile photo */}
-              <div className="absolute left-0 right-20 bottom-20 md:bottom-4 p-4 text-white">
+              <div className="absolute left-0 right-20 bottom-32 md:bottom-24 p-4 text-white">
                 <div className="flex items-center gap-2 mb-1">
                   <button 
                     className="flex items-center gap-2"
@@ -455,7 +455,7 @@ export const GameFeed = () => {
               </div>
 
               {/* Action bar */}
-              <div className="absolute bottom-24 md:bottom-4 right-0 p-3 flex flex-col gap-3 items-center text-white">
+              <div className="absolute bottom-44 md:bottom-32 right-0 p-3 flex flex-col gap-3 items-center text-white">
                 <button
                   aria-label="Like"
                   className={`h-10 w-10 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 transition ${likedGames.has(game.id) ? 'text-red-500' : ''}`}

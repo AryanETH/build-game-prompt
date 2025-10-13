@@ -121,7 +121,6 @@ export default function Profile() {
         .from('games')
         .select('*')
         .eq('creator_id', user.id)
-        .is('original_game_id', null)
         .order('created_at', { ascending: false });
       
       if (error) {
