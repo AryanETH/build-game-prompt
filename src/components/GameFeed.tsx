@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { GamePlayer } from "./GamePlayer";
 import { Loader2, Heart, MessageCircle, Share2, Play, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { logActivity } from "@/lib/activityLogger";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { Input } from "./ui/input";
@@ -196,6 +197,9 @@ export const GameFeed = () => {
           .insert({ game_id: gameId, user_id: userId });
         
         if (error) throw error;
+        
+        // Log like activity
+        await logActivity({ type: 'game_liked', gameId });
       }
     },
     onSuccess: (_, { gameId, isLiked }) => {
@@ -431,7 +435,7 @@ export const GameFeed = () => {
               </div>
 
               {/* Bottom-left info with profile photo */}
-              <div className="absolute left-0 right-20 bottom-0 p-4 text-white">
+              <div className="absolute left-0 right-20 bottom-20 md:bottom-4 p-4 text-white">
                 <div className="flex items-center gap-2 mb-1">
                   <button 
                     className="flex items-center gap-2"
@@ -451,7 +455,7 @@ export const GameFeed = () => {
               </div>
 
               {/* Action bar */}
-              <div className="absolute bottom-0 right-0 p-3 flex flex-col gap-3 items-center text-white">
+              <div className="absolute bottom-24 md:bottom-4 right-0 p-3 flex flex-col gap-3 items-center text-white">
                 <button
                   aria-label="Like"
                   className={`h-10 w-10 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 transition ${likedGames.has(game.id) ? 'text-red-500' : ''}`}

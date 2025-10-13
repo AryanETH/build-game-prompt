@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { GamePlayer } from "@/components/GamePlayer";
+import { ActivityFeed } from "@/components/ActivityFeed";
+import { logActivity } from "@/lib/activityLogger";
 
 export default function Profile() {
   const [profile, setProfile] = useState<any>(null);
@@ -86,6 +88,9 @@ export default function Profile() {
       await supabase
         .from('follows')
         .insert({ follower_id: user.id, following_id: profile.id });
+      
+      // Log follow activity
+      await logActivity({ type: 'user_followed', targetUserId: profile.id });
       
       toast.success("Following user");
       setIsFollowing(true);
@@ -387,9 +392,10 @@ export default function Profile() {
         </Dialog>
 
         <Tabs defaultValue="my-games" className="mt-6">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="my-games">My Games</TabsTrigger>
             <TabsTrigger value="remixes">Remixes</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
 
           <TabsContent value="my-games">
@@ -463,6 +469,10 @@ export default function Profile() {
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="activity">
+            <ActivityFeed />
           </TabsContent>
         </Tabs>
       </div>

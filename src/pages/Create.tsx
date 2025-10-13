@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Sparkles, Globe, Lock, Eye, Pencil } from "lucide-react";
+import { logActivity } from "@/lib/activityLogger";
 
 export default function Create() {
   const [prompt, setPrompt] = useState("");
@@ -39,6 +40,10 @@ export default function Create() {
     }
 
     setIsGenerating(true);
+    
+    // Log activity: user is creating a game
+    await logActivity({ type: 'game_creating' });
+    
     try {
       // Generate game code
       const { data, error } = await supabase.functions.invoke('generate-game', {
@@ -200,7 +205,7 @@ export default function Create() {
         city: userLocation.city,
       } as any;
 
-      let { error } = await supabase.from('games').insert(fullPayload);
+      let { data: insertedGame, error } = await supabase.from('games').insert(fullPayload).select().single();
       if (error) {
         // Retry with minimal set of columns expected to exist
         const minimalPayload = {
@@ -211,8 +216,18 @@ export default function Create() {
           thumbnail_url: thumbnailUrl || null,
           sound_url: finalSoundUrl || null,
         };
-        const retry = await supabase.from('games').insert(minimalPayload);
+        const retry = await supabase.from('games').insert(minimalPayload).select().single();
         if (retry.error) throw retry.error;
+        insertedGame = retry.data;
+      }
+
+      // Log activity: game published
+      if (insertedGame) {
+        await logActivity({ 
+          type: 'game_published', 
+          gameId: insertedGame.id,
+          metadata: { title: insertedGame.title }
+        });
       }
 
       toast.success("Game published successfully!");

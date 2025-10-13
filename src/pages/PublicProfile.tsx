@@ -196,24 +196,9 @@ export default function PublicProfile() {
   }, [profile?.id]);
 
   const sendMessage = async () => {
-    if (!profile || !messageText.trim()) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast.error('Please sign in to message users');
-      return;
-    }
-    if (user.id === profile.id) {
-      toast.error('You cannot message yourself');
-      return;
-    }
-    const { error } = await supabase
-      .from('direct_messages')
-      .insert({ sender_id: user.id, recipient_id: profile.id, content: messageText.trim() });
-    if (error) toast.error('Failed to send'); else {
-      toast.success('Message sent');
-      setMessageText("");
-      setMessageOpen(false);
-    }
+    // Direct messaging feature coming soon
+    toast.info('Direct messaging feature coming soon!');
+    setMessageOpen(false);
   };
 
   const toggleFollow = async () => {
