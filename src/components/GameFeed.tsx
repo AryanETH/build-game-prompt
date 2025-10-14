@@ -424,90 +424,89 @@ Please generate a new playable game that takes inspiration from the original but
     );
   }
 
-  // TikTok-style vertical feed of 9:16 posts
+  // Mobile: TikTok-style vertical feed
+  // Desktop: Responsive grid of scrollable thumbnails filling screen width/height
   return (
     <>
-    <div className="relative h-[calc(100vh-8rem)] md:h-screen w-full overflow-hidden">
+    {/* Mobile vertical feed */}
+    <div className="relative h-[calc(100vh-8rem)] w-full overflow-hidden md:hidden">
       <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar" style={{ scrollSnapType: 'y mandatory' }}>
         {hydratedGames?.map((game) => (
           <div key={game.id} className="h-full w-full snap-start snap-always flex items-center justify-center">
-            <div className="relative w-full max-w-[420px] md:max-w-[600px] h-[90vh] md:h-[90vh]">
+            <div className="relative w-full max-w-[420px] h-[90vh]">
               <Card className="relative h-full overflow-hidden rounded-2xl border border-border/60">
-              <img
-                src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
-                alt={game.title}
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                <img
+                  src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
+                  alt={game.title}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
-              {/* Top-right Remix button - enhanced elegant style */}
-              <div className="absolute top-4 right-4 z-10">
-                <button
-                  className="px-4 py-2 rounded-full bg-gradient-to-r from-accent/90 to-accent hover:from-accent hover:to-accent/90 text-accent-foreground backdrop-blur-md text-sm font-medium flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200"
-                  onClick={() => setRemixFor(game)}
-                >
-                  <Sparkles className="w-4 h-4" strokeWidth={1.5} />
-                  Remix
-                </button>
-              </div>
-
-              {/* Bottom-left info with profile photo */}
-              <div className="absolute left-0 right-20 bottom-32 md:bottom-24 p-4 text-white">
-                <div className="flex items-center gap-2 mb-1">
-                  <button 
-                    className="flex items-center gap-2"
-                    onClick={() => game.creator?.username && navigate(`/u/${game.creator.username}`)}
-                  >
-                    <Avatar className="w-8 h-8 border-2 border-white/30">
-                      <AvatarImage src={game.creator?.avatar_url || undefined} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                        {game.creator?.username?.[0]?.toUpperCase() || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm font-medium opacity-90">@{game.creator?.username || 'creator'}</span>
-                  </button>
-                </div>
-                <div className="text-lg font-bold leading-tight">{game.title}</div>
-                <div className="text-xs text-white/80 line-clamp-2">{game.description || ''}</div>
-              </div>
-
-              {/* Action bar with enhanced elegant icons */}
-              <div className="absolute bottom-44 md:bottom-32 right-0 p-3 flex flex-col gap-4 items-center text-white">
-                <div className="flex flex-col items-center gap-1">
+                <div className="absolute top-4 right-4 z-10">
                   <button
-                    aria-label="Like"
-                    className={`h-12 w-12 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg ${likedGames.has(game.id) ? 'text-red-500' : ''}`}
-                    onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
+                    className="px-4 py-2 rounded-full bg-gradient-to-r from-accent/90 to-accent hover:from-accent hover:to-accent/90 text-accent-foreground backdrop-blur-md text-sm font-medium flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200"
+                    onClick={() => setRemixFor(game)}
                   >
-                    <Heart className={`h-6 w-6 ${likedGames.has(game.id) ? 'fill-current' : ''}`} strokeWidth={1.5} />
+                    <Sparkles className="w-4 h-4" strokeWidth={1.5} />
+                    Remix
                   </button>
-                  <span className="text-xs font-medium text-white/90 drop-shadow-lg">{game.likes_count ?? 0}</span>
                 </div>
-                
-                <button
-                  aria-label="Comments"
-                  className="h-12 w-12 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
-                  onClick={() => setCommentsOpenFor(game)}
-                >
-                  <MessageCircle className="h-6 w-6" strokeWidth={1.5} />
-                </button>
-                
-                <button
-                  aria-label="Share"
-                  className="h-12 w-12 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
-                  onClick={() => handleShare(game)}
-                >
-                  <Share2 className="h-6 w-6" strokeWidth={1.5} />
-                </button>
-                
-                <button
-                  aria-label="Play"
-                  className="h-12 w-12 rounded-full flex items-center justify-center bg-primary/90 backdrop-blur-md text-primary-foreground hover:bg-primary hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg shadow-primary/50"
-                  onClick={() => handlePlay(game)}
-                >
-                  <Play className="h-6 w-6 fill-current" strokeWidth={1.5} />
-                </button>
-              </div>
+
+                <div className="absolute left-0 right-20 bottom-24 p-4 text-white">
+                  <div className="flex items-center gap-2 mb-1">
+                    <button 
+                      className="flex items-center gap-2"
+                      onClick={() => game.creator?.username && navigate(`/u/${game.creator.username}`)}
+                    >
+                      <Avatar className="w-8 h-8 border-2 border-white/30">
+                        <AvatarImage src={game.creator?.avatar_url || undefined} />
+                        <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                          {game.creator?.username?.[0]?.toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm font-medium opacity-90">@{game.creator?.username || 'creator'}</span>
+                    </button>
+                  </div>
+                  <div className="text-lg font-bold leading-tight">{game.title}</div>
+                  <div className="text-xs text-white/80 line-clamp-2">{game.description || ''}</div>
+                </div>
+
+                <div className="absolute bottom-20 right-0 p-3 flex flex-col gap-4 items-center text-white">
+                  <div className="flex flex-col items-center gap-1">
+                    <button
+                      aria-label="Like"
+                      className={`h-12 w-12 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg ${likedGames.has(game.id) ? 'text-red-500' : ''}`}
+                      onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
+                    >
+                      <Heart className={`h-6 w-6 ${likedGames.has(game.id) ? 'fill-current' : ''}`} strokeWidth={1.5} />
+                    </button>
+                    <span className="text-xs font-medium text-white/90 drop-shadow-lg">{game.likes_count ?? 0}</span>
+                  </div>
+                  
+                  <button
+                    aria-label="Comments"
+                    className="h-12 w-12 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
+                    onClick={() => setCommentsOpenFor(game)}
+                  >
+                    <MessageCircle className="h-6 w-6" strokeWidth={1.5} />
+                  </button>
+                  
+                  <button
+                    aria-label="Share"
+                    className="h-12 w-12 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
+                    onClick={() => handleShare(game)}
+                  >
+                    <Share2 className="h-6 w-6" strokeWidth={1.5} />
+                  </button>
+                  
+                  <button
+                    aria-label="Play"
+                    className="h-12 w-12 rounded-full flex items-center justify-center bg-primary/90 backdrop-blur-md text-primary-foreground hover:bg-primary hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg shadow-primary/50"
+                    onClick={() => handlePlay(game)}
+                  >
+                    <Play className="h-6 w-6 fill-current" strokeWidth={1.5} />
+                  </button>
+                </div>
               </Card>
             </div>
           </div>
@@ -521,9 +520,78 @@ Please generate a new playable game that takes inspiration from the original but
             </div>
           </div>
         )}
-        <div className="h-full flex items-center justify-center snap-start snap-always">
+        <div ref={sentinelRef} className="h-24 flex items-center justify-center">
           {isFetchingNextPage && <Loader2 className="h-6 w-6 animate-spin text-primary" />}
         </div>
+      </div>
+    </div>
+
+    {/* Desktop responsive grid */}
+    <div className="hidden md:block relative w-full md:h-[calc(100vh-4rem)] overflow-hidden">
+      <div className="h-full overflow-y-auto no-scrollbar p-4">
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+          {hydratedGames?.map((game) => (
+            <div key={game.id} className="group relative aspect-[9/16] rounded-xl overflow-hidden border border-border/60 hover:border-primary/60 transition-all cursor-pointer"
+                 onClick={() => handlePlay(game)}>
+              <img
+                src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
+                alt={game.title}
+                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-x-0 bottom-0 p-3 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-2 mb-1">
+                  <Avatar className="w-6 h-6 border border-white/30">
+                    <AvatarImage src={game.creator?.avatar_url || undefined} />
+                    <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
+                      {game.creator?.username?.[0]?.toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-xs opacity-90">@{game.creator?.username || 'creator'}</span>
+                </div>
+                <div className="text-sm font-semibold leading-tight line-clamp-1">{game.title}</div>
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    aria-label="Like"
+                    onClick={(e) => { e.stopPropagation(); likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) }); }}
+                    className={`h-9 w-9 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 transition-all ${likedGames.has(game.id) ? 'text-red-500' : 'text-white'}`}
+                  >
+                    <Heart className={`h-4 w-4 ${likedGames.has(game.id) ? 'fill-current' : ''}`} strokeWidth={1.5} />
+                  </button>
+                  <button
+                    aria-label="Share"
+                    onClick={(e) => { e.stopPropagation(); handleShare(game); }}
+                    className="h-9 w-9 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 transition-all text-white"
+                  >
+                    <Share2 className="h-4 w-4" strokeWidth={1.5} />
+                  </button>
+                  <button
+                    aria-label="Comments"
+                    onClick={(e) => { e.stopPropagation(); setCommentsOpenFor(game); }}
+                    className="h-9 w-9 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 transition-all text-white"
+                  >
+                    <MessageCircle className="h-4 w-4" strokeWidth={1.5} />
+                  </button>
+                  <div className="ml-auto flex items-center gap-2 text-xs text-white/90">
+                    <span className="flex items-center gap-1"><Heart className="h-3 w-3" />{game.likes_count ?? 0}</span>
+                    <span className="flex items-center gap-1"><Play className="h-3 w-3" />{game.plays_count ?? 0}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div ref={sentinelRef} className="h-24 flex items-center justify-center">
+          {isFetchingNextPage && <Loader2 className="h-6 w-6 animate-spin text-primary" />}
+        </div>
+        {games?.length === 0 && (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center">
+              <h3 className="text-2xl font-bold mb-2">No games yet</h3>
+              <p className="text-muted-foreground">Be the first to create a game!</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
 
