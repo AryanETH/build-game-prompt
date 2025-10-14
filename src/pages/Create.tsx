@@ -22,7 +22,6 @@ export default function Create() {
   const [generatedCode, setGeneratedCode] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState<string>("");
   const [coverUrl, setCoverUrl] = useState<string>("");
-  const [soundUrl, setSoundUrl] = useState<string>("");
   const [isMultiplayer, setIsMultiplayer] = useState(false);
   const [multiplayerType, setMultiplayerType] = useState<string>("co-op");
   const [graphicsQuality, setGraphicsQuality] = useState<string>("realistic");
@@ -39,7 +38,7 @@ export default function Create() {
   const [imageGenerationPrompt, setImageGenerationPrompt] = useState("");
   const [generatedInterfaceImage, setGeneratedInterfaceImage] = useState<string>("");
 
-  // Sound upload via file removed per product direction; keep optional URL only
+  // Sound URL input removed per product direction; audio may be auto-generated
 
   const handleGenerateInterfaceImage = async () => {
     if (!imageGenerationPrompt.trim()) {
@@ -237,8 +236,8 @@ export default function Create() {
         console.log("Location not available, proceeding without it");
       }
 
-      // Auto-generate sound if not provided
-      let finalSoundUrl = soundUrl;
+      // Auto-generate sound
+      let finalSoundUrl = "";
       if (!finalSoundUrl) {
         toast.info("Generating background music...");
         try {
@@ -481,19 +480,7 @@ export default function Create() {
                   />
                 </div>
 
-                {/* Custom Sound - button removed per request; keep optional URL */}
-                <div className="grid gap-2">
-                  <Label htmlFor="soundUrl">Custom Sound URL (optional)</Label>
-                  <Input
-                    id="soundUrl"
-                    value={soundUrl}
-                    onChange={(e) => setSoundUrl(e.target.value)}
-                    placeholder="Paste an audio URL (mp3, wav, ogg)"
-                  />
-                  {soundUrl && (
-                    <audio src={soundUrl} controls className="mt-2 w-full" />
-                  )}
-                </div>
+                {/* Sound URL input removed */}
 
                 <Button
                   onClick={handleGenerate}
