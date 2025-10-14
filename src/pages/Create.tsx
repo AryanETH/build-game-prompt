@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Sparkles, Globe, Lock, Eye, Pencil } from "lucide-react";
+import { Loader2, Sparkles, Globe, Lock, Eye, Pencil, Upload, Image as ImageIcon } from "lucide-react";
 import { logActivity } from "@/lib/activityLogger";
 
 export default function Create() {
@@ -30,12 +30,59 @@ export default function Create() {
   const [previewOpen, setPreviewOpen] = useState<boolean>(false);
   const promptRef = useRef<HTMLTextAreaElement | null>(null);
   const navigate = useNavigate();
+  
+  // Image Prompt feature
+  const [useImagePrompt, setUseImagePrompt] = useState(false);
+  const [imagePromptMode, setImagePromptMode] = useState<"upload" | "generate">("upload");
+  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
+  const [uploadedImagePreview, setUploadedImagePreview] = useState<string>("");
+  const [imageGenerationPrompt, setImageGenerationPrompt] = useState("");
+  const [generatedInterfaceImage, setGeneratedInterfaceImage] = useState<string>("");
 
   // Sound upload via file removed per product direction; keep optional URL only
 
+  const handleGenerateInterfaceImage = async () => {
+    if (!imageGenerationPrompt.trim()) {
+      toast.error("Please enter an image description");
+      return;
+    }
+    
+    try {
+      toast.info("Generating interface image...");
+      const { data, error } = await supabase.functions.invoke('generate-interface-image', {
+        body: { prompt: imageGenerationPrompt }
+      });
+      
+      if (error) throw error;
+      setGeneratedInterfaceImage(data.imageUrl);
+      toast.success("Interface image generated!");
+    } catch (error: any) {
+      console.error('Image generation error:', error);
+      toast.error("Failed to generate image");
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadedImage(file);
+      setUploadedImagePreview(URL.createObjectURL(file));
+    }
+  };
+
   const handleGenerate = async () => {
-    if (!prompt.trim()) {
+    if (!useImagePrompt && !prompt.trim()) {
       toast.error("Please enter a game prompt");
+      return;
+    }
+    
+    if (useImagePrompt && imagePromptMode === "upload" && !uploadedImage) {
+      toast.error("Please upload an interface image");
+      return;
+    }
+    
+    if (useImagePrompt && imagePromptMode === "generate" && !generatedInterfaceImage) {
+      toast.error("Please generate an interface image first");
       return;
     }
 
@@ -45,14 +92,32 @@ export default function Create() {
     await logActivity({ type: 'game_creating' });
     
     try {
+      let finalPrompt = prompt;
+      
+      // If using image prompt, analyze the image and create prompt
+      if (useImagePrompt) {
+        const imageToAnalyze = imagePromptMode === "upload" 
+          ? uploadedImagePreview 
+          : generatedInterfaceImage;
+          
+        toast.info("Analyzing interface design...");
+        const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-interface', {
+          body: { imageUrl: imageToAnalyze }
+        });
+        
+        if (analysisError) throw analysisError;
+        finalPrompt = `${prompt}\n\nBased on this UI/UX design: ${analysisData.analysis}`;
+      }
+      
       // Generate game code
       const { data, error } = await supabase.functions.invoke('generate-game', {
         body: { 
-          prompt,
+          prompt: finalPrompt,
           options: {
             isMultiplayer,
             multiplayerType,
             graphicsQuality,
+            isInterfaceDesign: useImagePrompt
           }
         },
       });
@@ -256,13 +321,92 @@ export default function Create() {
             {/* Input Panel */}
             <Card className="gradient-card border-border/50 p-6">
               <div className="space-y-4">
+                {/* Image Prompt Toggle */}
+                <div className="flex items-center justify-between p-4 rounded-lg bg-accent/10 border border-accent/20">
+                  <div className="flex items-center gap-3">
+                    <ImageIcon className="h-5 w-5 text-accent" />
+                    <div>
+                      <p className="font-medium">Image Prompt</p>
+                      <p className="text-xs text-muted-foreground">Generate from UI design</p>
+                    </div>
+                  </div>
+                  <Switch checked={useImagePrompt} onCheckedChange={setUseImagePrompt} />
+                </div>
+
+                {useImagePrompt && (
+                  <div className="space-y-4 p-4 rounded-lg bg-muted/50">
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={imagePromptMode === "upload" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setImagePromptMode("upload")}
+                        className="flex-1"
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={imagePromptMode === "generate" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setImagePromptMode("generate")}
+                        className="flex-1"
+                      >
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Generate
+                      </Button>
+                    </div>
+
+                    {imagePromptMode === "upload" ? (
+                      <div>
+                        <Label htmlFor="imageUpload">Upload Interface Image</Label>
+                        <Input
+                          id="imageUpload"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="mt-2"
+                        />
+                        {uploadedImagePreview && (
+                          <img src={uploadedImagePreview} alt="Preview" className="mt-2 rounded-lg max-h-48 object-contain" />
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <Label htmlFor="imageGenPrompt">Describe Interface</Label>
+                        <Textarea
+                          id="imageGenPrompt"
+                          value={imageGenerationPrompt}
+                          onChange={(e) => setImageGenerationPrompt(e.target.value)}
+                          placeholder="e.g., 'Modern mobile game UI with colorful buttons and score display'"
+                          className="mt-2"
+                        />
+                        <Button
+                          type="button"
+                          onClick={handleGenerateInterfaceImage}
+                          variant="secondary"
+                          size="sm"
+                          className="mt-2 w-full"
+                        >
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Generate Interface
+                        </Button>
+                        {generatedInterfaceImage && (
+                          <img src={generatedInterfaceImage} alt="Generated" className="mt-2 rounded-lg max-h-48 object-contain" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div>
                   <Label htmlFor="prompt">Game Prompt</Label>
                   <Textarea
                     id="prompt"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="e.g., 'A space shooter where you dodge asteroids and collect stars'"
+                    placeholder={useImagePrompt ? "Additional instructions (optional)" : "e.g., 'A space shooter where you dodge asteroids and collect stars'"}
                     className="min-h-32 mt-2"
                     disabled={isGenerating}
                     ref={promptRef}

@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { GamePlayer } from "@/components/GamePlayer";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { logActivity } from "@/lib/activityLogger";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Profile() {
   const [profile, setProfile] = useState<any>(null);
@@ -391,10 +392,11 @@ export default function Profile() {
         </Dialog>
 
         <Tabs defaultValue="my-games" className="mt-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="my-games">My Games</TabsTrigger>
             <TabsTrigger value="remixes">Remixes</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="my-games">
@@ -472,6 +474,21 @@ export default function Profile() {
 
           <TabsContent value="activity">
             <ActivityFeed />
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Settings</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Theme</p>
+                    <p className="text-sm text-muted-foreground">Switch between light and dark mode</p>
+                  </div>
+                  <ThemeToggle />
+                </div>
+              </div>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

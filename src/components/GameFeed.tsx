@@ -274,8 +274,25 @@ export const GameFeed = () => {
     }
     try {
       setIsRemixing(true);
+      
+      // Enhanced prompt with original game context for better AI generation
+      const enhancedPrompt = `Create a remix of this game:
+Original Title: ${remixFor.title}
+Original Description: ${remixFor.description}
+
+Remix Instructions: ${remixPrompt}
+
+Please generate a new playable game that takes inspiration from the original but applies the remix instructions. Keep the core game mechanics similar but modify as requested.`;
+      
       const { data, error } = await supabase.functions.invoke('generate-game', {
-        body: { prompt: remixPrompt, options: {} },
+        body: { 
+          prompt: enhancedPrompt, 
+          options: {
+            isMultiplayer: remixFor.is_multiplayer || false,
+            multiplayerType: remixFor.multiplayer_type || 'co-op',
+            graphicsQuality: remixFor.graphics_quality || 'realistic',
+          }
+        },
       });
       if (error) throw error;
       const gameCode: string = data.gameCode;
@@ -283,12 +300,12 @@ export const GameFeed = () => {
       const newTitle = remixTitle.trim() || `Remix: ${remixFor.title}`;
       const payload: any = {
         title: newTitle,
-        description: `Remix of ${remixFor.title}${remixFor.creator?.username ? ` by @${remixFor.creator.username}` : ''}`,
+        description: `Remix of ${remixFor.title}${remixFor.creator?.username ? ` by @${remixFor.creator.username}` : ''}: ${remixPrompt.slice(0, 100)}`,
         game_code: gameCode,
         creator_id: user.id,
         thumbnail_url: remixFor.thumbnail_url || null,
         cover_url: remixFor.cover_url || remixFor.thumbnail_url || null,
-        sound_url: null,
+        sound_url: remixFor.sound_url || null,
         original_game_id: remixFor.id,
         country: null,
         city: null,
@@ -423,13 +440,13 @@ export const GameFeed = () => {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
-              {/* Top-right Remix button */}
+              {/* Top-right Remix button - enhanced elegant style */}
               <div className="absolute top-4 right-4 z-10">
                 <button
-                  className="px-3 py-1.5 rounded-full bg-accent/90 hover:bg-accent text-accent-foreground backdrop-blur-sm text-sm font-medium flex items-center gap-1"
+                  className="px-4 py-2 rounded-full bg-gradient-to-r from-accent/90 to-accent hover:from-accent hover:to-accent/90 text-accent-foreground backdrop-blur-md text-sm font-medium flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200"
                   onClick={() => setRemixFor(game)}
                 >
-                  <Sparkles className="w-3 h-3" />
+                  <Sparkles className="w-4 h-4" strokeWidth={1.5} />
                   Remix
                 </button>
               </div>
@@ -454,36 +471,41 @@ export const GameFeed = () => {
                 <div className="text-xs text-white/80 line-clamp-2">{game.description || ''}</div>
               </div>
 
-              {/* Action bar */}
-              <div className="absolute bottom-44 md:bottom-32 right-0 p-3 flex flex-col gap-3 items-center text-white">
-                <button
-                  aria-label="Like"
-                  className={`h-10 w-10 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 transition ${likedGames.has(game.id) ? 'text-red-500' : ''}`}
-                  onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
-                >
-                  <Heart className="h-5 w-5" />
-                  <span className="text-[10px] mt-1">{game.likes_count ?? 0}</span>
-                </button>
+              {/* Action bar with enhanced elegant icons */}
+              <div className="absolute bottom-44 md:bottom-32 right-0 p-3 flex flex-col gap-4 items-center text-white">
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    aria-label="Like"
+                    className={`h-12 w-12 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg ${likedGames.has(game.id) ? 'text-red-500' : ''}`}
+                    onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
+                  >
+                    <Heart className={`h-6 w-6 ${likedGames.has(game.id) ? 'fill-current' : ''}`} strokeWidth={1.5} />
+                  </button>
+                  <span className="text-xs font-medium text-white/90 drop-shadow-lg">{game.likes_count ?? 0}</span>
+                </div>
+                
                 <button
                   aria-label="Comments"
-                  className="h-10 w-10 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 transition"
+                  className="h-12 w-12 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
                   onClick={() => setCommentsOpenFor(game)}
                 >
-                  <MessageCircle className="h-5 w-5" />
+                  <MessageCircle className="h-6 w-6" strokeWidth={1.5} />
                 </button>
+                
                 <button
                   aria-label="Share"
-                  className="h-10 w-10 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 transition"
+                  className="h-12 w-12 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
                   onClick={() => handleShare(game)}
                 >
-                  <Share2 className="h-5 w-5" />
+                  <Share2 className="h-6 w-6" strokeWidth={1.5} />
                 </button>
+                
                 <button
                   aria-label="Play"
-                  className="mt-1 h-10 w-10 rounded-full flex items-center justify-center bg-primary text-primary-foreground hover:opacity-90 transition"
+                  className="h-12 w-12 rounded-full flex items-center justify-center bg-primary/90 backdrop-blur-md text-primary-foreground hover:bg-primary hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg shadow-primary/50"
                   onClick={() => handlePlay(game)}
                 >
-                  <Play className="h-5 w-5" />
+                  <Play className="h-6 w-6 fill-current" strokeWidth={1.5} />
                 </button>
               </div>
               </Card>
