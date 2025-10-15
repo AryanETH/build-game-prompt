@@ -12,6 +12,7 @@ import Profile from "./pages/Profile";
 import PublicProfile from "./pages/PublicProfile";
 import NotFound from "./pages/NotFound";
 import { LocationProvider } from "./context/LocationContext";
+import RocketCursor from "@/components/RocketCursor";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <LocationProvider>
+          <RocketCursor />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
