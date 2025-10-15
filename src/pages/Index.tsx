@@ -1,14 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useLocationContext } from "@/context/LocationContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Play, Users, Rocket, Gamepad2, Zap } from "lucide-react";
+import { Sparkles, Play, Users, Gamepad2, Zap } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
   const { requestCityFromBrowser } = useLocationContext();
-  const [floatingIcons, setFloatingIcons] = useState<Array<{ id: number; x: number; y: number; icon: string }>>([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -17,37 +16,13 @@ const Index = () => {
       }
     });
     requestCityFromBrowser();
-
-    // Generate floating game icons for background
-    const icons = ['🎮', '🎯', '🚀', '⚡', '🎨', '🌟', '💫', '🎪'];
-    const newFloatingIcons = Array.from({ length: 15 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      icon: icons[Math.floor(Math.random() * icons.length)]
-    }));
-    setFloatingIcons(newFloatingIcons);
   }, [navigate]);
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Animated background */}
+      {/* Background without floating emojis */}
       <div className="absolute inset-0 gradient-hero">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(168,85,247,0.15),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(59,130,246,0.15),transparent_50%)]" />
-        {floatingIcons.map((item) => (
-          <div
-            key={item.id}
-            className="absolute text-4xl opacity-10 animate-pulse"
-            style={{
-              left: `${item.x}%`,
-              top: `${item.y}%`,
-              animation: `float ${5 + Math.random() * 5}s ease-in-out infinite`,
-              animationDelay: `${Math.random() * 2}s`
-            }}
-          >
-            {item.icon}
-          </div>
-        ))}
       </div>
 
       {/* Hero Section */}

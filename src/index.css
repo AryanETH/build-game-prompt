@@ -121,6 +121,11 @@ All colors MUST be HSL.
     background: hsl(var(--background));
   }
   
+  /* Hide native cursor when rocket cursor is active on pointer devices */
+  .rocket-cursor-enabled body {
+    cursor: none;
+  }
+  
   /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 8px;
@@ -175,4 +180,9 @@ All colors MUST be HSL.
     -ms-overflow-style: none; /* IE and Edge */
     scrollbar-width: none; /* Firefox */
   }
+}
+
+/* Custom rocket cursor - hide native cursor on pointer devices */
+@media (pointer: fine) {
+  html, body, * { cursor: none !important; }
 }
