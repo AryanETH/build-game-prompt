@@ -185,7 +185,9 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           followers_count: number | null
+          followers_list: string[] | null
           following_count: number | null
+          following_list: string[] | null
           id: string
           level: number | null
           total_likes: number | null
@@ -197,7 +199,9 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           followers_count?: number | null
+          followers_list?: string[] | null
           following_count?: number | null
+          following_list?: string[] | null
           id: string
           level?: number | null
           total_likes?: number | null
@@ -209,7 +213,9 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           followers_count?: number | null
+          followers_list?: string[] | null
           following_count?: number | null
+          following_list?: string[] | null
           id?: string
           level?: number | null
           total_likes?: number | null
