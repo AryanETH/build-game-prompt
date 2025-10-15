@@ -15,6 +15,7 @@ import { ActivityFeed } from "@/components/ActivityFeed";
 import { logActivity } from "@/lib/activityLogger";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Switch } from "@/components/ui/switch";
+import { Dialog as UIDialog, DialogContent as UIDialogContent, DialogHeader as UIDialogHeader, DialogTitle as UIDialogTitle } from "@/components/ui/dialog";
 
 export default function Profile() {
   const [profile, setProfile] = useState<any>(null);
@@ -29,6 +30,10 @@ export default function Profile() {
   const [selectedGame, setSelectedGame] = useState<any>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [followersOpen, setFollowersOpen] = useState(false);
+  const [followingOpen, setFollowingOpen] = useState(false);
+  const [followers, setFollowers] = useState<any[]>([]);
+  const [following, setFollowing] = useState<any[]>([]);
 
   // Game-related settings (persisted locally)
   const [autoplayFeed, setAutoplayFeed] = useState<boolean>(true);
@@ -148,6 +153,24 @@ export default function Profile() {
       if (data?.username) setFormUsername(data.username);
       if (data?.avatar_url) setPreviewUrl(data.avatar_url);
     }
+  };
+
+  const loadFollowers = async () => {
+    if (!profile?.id) return;
+    const { data, error } = await supabase
+      .from('follows')
+      .select('follower_id, follower:profiles!follows_follower_id_fkey(id, username, avatar_url)')
+      .eq('following_id', profile.id);
+    if (!error) setFollowers((data || []).map((r: any) => r.follower).filter(Boolean));
+  };
+
+  const loadFollowing = async () => {
+    if (!profile?.id) return;
+    const { data, error } = await supabase
+      .from('follows')
+      .select('following_id, following:profiles!follows_following_id_fkey(id, username, avatar_url)')
+      .eq('follower_id', profile.id);
+    if (!error) setFollowing((data || []).map((r: any) => r.following).filter(Boolean));
   };
 
   const fetchUserGames = async () => {
@@ -341,14 +364,22 @@ export default function Profile() {
               </div>
               
               <div className="flex justify-center gap-8 mb-4 text-sm">
-                <div className="text-center">
+                <button
+                  type="button"
+                  className="text-center hover:opacity-80"
+                  onClick={async () => { await loadFollowers(); setFollowersOpen(true); }}
+                >
                   <div className="font-bold text-xl">{profile?.followers_count || 0}</div>
                   <div className="text-muted-foreground">Followers</div>
-                </div>
-                <div className="text-center">
+                </button>
+                <button
+                  type="button"
+                  className="text-center hover:opacity-80"
+                  onClick={async () => { await loadFollowing(); setFollowingOpen(true); }}
+                >
                   <div className="font-bold text-xl">{profile?.following_count || 0}</div>
                   <div className="text-muted-foreground">Following</div>
-                </div>
+                </button>
                 <div className="text-center">
                   <div className="font-bold text-xl">{userGames.length}</div>
                   <div className="text-muted-foreground">Games</div>
@@ -569,6 +600,73 @@ export default function Profile() {
           </TabsContent>
         </Tabs>
       </div>
+      <FollowersFollowingDialogs
+        followersOpen={followersOpen}
+        setFollowersOpen={setFollowersOpen}
+        followingOpen={followingOpen}
+        setFollowingOpen={setFollowingOpen}
+        followers={followers}
+        following={following}
+      />
     </div>
+  );
+}
+
+// Followers/Following dialogs
+export function FollowersFollowingDialogs({
+  followersOpen,
+  setFollowersOpen,
+  followingOpen,
+  setFollowingOpen,
+  followers,
+  following,
+}: any) {
+  return (
+    <>
+      <UIDialog open={followersOpen} onOpenChange={setFollowersOpen}>
+        <UIDialogContent className="sm:max-w-[400px]">
+          <UIDialogHeader>
+            <UIDialogTitle>Followers</UIDialogTitle>
+          </UIDialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1">
+            {followers.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No followers yet.</div>
+            ) : (
+              followers.map((u: any) => (
+                <div key={u.id} className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={u.avatar_url || undefined} />
+                    <AvatarFallback>{u.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+                  </Avatar>
+                  <div className="text-sm font-medium">@{u.username}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </UIDialogContent>
+      </UIDialog>
+      <UIDialog open={followingOpen} onOpenChange={setFollowingOpen}>
+        <UIDialogContent className="sm:max-w-[400px]">
+          <UIDialogHeader>
+            <UIDialogTitle>Following</UIDialogTitle>
+          </UIDialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1">
+            {following.length === 0 ? (
+              <div className="text-sm text-muted-foreground">Not following anyone.</div>
+            ) : (
+              following.map((u: any) => (
+                <div key={u.id} className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={u.avatar_url || undefined} />
+                    <AvatarFallback>{u.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+                  </Avatar>
+                  <div className="text-sm font-medium">@{u.username}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </UIDialogContent>
+      </UIDialog>
+    </>
   );
 }

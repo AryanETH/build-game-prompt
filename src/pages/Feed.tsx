@@ -11,7 +11,7 @@ export default function Feed() {
 
   return (
     <div className="min-h-screen pb-16 md:pb-0 md:pt-16">
-      <Navigation />
+      <Navigation hideBrand />
       <div className="w-full md:pt-0">
         <FeedTabs 
           playContent={<GameFeed />}

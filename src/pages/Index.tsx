@@ -18,6 +18,47 @@ const Index = () => {
     requestCityFromBrowser();
   }, [navigate]);
 
+  // Desktop-only dynamic emoji cursor for landing page sessions
+  useEffect(() => {
+    // Only enable on devices with a fine pointer (desktop/laptop)
+    const isDesktopPointer = window.matchMedia && window.matchMedia('(pointer: fine)').matches;
+    if (!isDesktopPointer) return;
+
+    const EMOJIS = ["🎮", "🕹️", "💻", "👾", "🔥", "⚡", "🧠", "💀", "🏆", "🎧", "⭐", "🚀"] as const;
+
+    const pickEmojiForSession = (): string => {
+      const key = 'playgen:emojiCursor';
+      const existing = sessionStorage.getItem(key);
+      if (existing) return existing;
+      const chosen = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+      sessionStorage.setItem(key, chosen);
+      return chosen;
+    };
+
+    const emoji = pickEmojiForSession();
+
+    // Render emoji to a canvas and use as cursor
+    const size = 64; // hi-dpi friendly
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, size, size);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `${Math.floor(size * 0.75)}px system-ui, Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji`;
+      ctx.fillText(emoji, size / 2, size / 2);
+      const url = canvas.toDataURL('image/png');
+      const previous = document.body.style.cursor;
+      // Hotspot roughly centered
+      document.body.style.cursor = `url(${url}) ${Math.floor(size / 2)} ${Math.floor(size / 2)}, auto`;
+      return () => {
+        document.body.style.cursor = previous || '';
+      };
+    }
+  }, []);
+
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Background without floating emojis */}

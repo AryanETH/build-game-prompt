@@ -133,6 +133,8 @@ export type Database = {
           longitude: number | null
           plays_count: number | null
           sound_url: string | null
+          control_mapping?: Json | null
+          sound_effects?: Json | null
           thumbnail_url: string | null
           title: string
         }
@@ -150,6 +152,8 @@ export type Database = {
           longitude?: number | null
           plays_count?: number | null
           sound_url?: string | null
+          control_mapping?: Json | null
+          sound_effects?: Json | null
           thumbnail_url?: string | null
           title: string
         }
@@ -167,6 +171,8 @@ export type Database = {
           longitude?: number | null
           plays_count?: number | null
           sound_url?: string | null
+          control_mapping?: Json | null
+          sound_effects?: Json | null
           thumbnail_url?: string | null
           title?: string
         }
@@ -194,6 +200,7 @@ export type Database = {
           total_plays: number | null
           username: string
           xp: number | null
+          emoji_cursor?: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -208,6 +215,7 @@ export type Database = {
           total_plays?: number | null
           username: string
           xp?: number | null
+          emoji_cursor?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -222,6 +230,7 @@ export type Database = {
           total_plays?: number | null
           username?: string
           xp?: number | null
+          emoji_cursor?: string | null
         }
         Relationships: []
       }
