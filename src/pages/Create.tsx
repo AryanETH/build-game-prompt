@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Sparkles, Globe, Lock, Eye, Pencil, Image as ImageIcon } from "lucide-react";
 import { logActivity } from "@/lib/activityLogger";
+import { playClick, playSuccess, playError } from "@/lib/sounds";
 
 export default function Create() {
   const [prompt, setPrompt] = useState("");
@@ -29,6 +30,7 @@ export default function Create() {
   const [previewOpen, setPreviewOpen] = useState<boolean>(false);
   const promptRef = useRef<HTMLTextAreaElement | null>(null);
   const navigate = useNavigate();
+  const [initializedFromRemix, setInitializedFromRemix] = useState(false);
   
   // Image Prompt feature (upload removed, only AI generation)
   const [useImagePrompt, setUseImagePrompt] = useState(false);
@@ -36,6 +38,27 @@ export default function Create() {
   const [generatedInterfaceImage, setGeneratedInterfaceImage] = useState<string>("");
 
   // Sound URL input removed per product direction; audio may be auto-generated
+  // If arriving via Remix, load base game code for editing
+  useEffect(() => {
+    if (initializedFromRemix) return;
+    const params = new URLSearchParams(window.location.search);
+    const remixId = params.get('remix');
+    const prefillTitle = params.get('title');
+    const prefillPrompt = params.get('prompt');
+    if (!remixId) return;
+    (async () => {
+      const { data, error } = await supabase.from('games').select('*').eq('id', remixId).single();
+      if (error || !data) return;
+      setGeneratedCode(data.game_code || '');
+      setThumbnailUrl(data.thumbnail_url || '');
+      setCoverUrl(data.cover_url || data.thumbnail_url || '');
+      setTitle(prefillTitle || `Remix: ${data.title}`);
+      if (prefillPrompt) setPrompt(prefillPrompt);
+      setInitializedFromRemix(true);
+      toast.success('Loaded remix base. You can edit and publish.');
+    })();
+  }, [initializedFromRemix]);
+
 
   const handleGenerateInterfaceImage = async () => {
     if (!imageGenerationPrompt.trim()) {
@@ -59,6 +82,7 @@ export default function Create() {
   };
 
   const handleGenerate = async () => {
+    playClick();
     if (!useImagePrompt && !prompt.trim()) {
       toast.error("Please enter a game prompt");
       return;
@@ -105,8 +129,8 @@ export default function Create() {
 
       setGeneratedCode(data.gameCode);
 
-      // Generate AI thumbnail automatically
-      toast.info("Generating thumbnail...");
+      // Generate AI thumbnail automatically with strict 9:16
+      toast.info("Generating thumbnail (9:16)...");
       const thumbnailResponse = await supabase.functions.invoke('generate-thumbnail', { body: { prompt } });
       const autoThumb = thumbnailResponse.data?.thumbnailUrl || "/placeholder.svg";
       setThumbnailUrl(autoThumb);
@@ -121,6 +145,7 @@ export default function Create() {
       }
       
       toast.success("Game and thumbnail generated! Preview and publish when ready.");
+      playSuccess();
     } catch (error: any) {
       console.error('Generation error:', error);
       if (error.message?.includes('429')) {
@@ -130,6 +155,7 @@ export default function Create() {
       } else {
         toast.error("Failed to generate game. Please try again.");
       }
+      playError();
     } finally {
       setIsGenerating(false);
     }
@@ -181,6 +207,7 @@ export default function Create() {
   };
 
   const handlePublish = async () => {
+    playClick();
     if (!generatedCode || !title.trim()) {
       toast.error("Please generate a game and provide a title");
       return;
@@ -275,11 +302,13 @@ export default function Create() {
       }
 
       toast.success("Game published successfully!");
+      playSuccess();
       navigate("/feed");
     } catch (error: any) {
       console.error('Publish error:', error);
       const message = typeof error?.message === 'string' ? error.message : 'Failed to publish game';
       toast.error(message);
+      playError();
     }
   };
 

@@ -61,6 +61,13 @@ CRITICAL GENERATION RULES:
 - Games MUST have clear gameplay value and logical mechanics
 - Provide good user experience with intuitive controls
 
+MUST-HAVE MECHANICS & STRUCTURE:
+- Define a clear objective and win/lose conditions.
+- Include at least one visible controllable character or avatar.
+- Provide a start screen and a game over screen with restart.
+- Show controls overlay for 3 seconds at start (keyboard for desktop, on-screen for mobile).
+- Include basic sound effects via the WebAudio API (muted by default until user interaction) for actions like jump/shoot and game over.
+
 UI/UX DESIGN FOCUS:
 - Button placement: Bottom-center or bottom-corners for primary actions
 - Score/stats: Top-center or top-corners, always visible

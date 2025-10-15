@@ -33,7 +33,9 @@ serve(async (req) => {
           {
             role: 'user',
             content: `Create a vibrant, eye-catching portrait game thumbnail for: ${prompt}.
-Strictly output a 9:16 portrait image (aspect_ratio=9:16). The art should be colorful, gaming-style, with dynamic composition, readable focal subject, and bold UI elements reminiscent of modern game covers. High quality, professional look. No text watermarks.`
+Strictly output a 9:16 portrait image (aspect_ratio=9:16). The art should be colorful, gaming-style, with dynamic composition, readable focal subject, and bold UI elements reminiscent of modern game covers. High quality, professional look. No text watermarks.
+
+CRITICAL: Respect safe UI/content margins. Keep key content within center-safe area (~80% inner bounds) to avoid cropping on various devices. Ensure the main subject and important visual elements are not too close to edges.`
           }
         ],
         modalities: ['image', 'text'],

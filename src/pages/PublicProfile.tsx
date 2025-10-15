@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -32,6 +33,7 @@ interface GameRow {
 
 export default function PublicProfile() {
   const { username } = useParams();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [createdGames, setCreatedGames] = useState<GameRow[]>([]);
   const [remixedGames, setRemixedGames] = useState<GameRow[]>([]);
@@ -47,48 +49,12 @@ export default function PublicProfile() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Please sign in to remix games");
+        toast.error('Please sign in to remix');
         return;
       }
-
-      const { data: fullGame } = await supabase
-        .from('games')
-        .select('*')
-        .eq('id', game.id)
-        .single();
-
-      if (!fullGame) throw new Error("Game not found");
-
-      const { data, error } = await supabase.functions.invoke('generate-game', {
-        body: { 
-          prompt: remixPrompt.trim() || fullGame.description || `Remix of ${game.title}`,
-          enhance: false 
-        }
-      });
-
-      if (error) throw error;
-
-      const { data: musicData } = await supabase.functions.invoke('generate-music', {
-        body: { title: `Remix: ${game.title}` }
-      });
-
-      const { error: insertError } = await supabase.from('games').insert({
-        title: `Remix: ${game.title}`,
-        description: remixPrompt.trim() || fullGame.description,
-        game_code: data.gameCode,
-        creator_id: user.id,
-        thumbnail_url: game.thumbnail_url,
-        sound_url: musicData?.sound_url || null,
-        original_game_id: game.id
-      });
-
-      if (insertError) throw insertError;
-
-      toast.success("Game remixed successfully!");
-      setRemixPrompt("");
-    } catch (error: any) {
-      console.error('Error remixing game:', error);
-      toast.error(error.message || "Failed to remix game");
+      const params = new URLSearchParams({ remix: game.id, title: `Remix: ${game.title}` });
+      if (remixPrompt.trim()) params.set('prompt', remixPrompt.trim());
+      navigate(`/create?${params.toString()}`);
     } finally {
       setRemixingId(null);
     }
@@ -119,48 +85,7 @@ export default function PublicProfile() {
         .eq('creator_id', prof.id)
         .not('original_game_id', 'is', null)
         .order('created_at', { ascending: false });
-  const handleRemix = async (game: GameRow) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast.error('Please sign in to remix');
-      return;
-    }
-    if (!remixPrompt.trim()) {
-      toast.error('Enter a remix idea first');
-      return;
-    }
-    try {
-      setRemixingId(game.id);
-      const { data, error } = await supabase.functions.invoke('generate-game', {
-        body: { prompt: remixPrompt, options: {} },
-      });
-      if (error) throw error;
-      const gameCode: string = data.gameCode;
-      const insert = await supabase
-        .from('games')
-        .insert({
-          title: `Remix: ${game.title}`,
-          description: `Remix of ${game.title}${profile?.username ? ` by @${profile.username}` : ''}`,
-          game_code: gameCode,
-          creator_id: user.id,
-          thumbnail_url: game.thumbnail_url,
-          cover_url: game.cover_url || game.thumbnail_url,
-          sound_url: null,
-          original_game_id: game.id,
-          country: null,
-          city: null,
-        })
-        .select('id')
-        .single();
-      if (insert.error) throw insert.error;
-      toast.success('Remix published');
-      setRemixPrompt("");
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to remix');
-    } finally {
-      setRemixingId(null);
-    }
-  };
+  // removed duplicate handleRemix; navigation-based remixing is used
 
       setRemixedGames((remixed || []) as GameRow[]);
 

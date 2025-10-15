@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tansta
 import { supabase } from "@/integrations/supabase/client";
 import { GamePlayer } from "./GamePlayer";
 import { Loader2, Heart, MessageCircle, Share2, Play, Sparkles } from "lucide-react";
+import { playClick, playSuccess, playError } from "@/lib/sounds";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/activityLogger";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
@@ -217,6 +218,7 @@ export const GameFeed = () => {
   });
 
   const handlePlay = async (game: Game) => {
+    playClick();
     // Fetch full game data including game_code
     const { data: fullGame, error } = await supabase
       .from('games')
@@ -246,6 +248,7 @@ export const GameFeed = () => {
     const shareUrl = `${window.location.origin}?game=${game.id}`;
     navigator.clipboard.writeText(shareUrl);
     toast.success("Game link copied to clipboard!");
+    playSuccess();
   };
 
   // Realtime: refetch feed on any games change
@@ -266,68 +269,15 @@ export const GameFeed = () => {
   const [isRemixing, setIsRemixing] = useState(false);
 
   const handleSubmitRemix = async () => {
-    if (!remixFor || !remixPrompt.trim()) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast.error('Please sign in to remix games');
-      return;
-    }
-    try {
-      setIsRemixing(true);
-      
-      // Enhanced prompt with original game context for better AI generation
-      const enhancedPrompt = `Create a remix of this game:
-Original Title: ${remixFor.title}
-Original Description: ${remixFor.description}
-
-Remix Instructions: ${remixPrompt}
-
-Please generate a new playable game that takes inspiration from the original but applies the remix instructions. Keep the core game mechanics similar but modify as requested.`;
-      
-      const { data, error } = await supabase.functions.invoke('generate-game', {
-        body: { 
-          prompt: enhancedPrompt, 
-          options: {
-            isMultiplayer: remixFor.is_multiplayer || false,
-            multiplayerType: remixFor.multiplayer_type || 'co-op',
-            graphicsQuality: remixFor.graphics_quality || 'realistic',
-          }
-        },
-      });
-      if (error) throw error;
-      const gameCode: string = data.gameCode;
-
-      const newTitle = remixTitle.trim() || `Remix: ${remixFor.title}`;
-      const payload: any = {
-        title: newTitle,
-        description: `Remix of ${remixFor.title}${remixFor.creator?.username ? ` by @${remixFor.creator.username}` : ''}: ${remixPrompt.slice(0, 100)}`,
-        game_code: gameCode,
-        creator_id: user.id,
-        thumbnail_url: remixFor.thumbnail_url || null,
-        cover_url: remixFor.cover_url || remixFor.thumbnail_url || null,
-        sound_url: remixFor.sound_url || null,
-        original_game_id: remixFor.id,
-        country: null,
-        city: null,
-      };
-
-      const insert = await supabase
-        .from('games')
-        .insert(payload)
-        .select('id')
-        .single();
-      if (insert.error) throw insert.error;
-      setRemixFor(null);
-      setRemixPrompt("");
-      setRemixTitle("");
-      toast.success('Remix published!');
-      const newId = insert.data?.id as string;
-      if (newId) navigate(`/feed?game=${newId}`);
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to publish remix');
-    } finally {
-      setIsRemixing(false);
-    }
+    if (!remixFor) return;
+    const baseTitle = remixTitle.trim() || `Remix: ${remixFor.title}`;
+    const params = new URLSearchParams({ remix: remixFor.id, title: baseTitle });
+    if (remixPrompt.trim()) params.set('prompt', remixPrompt.trim());
+    setRemixFor(null);
+    setRemixPrompt("");
+    setRemixTitle("");
+    playClick();
+    navigate(`/create?${params.toString()}`);
   };
 
   // Auto-open a game if query param ?game=id is present
@@ -525,74 +475,6 @@ Please generate a new playable game that takes inspiration from the original but
       </div>
     </div>
 
-    {/* Desktop responsive grid */}
-    <div className="hidden md:block relative w-full md:h-[calc(100vh-4rem)] overflow-hidden">
-      <div className="h-full overflow-y-auto no-scrollbar p-4">
-        <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-          {hydratedGames?.map((game) => (
-            <div key={game.id} className="group relative aspect-[9/16] rounded-xl overflow-hidden border border-border/60 hover:border-primary/60 transition-all cursor-pointer"
-                 onClick={() => handlePlay(game)}>
-              <img
-                src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
-                alt={game.title}
-                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="absolute inset-x-0 bottom-0 p-3 text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="flex items-center gap-2 mb-1">
-                  <Avatar className="w-6 h-6 border border-white/30">
-                    <AvatarImage src={game.creator?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
-                      {game.creator?.username?.[0]?.toUpperCase() || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs opacity-90">@{game.creator?.username || 'creator'}</span>
-                </div>
-                <div className="text-sm font-semibold leading-tight line-clamp-1">{game.title}</div>
-                <div className="mt-2 flex items-center gap-2">
-                  <button
-                    aria-label="Like"
-                    onClick={(e) => { e.stopPropagation(); likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) }); }}
-                    className={`h-9 w-9 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 transition-all ${likedGames.has(game.id) ? 'text-red-500' : 'text-white'}`}
-                  >
-                    <Heart className={`h-4 w-4 ${likedGames.has(game.id) ? 'fill-current' : ''}`} strokeWidth={1.5} />
-                  </button>
-                  <button
-                    aria-label="Share"
-                    onClick={(e) => { e.stopPropagation(); handleShare(game); }}
-                    className="h-9 w-9 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 transition-all text-white"
-                  >
-                    <Share2 className="h-4 w-4" strokeWidth={1.5} />
-                  </button>
-                  <button
-                    aria-label="Comments"
-                    onClick={(e) => { e.stopPropagation(); setCommentsOpenFor(game); }}
-                    className="h-9 w-9 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 transition-all text-white"
-                  >
-                    <MessageCircle className="h-4 w-4" strokeWidth={1.5} />
-                  </button>
-                  <div className="ml-auto flex items-center gap-2 text-xs text-white/90">
-                    <span className="flex items-center gap-1"><Heart className="h-3 w-3" />{game.likes_count ?? 0}</span>
-                    <span className="flex items-center gap-1"><Play className="h-3 w-3" />{game.plays_count ?? 0}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div ref={sentinelRef} className="h-24 flex items-center justify-center">
-          {isFetchingNextPage && <Loader2 className="h-6 w-6 animate-spin text-primary" />}
-        </div>
-        {games?.length === 0 && (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center">
-              <h3 className="text-2xl font-bold mb-2">No games yet</h3>
-              <p className="text-muted-foreground">Be the first to create a game!</p>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
 
     {/* Comments Panel */}
     <Sheet open={!!commentsOpenFor} onOpenChange={(o) => !o && setCommentsOpenFor(null)}>

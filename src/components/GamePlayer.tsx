@@ -1,4 +1,4 @@
-import { X, Timer, Mic, MicOff, Users, Volume2, VolumeX } from "lucide-react";
+import { X, Timer, Mic, MicOff, Users, Volume2, VolumeX, Keyboard, MousePointer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 import { useVoiceChat } from "@/hooks/use-voice-chat";
@@ -19,6 +19,7 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
   const roomId = `game-${game.id}`;
   const { isReady, isMicOn, remoteAudios, participants, toggleMic, error } = useVoiceChat(roomId);
   const [soundOn, setSoundOn] = useState(true);
+  const [showControlsOverlay, setShowControlsOverlay] = useState(false);
   const bgAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const AudioStream = ({ stream }: { stream: MediaStream }) => {
@@ -30,6 +31,27 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
     }, [stream]);
     return <audio ref={ref} autoPlay playsInline />;
   };
+
+  useEffect(() => {
+    // Respect user's default sound preference
+    try {
+      const raw = localStorage.getItem('playgen:settings');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed.enableSoundByDefault === 'boolean') {
+          setSoundOn(!!parsed.enableSoundByDefault);
+        }
+      }
+    } catch {}
+
+    // Show desktop controls overlay briefly
+    const isDesktop = window.matchMedia && window.matchMedia('(pointer: fine)').matches;
+    if (isDesktop) {
+      setShowControlsOverlay(true);
+      const t = setTimeout(() => setShowControlsOverlay(false), 3000);
+      return () => clearTimeout(t);
+    }
+  }, []);
 
   useEffect(() => {
     // Mark this game as being actively played via presence
@@ -127,6 +149,15 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
             title={game.title}
             sandbox="allow-scripts allow-same-origin"
           />
+          {showControlsOverlay && (
+            <div className="pointer-events-none absolute inset-x-4 top-20 z-10 rounded-xl bg-black/60 text-white p-3 md:p-4 flex items-center gap-3 justify-center">
+              <Keyboard className="h-5 w-5" />
+              <div className="text-xs md:text-sm">
+                Use WASD or Arrow Keys to move, Space for action. Click inside the game to focus.
+              </div>
+              <MousePointer className="h-5 w-5 hidden md:block" />
+            </div>
+          )}
           {game.sound_url && (
             <audio ref={bgAudioRef} src={game.sound_url || undefined} autoPlay loop />
           )}
