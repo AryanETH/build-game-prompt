@@ -184,7 +184,5 @@ All colors MUST be HSL.
 
 /* Custom rocket cursor - hide native cursor on pointer devices */
 @media (pointer: fine) {
-  html, body, * {
-    cursor: none !important;
-  }
+  html, body, * { cursor: none !important; }
 }
