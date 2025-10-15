@@ -424,16 +424,15 @@ Please generate a new playable game that takes inspiration from the original but
     );
   }
 
-  // Mobile: TikTok-style vertical feed
-  // Desktop: Responsive grid of scrollable thumbnails filling screen width/height
+  // TikTok-style vertical snap scroll for both mobile and desktop
   return (
     <>
-    {/* Mobile vertical feed */}
-    <div className="relative h-[calc(100vh-8rem)] w-full overflow-hidden md:hidden">
-      <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar" style={{ scrollSnapType: 'y mandatory' }}>
+    {/* Snap scrolling feed - both mobile and desktop */}
+    <div className="relative h-screen w-full overflow-hidden">
+      <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar" style={{ scrollSnapType: 'y mandatory', scrollBehavior: 'smooth' }}>
         {hydratedGames?.map((game) => (
           <div key={game.id} className="h-full w-full snap-start snap-always flex items-center justify-center">
-            <div className="relative w-full max-w-[420px] h-[90vh]">
+            <div className="relative w-full max-w-[420px] md:max-w-[500px] h-[calc(100vh-8rem)] md:h-[90vh]">
               <Card className="relative h-full overflow-hidden rounded-2xl border border-border/60">
                 <img
                   src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
@@ -452,35 +451,35 @@ Please generate a new playable game that takes inspiration from the original but
                   </button>
                 </div>
 
-                <div className="absolute left-0 right-20 bottom-24 p-4 text-white">
-                  <div className="flex items-center gap-2 mb-1">
+                <div className="absolute left-0 right-20 bottom-32 md:bottom-28 p-4 text-white">
+                  <div className="flex items-center gap-2 mb-2">
                     <button 
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                       onClick={() => game.creator?.username && navigate(`/u/${game.creator.username}`)}
                     >
-                      <Avatar className="w-8 h-8 border-2 border-white/30">
+                      <Avatar className="w-10 h-10 border-2 border-white/40">
                         <AvatarImage src={game.creator?.avatar_url || undefined} />
-                        <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                        <AvatarFallback className="bg-primary text-primary-foreground text-sm">
                           {game.creator?.username?.[0]?.toUpperCase() || 'U'}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm font-medium opacity-90">@{game.creator?.username || 'creator'}</span>
+                      <span className="text-sm font-semibold drop-shadow-lg">@{game.creator?.username || 'creator'}</span>
                     </button>
                   </div>
-                  <div className="text-lg font-bold leading-tight">{game.title}</div>
-                  <div className="text-xs text-white/80 line-clamp-2">{game.description || ''}</div>
+                  <div className="text-xl md:text-2xl font-bold leading-tight mb-1 drop-shadow-lg line-clamp-2">{game.title}</div>
+                  <div className="text-sm text-white/90 line-clamp-2 drop-shadow-md">{game.description || ''}</div>
                 </div>
 
-                <div className="absolute bottom-20 right-0 p-3 flex flex-col gap-4 items-center text-white">
+                <div className="absolute bottom-24 md:bottom-20 right-0 p-4 flex flex-col gap-5 items-center text-white">
                   <div className="flex flex-col items-center gap-1">
                     <button
                       aria-label="Like"
-                      className={`h-12 w-12 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg ${likedGames.has(game.id) ? 'text-red-500' : ''}`}
+                      className={`h-14 w-14 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-md hover:bg-black/60 hover:scale-110 active:scale-95 transition-all duration-200 shadow-xl ${likedGames.has(game.id) ? 'text-red-500' : ''}`}
                       onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
                     >
-                      <Heart className={`h-6 w-6 ${likedGames.has(game.id) ? 'fill-current' : ''}`} strokeWidth={1.5} />
+                      <Heart className={`h-7 w-7 ${likedGames.has(game.id) ? 'fill-current' : ''}`} strokeWidth={1.5} />
                     </button>
-                    <span className="text-xs font-medium text-white/90 drop-shadow-lg">{game.likes_count ?? 0}</span>
+                    <span className="text-sm font-semibold text-white drop-shadow-lg">{game.likes_count ?? 0}</span>
                   </div>
                   
                   <button

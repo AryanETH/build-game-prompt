@@ -35,17 +35,19 @@ serve(async (req) => {
 
 ${prompt}
 
-Requirements:
-- Mobile-first design (9:16 aspect ratio preferred)
-- Clear button placements and UI elements
-- Gaming aesthetic with vibrant colors
-- Professional layout and visual hierarchy
-- Touch-friendly interface elements
-- Score displays, action buttons, and game controls
-- Modern, minimalistic style
-- Ultra high resolution
+CRITICAL REQUIREMENTS:
+- MUST be 9:16 vertical portrait aspect ratio (mobile-first)
+- Clear button placements and UI elements positioned logically
+- Gaming aesthetic with vibrant, energetic colors
+- Professional layout with clear visual hierarchy
+- Touch-friendly interface elements (large tap targets)
+- Score displays at top, action buttons at bottom
+- Game controls clearly visible and accessible
+- Modern, minimalistic style with gaming flair
+- Ultra high resolution and sharp details
+- No text overlays or watermarks
 
-Style: Modern mobile game UI, clean and engaging`
+Style: Modern mobile game UI, TikTok/Instagram Reels style vertical layout, clean and engaging`
           }
         ],
         modalities: ["image", "text"]

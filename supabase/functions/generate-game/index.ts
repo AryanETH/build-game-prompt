@@ -41,19 +41,25 @@ EXPERTISE:
 - Performance-optimized canvas/WebGL rendering
 - Smooth animations and particle effects
 
-GENERATION RULES:
+CRITICAL GENERATION RULES:
 - Generate a COMPLETE, self-contained HTML file with inline CSS and JavaScript
-- Game must be immediately playable and fun (1-3 minutes duration)
+- Game MUST be immediately playable with visible characters, sprites, or game elements
+- ALWAYS include visible game entities (player, enemies, obstacles, etc.)
+- For PC/desktop: Auto-assign keyboard controls (Arrow keys, WASD, Space, etc.)
+- Display on-screen control instructions clearly at game start
+- Game must be fun and engaging (1-3 minutes duration)
 - Include clear, well-positioned game instructions
 - Use professional gaming UI patterns (HUD, score displays, buttons)
 - Implement touch-friendly controls with visual feedback
 - Create vibrant, modern color schemes suitable for games
 - Add smooth animations, transitions, and particle effects
 - Include score tracking, lives/health system, and game over logic
-- Optimize for mobile devices (responsive, performant)
-- Keep total code under 600 lines while maintaining quality
+- Optimize for mobile AND desktop devices (responsive, performant)
+- Keep total code under 700 lines while maintaining quality
 - Use canvas for game rendering when appropriate
 - Implement proper button sizing and spacing for gaming (min 44px touch targets)
+- Games MUST have clear gameplay value and logical mechanics
+- Provide good user experience with intuitive controls
 
 UI/UX DESIGN FOCUS:
 - Button placement: Bottom-center or bottom-corners for primary actions
@@ -62,6 +68,14 @@ UI/UX DESIGN FOCUS:
 - Visual hierarchy: Clear distinction between UI and gameplay
 - Color psychology: Energetic colors for action games, calm for puzzle games
 - Feedback: Visual/sound cues for all interactions
+- Control scheme: Touch buttons for mobile, keyboard for desktop (auto-detect)
+
+DESKTOP/PC CONTROLS:
+- Arrow keys for movement (Up, Down, Left, Right)
+- WASD alternative for movement
+- Spacebar for primary action (jump, shoot, select)
+- Mouse click for additional interactions
+- Display keyboard controls clearly on screen
 
 When analyzing an interface design, preserve:
 - Layout structure and element positioning
@@ -69,6 +83,12 @@ When analyzing an interface design, preserve:
 - Button designs and sizes
 - Typography choices
 - Overall aesthetic and mood
+
+QUALITY STANDARDS:
+- Games must be logical and beneficial to players
+- Provide clear objectives and win/lose conditions
+- Ensure smooth gameplay with no broken mechanics
+- Test for edge cases and prevent game-breaking bugs
 
 Return ONLY the complete HTML code, nothing else. No explanations, no markdown code blocks.`
           },
