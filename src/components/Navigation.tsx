@@ -30,11 +30,7 @@ export const Navigation = ({ hideBrand = false }: { hideBrand?: boolean }) => {
         <div className="flex items-center justify-between h-16">
           {!hideBrand && (
             <div className="hidden md:flex items-center gap-3">
-              <div className="relative h-8">
-                <div className="font-extrabold text-xl tracking-tight">Playgen</div>
-                <div className="absolute inset-0 rounded-lg blur-md opacity-40 gradient-primary animate-pulse" />
-              </div>
-              <span className="text-xl font-bold">PlayGen</span>
+              <span className="text-xl font-bold">playGen</span>
               <div className="flex items-center gap-1 text-sm text-muted-foreground pl-2 border-l border-border/50">
                 <MapPin className="h-4 w-4" />
                 <span>{mode === 'city' && city ? city : mode === 'country' && country ? country : 'Global'}</span>

@@ -73,7 +73,7 @@ export default function Auth() {
             PG
           </div>
           <CardTitle className="text-3xl font-bold">
-            {isLogin ? "Welcome Back" : "Join PlayGen"}
+            {isLogin ? "Welcome Back" : "Join playGen"}
           </CardTitle>
           <CardDescription>
             {isLogin
