@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function RocketCursor() {
   const cursorRef = useRef<HTMLDivElement>(null);
@@ -7,8 +8,11 @@ export default function RocketCursor() {
   const targetYRef = useRef(0);
   const currentXRef = useRef(0);
   const currentYRef = useRef(0);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
+    // Don't show rocket cursor on mobile devices
+    if (isMobile) return;
     const cursorEl = cursorRef.current;
     if (!cursorEl) return;
 
@@ -53,6 +57,9 @@ export default function RocketCursor() {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, []);
+
+  // Don't render rocket cursor on mobile devices
+  if (isMobile) return null;
 
   return (
     <div
