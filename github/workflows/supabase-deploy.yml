@@ -1,0 +1,55 @@
+name: Supabase Deploy (migrations + functions)
+
+on:
+  workflow_dispatch:   # lets you run it manually from GitHub UI
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        run: |
+          curl -fsSL https://cli.supabase.com/install/linux | sh
+
+      - name: Login to Supabase CLI
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "${SUPABASE_ACCESS_TOKEN}" | supabase login --token - || true
+
+      - name: Link project
+        env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          supabase link --project-ref $SUPABASE_PROJECT_REF || true
+
+      - name: Push DB migrations
+        env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          supabase db push --project-ref $SUPABASE_PROJECT_REF
+
+      - name: Set function secret (OPENROUTER)
+        if: ${{ secrets.OPENROUTER_API_KEY != '' }}
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          supabase secrets set OPENROUTER_API_KEY=${OPENROUTER_API_KEY} --project-ref $SUPABASE_PROJECT_REF
+
+      - name: Deploy Edge Functions
+        env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          supabase functions deploy generate-game --project-ref $SUPABASE_PROJECT_REF
+          supabase functions deploy analyze-interface --project-ref $SUPABASE_PROJECT_REF
+          supabase functions deploy generate-interface-image --project-ref $SUPABASE_PROJECT_REF
+          supabase functions deploy generate-music --project-ref $SUPABASE_PROJECT_REF
+          supabase functions deploy generate-thumbnail --project-ref $SUPABASE_PROJECT_REF
