@@ -16,28 +16,22 @@ jobs:
 
       - name: Install Supabase CLI
         run: |
-          set -e
-          ARCH=$(uname -m)
-          if [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "amd64" ]; then
-            FILE="supabase_linux_amd64.tar.gz"
-          elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-            FILE="supabase_linux_arm64.tar.gz"
-          else
-            echo "Unsupported architecture: $ARCH" >&2
-            exit 1
-          fi
-          URL="https://github.com/supabase/cli/releases/latest/download/${FILE}"
-          echo "Downloading Supabase CLI from $URL"
-          curl -L "$URL" -o /tmp/supabase.tar.gz
-          tar -xzf /tmp/supabase.tar.gz -C /tmp
-          sudo mv /tmp/supabase /usr/local/bin/supabase
-          sudo chmod +x /usr/local/bin/supabase
-          supabase --version
+          curl -fsSL https://cli.supabase.com/install/linux | sh
+          sudo mv supabase /usr/local/bin/supabase
 
       - name: Link Supabase project
-        run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} --password ${{ secrets.SUPABASE_DB_PASSWORD }}
-
-      - name: Run migrations and deploy
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          supabase db push
-          supabase functions deploy --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+          supabase link --project-ref zyozjzfkmmtuxvjgryhk --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
+
+      - name: Apply database migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase db push
+
+      - name: Deploy Edge Functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase functions deploy generate-game analyze-interface generate-interface-image generate-music generate-thumbnail
