@@ -11,25 +11,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ✅ Install Supabase CLI
       - name: Install Supabase CLI
         run: |
           curl -fsSL https://cli.supabase.com/install/linux | sh
           sudo mv supabase /usr/local/bin/supabase
+          supabase --version  # check installation
 
+      # ✅ Link project
       - name: Link Supabase project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           supabase link --project-ref zyozjzfkmmtuxvjgryhk --password "${{ secrets.SUPABASE_DB_PASSWORD }}"
 
+      # ✅ Apply DB migrations
       - name: Apply database migrations
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: supabase db push
 
+      # ✅ Deploy Edge Functions
       - name: Deploy Edge Functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
