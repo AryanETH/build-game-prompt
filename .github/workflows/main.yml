@@ -14,11 +14,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Install Supabase CLI via official GitHub Action
-      - name: Set up Supabase CLI
-        uses: supabase/cli-action@v1
+      # Install Node.js (required for Supabase CLI)
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
 
-      # Link project
+      # Install Supabase CLI
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Link Supabase project
       - name: Link Supabase project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -37,3 +45,21 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
           supabase functions deploy generate-game analyze-interface generate-interface-image generate-music generate-thumbnail
+
+      # Refresh PostgREST schema cache
+      - name: Refresh PostgREST schema cache
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase db query "select pg_notify('pgrst', 'reload schema');"
+
+      # Enable Realtime for games, comments, and likes
+      - name: Enable Realtime tables
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase db query "
+            ALTER PUBLICATION supabase_realtime ADD TABLE public.games;
+            ALTER PUBLICATION supabase_realtime ADD TABLE public.game_comments;
+            ALTER PUBLICATION supabase_realtime ADD TABLE public.game_likes;
+          "
