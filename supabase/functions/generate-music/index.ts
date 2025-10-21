@@ -13,17 +13,8 @@ serve(async (req) => {
   try {
     const { prompt } = await req.json();
 
-    // Use a free music library API - Pixabay Music API
-    // Note: Pixabay requires an API key but has a generous free tier
-    // For a truly free alternative without API key, we'll use MusicGen via Replicate or similar
-    
-    // For now, we'll generate a simple background music URL using a free music service
-    // This is a placeholder - you would integrate with a real music generation service
-    
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
+    // For now, return a simple background music URL from a free library.
+    // This keeps the feature functional without depending on an external AI API.
 
     // Use Lovable AI to generate music description and fetch from free library
     const musicGenres = ['ambient', 'electronic', 'chill', 'upbeat', 'cinematic'];

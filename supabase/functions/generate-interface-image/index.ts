@@ -12,75 +12,14 @@ serve(async (req) => {
 
   try {
     const { prompt } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
-    }
 
-    console.log('Generating interface image from prompt:', prompt);
-
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image-preview',
-        messages: [
-          {
-            role: 'user',
-            content: `Generate a professional mini-game or app interface design with the following specifications:
-
-${prompt}
-
-CRITICAL REQUIREMENTS:
-- MUST be 9:16 vertical portrait aspect ratio (mobile-first)
-- Clear button placements and UI elements positioned logically
-- Gaming aesthetic with vibrant, energetic colors
-- Professional layout with clear visual hierarchy
-- Touch-friendly interface elements (large tap targets)
-- Score displays at top, action buttons at bottom
-- Game controls clearly visible and accessible
-- Modern, minimalistic style with gaming flair
-- Ultra high resolution and sharp details
-- No text overlays or watermarks
-
-Style: Modern mobile game UI, TikTok/Instagram Reels style vertical layout, clean and engaging`
-          }
-        ],
-        modalities: ["image", "text"]
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'Payment required. Please add credits to continue.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
-      throw new Error('Failed to generate interface image');
-    }
-
-    const data = await response.json();
-    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-
-    if (!imageUrl) {
-      throw new Error('No image generated');
-    }
-
-    console.log('Interface image generated successfully');
+    // Replace AI image generation with a stable 9:16 placeholder URL.
+    // This keeps the feature functional without relying on image-capable models.
+    const baseText = (typeof prompt === 'string' && prompt.trim().length > 0)
+      ? prompt.trim().slice(0, 60)
+      : 'Game UI';
+    const encodedText = encodeURIComponent(baseText).replace(/%20/g, '+');
+    const imageUrl = `https://placehold.co/720x1280/png?text=${encodedText}`;
 
     return new Response(
       JSON.stringify({ imageUrl }),
