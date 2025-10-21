@@ -1,0 +1,26 @@
+name: Supabase Deploy
+
+on:
+  workflow_dispatch:  # allows you to run it manually from GitHub UI
+  push:
+    branches:
+      - main  # deploys automatically on push to main branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase
+
+      - name: Link Supabase project
+        run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }} --password ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+      - name: Run migrations and deploy
+        run: |
+          supabase db push
+          supabase functions deploy --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
