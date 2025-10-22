@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,11 +12,16 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, options } = await req.json();
+    const { prompt, options, title, description, autoInsert = false } = await req.json();
     const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
     
     if (!OPENROUTER_API_KEY) {
       throw new Error('OPENROUTER_API_KEY is not configured');
+    }
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error('Supabase environment (URL or ANON KEY) is not configured');
     }
 
     console.log('Generating game from prompt:', prompt);
@@ -127,12 +133,81 @@ Return ONLY the complete HTML code, nothing else. No explanations, no markdown c
     }
 
     const data = await response.json();
-    const gameCode = data.choices[0].message.content;
+    const raw = data.choices?.[0]?.message?.content ?? '';
+
+    // Basic sanitization: strip markdown fences and ensure HTML document
+    const sanitizeGameHtml = (input: string): string => {
+      let out = input.trim();
+      // Remove markdown code fences if present
+      out = out.replace(/^```[a-zA-Z]*\n?|```$/gms, '');
+      // Heuristic: if missing <html> tag, wrap it
+      if (!/(<html[\s>])/i.test(out)) {
+        out = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"utf-8\" /><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" /></head>\n<body>\n${out}\n</body>\n</html>`;
+      }
+      return out;
+    };
+
+    const gameCode = sanitizeGameHtml(raw);
+
+    if (!gameCode) {
+      throw new Error('Model returned empty game code');
+    }
+
+    // Optionally insert a new game record on behalf of the authenticated user
+    let insertedGame: any | null = null;
+    if (autoInsert) {
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: req.headers.get('Authorization') || '' } },
+      });
+
+      const { data: userRes } = await supabase.auth.getUser();
+      const authedUser = userRes?.user;
+      if (!authedUser) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const placeholder = `https://placehold.co/720x1280/png?text=${encodeURIComponent((title || 'Game').slice(0, 40)).replace(/%20/g, '+')}`;
+
+      const fullPayload: Record<string, unknown> = {
+        title: (title ?? prompt ?? 'Untitled').toString().slice(0, 100),
+        description: (description ?? `An AI-generated game`).toString().slice(0, 500),
+        game_code: gameCode,
+        creator_id: authedUser.id,
+        is_multiplayer: !!options?.isMultiplayer,
+        multiplayer_type: options?.isMultiplayer ? options?.multiplayerType ?? null : null,
+        graphics_quality: options?.graphicsQuality ?? 'high',
+        thumbnail_url: placeholder,
+        cover_url: placeholder,
+        is_public: options?.isPublic !== false,
+      };
+
+      let insertRes = await supabase.from('games').insert(fullPayload).select('*').single();
+      if (insertRes.error) {
+        // Fallback to minimal payload to survive older schemas
+        const minimalPayload = {
+          title: (title ?? prompt ?? 'Untitled').toString().slice(0, 100),
+          description: (description ?? `An AI-generated game`).toString().slice(0, 500),
+          game_code: gameCode,
+          creator_id: authedUser.id,
+        };
+        insertRes = await supabase.from('games').insert(minimalPayload).select('*').single();
+      }
+
+      if (insertRes.error) {
+        // Do not fail the whole request; return code and an error message
+        console.error('DB insert failed:', insertRes.error.message);
+      } else {
+        insertedGame = insertRes.data;
+      }
+    }
 
     console.log('Game generated successfully');
 
     return new Response(
-      JSON.stringify({ gameCode }),
+      JSON.stringify({ gameCode, game: insertedGame, gameId: insertedGame?.id ?? null }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

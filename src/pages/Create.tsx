@@ -211,7 +211,10 @@ export default function Create() {
               multiplayerType,
               graphicsQuality,
               isInterfaceDesign: useImagePrompt
-            }
+            },
+            title: title || prompt.slice(0, 50),
+            description,
+            autoInsert: false
           },
         });
         if (error) throw error;
@@ -384,6 +387,16 @@ export default function Create() {
         if (retry.error) throw retry.error;
         insertedGame = retry.data;
       }
+
+      // Generate interface configuration and persist to game
+      try {
+        await supabase.functions.invoke('generate-interface', { body: { game_id: insertedGame.id, base: { palette: graphicsQuality === 'realistic' ? 'neon-dark' : 'bright' } } });
+      } catch { /* fail-soft */ }
+
+      // Regenerate thumbnail tied to game and persist cover/thumbnail URLs
+      try {
+        await supabase.functions.invoke('generate-thumbnail', { body: { prompt: title.trim(), game_id: insertedGame.id } });
+      } catch { /* fail-soft */ }
 
       // Log activity: game published
       if (insertedGame) {

@@ -127,6 +127,11 @@ export type Database = {
           description: string | null
           duration_minutes: number | null
           game_code: string
+          cover_url: string | null
+          is_public: boolean | null
+          is_multiplayer?: boolean | null
+          multiplayer_type?: string | null
+          graphics_quality?: string | null
           id: string
           latitude: number | null
           likes_count: number | null
@@ -137,6 +142,7 @@ export type Database = {
           sound_effects?: Json | null
           thumbnail_url: string | null
           title: string
+          original_game_id?: string | null
         }
         Insert: {
           city?: string | null
@@ -146,6 +152,11 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           game_code: string
+          cover_url?: string | null
+          is_public?: boolean | null
+          is_multiplayer?: boolean | null
+          multiplayer_type?: string | null
+          graphics_quality?: string | null
           id?: string
           latitude?: number | null
           likes_count?: number | null
@@ -156,6 +167,7 @@ export type Database = {
           sound_effects?: Json | null
           thumbnail_url?: string | null
           title: string
+          original_game_id?: string | null
         }
         Update: {
           city?: string | null
@@ -165,6 +177,11 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           game_code?: string
+          cover_url?: string | null
+          is_public?: boolean | null
+          is_multiplayer?: boolean | null
+          multiplayer_type?: string | null
+          graphics_quality?: string | null
           id?: string
           latitude?: number | null
           likes_count?: number | null
@@ -175,6 +192,7 @@ export type Database = {
           sound_effects?: Json | null
           thumbnail_url?: string | null
           title?: string
+          original_game_id?: string | null
         }
         Relationships: [
           {
