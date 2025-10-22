@@ -15,6 +15,90 @@ import { Loader2, Sparkles, Globe, Lock, Eye, Pencil, Image as ImageIcon } from 
 import { logActivity } from "@/lib/activityLogger";
 import { playClick, playSuccess, playError } from "@/lib/sounds";
 
+// Local fallback generator to ensure creation works even if the AI gateway is unavailable
+const buildFallbackGameCode = (title: string) => `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${title || "Arcade"}</title>
+  <style>
+    html,body{margin:0;height:100%;background:#0b1021;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto}
+    #hud{position:fixed;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:center}
+    #hud .pill{background:rgba(255,255,255,0.08);padding:8px 12px;border-radius:999px;border:1px solid rgba(255,255,255,0.15)}
+    #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+    #overlay .box{background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.2);padding:20px 24px;border-radius:16px;text-align:center;backdrop-filter:blur(6px)}
+    canvas{display:block;margin:0 auto;touch-action:none}
+    @media (max-width: 600px){#controls{position:fixed;bottom:16px;left:0;right:0;display:flex;justify-content:center;gap:12px}
+      #controls button{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:18px}}
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <div class="pill">Score: <span id="score">0</span></div>
+    <div class="pill">Lives: <span id="lives">3</span></div>
+  </div>
+  <div id="overlay"><div class="box">
+    <h2 style="margin:0 0 8px">${title || "Arcade Runner"}</h2>
+    <div style="opacity:.85; font-size:14px; line-height:1.4">Move with Arrow keys / WASD. Avoid enemies, collect stars.<br/>Tap to start on mobile.</div>
+    <div style="margin-top:12px; opacity:.7; font-size:12px">Game lasts ~60s. Good luck!</div>
+  </div></div>
+  <canvas id="game" width="360" height="640"></canvas>
+  <div id="controls" hidden>
+    <button data-dx="-1">◀</button>
+    <button data-dx="1">▶</button>
+  </div>
+  <script>
+    const canvas=document.getElementById('game');
+    const ctx=canvas.getContext('2d');
+    const scoreEl=document.getElementById('score');
+    const livesEl=document.getElementById('lives');
+    const overlay=document.getElementById('overlay');
+    const controls=document.getElementById('controls');
+    let running=false, score=0, lives=3, t=0, keys={};
+    const player={x:180,y:560,w:28,h:28,dx:0,speed:3,color:'#5eead4'};
+    const stars=[], enemies=[];
+    function rnd(min,max){return Math.random()*(max-min)+min}
+    function rect(r,c){ctx.fillStyle=c;ctx.fillRect(r.x,r.y,r.w,r.h)}
+    function circle(x,y,r,c){ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
+    function spawnStar(){stars.push({x:rnd(12,348),y:-10,r:4+Math.random()*3,vy:1.2+Math.random()*1.5})}
+    function spawnEnemy(){const w=20+Math.random()*26;enemies.push({x:rnd(0,360-w),y:-w,w,h:w,vy:1.2+Math.random()*2})}
+    function reset(){score=0;lives=3;player.x=180;player.y=560;stars.length=0;enemies.length=0;t=0}
+    function start(){reset();running=true;overlay.style.display='none'; if('ontouchstart' in window) controls.hidden=false}
+    function end(){running=false;overlay.querySelector('.box').innerHTML='<h2 style="margin:0 0 8px">Game Over</h2><div style="opacity:.85">Score: '+score+'</div><div style="margin-top:12px; opacity:.7; font-size:12px">Press Space / Tap to restart</div>';overlay.style.display='flex'}
+    addEventListener('keydown',e=>{keys[e.key]=true;if(!running&&(e.key===' '||e.key==='Enter'))start()});
+    addEventListener('keyup',e=>{keys[e.key]=false});
+    controls.addEventListener('touchstart',e=>{const b=e.target.closest('button');if(b){player.dx=parseInt(b.dataset.dx)}});
+    controls.addEventListener('touchend',()=>{player.dx=0});
+    function update(){
+      if(!running){requestAnimationFrame(update);return}
+      t++;
+      ctx.clearRect(0,0,360,640);
+      // background stars
+      ctx.fillStyle='#0b1021';ctx.fillRect(0,0,360,640);
+      for(let i=0;i<120;i++){const y=(i*6+t*0.6)%640;const x=(i*37%360);ctx.fillStyle='rgba(255,255,255,'+(0.1+(i%10)/30)+')';ctx.fillRect(x,y,2,2)}
+      // input
+      const left=keys['ArrowLeft']||keys['a']||player.dx<0;const right=keys['ArrowRight']||keys['d']||player.dx>0;
+      player.x+= (right?1:0 - (left?1:0)) * player.speed; player.x=Math.max(0,Math.min(360-player.w,player.x));
+      rect(player,player.color);
+      // spawn
+      if(t%45===0)spawnStar();
+      if(t%60===0)spawnEnemy();
+      // stars
+      for(let i=stars.length-1;i>=0;i--){const s=stars[i];s.y+=s.vy;circle(s.x,s.y,s.r,'#fde047');
+        if(Math.hypot(s.x-(player.x+player.w/2),s.y-(player.y+player.h/2))<s.r+14){score+=10;scoreEl.textContent=score;stars.splice(i,1)}
+        else if(s.y>660)stars.splice(i,1)}
+      // enemies
+      for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];e.y+=e.vy;rect(e,'#fb7185');
+        if(!(e.x>player.x+player.w||e.x+e.w<player.x||e.y>player.y+player.h||e.y+e.h<player.y)){lives--;livesEl.textContent=lives;enemies.splice(i,1);if(lives<=0)end()}
+        else if(e.y>660)enemies.splice(i,1)}
+      requestAnimationFrame(update)
+    }
+    update();
+  </script>
+</body>
+</html>`;
+
 export default function Create() {
   const [prompt, setPrompt] = useState("");
   const [title, setTitle] = useState("");
@@ -101,33 +185,43 @@ export default function Create() {
     try {
       let finalPrompt = prompt;
       
-      // If using image prompt, analyze the image and create prompt
+      // If using image prompt, analyze the image and create prompt (fail-soft)
       if (useImagePrompt) {
         toast.info("Analyzing interface design...");
-        const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-interface', {
-          body: { imageUrl: generatedInterfaceImage }
-        });
-        
-        if (analysisError) throw analysisError;
-        finalPrompt = `${prompt}\n\nBased on this UI/UX design: ${analysisData.analysis}`;
+        try {
+          const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-interface', {
+            body: { imageUrl: generatedInterfaceImage }
+          });
+          if (!analysisError && analysisData?.analysis) {
+            finalPrompt = `${prompt}\n\nBased on this UI/UX design: ${analysisData.analysis}`;
+          }
+        } catch (_e) {
+          console.log("Interface analysis unavailable, proceeding without it");
+        }
       }
       
-      // Generate game code
-      const { data, error } = await supabase.functions.invoke('generate-game', {
-        body: { 
-          prompt: finalPrompt,
-          options: {
-            isMultiplayer,
-            multiplayerType,
-            graphicsQuality,
-            isInterfaceDesign: useImagePrompt
-          }
-        },
-      });
+      // Generate game code (fallback to local template if AI gateway unavailable)
+      let producedCode = "";
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-game', {
+          body: { 
+            prompt: finalPrompt,
+            options: {
+              isMultiplayer,
+              multiplayerType,
+              graphicsQuality,
+              isInterfaceDesign: useImagePrompt
+            }
+          },
+        });
+        if (error) throw error;
+        producedCode = data?.gameCode || "";
+      } catch (_e) {
+        producedCode = buildFallbackGameCode(title || 'Arcade');
+        toast.info("Using fallback game template");
+      }
 
-      if (error) throw error;
-
-      setGeneratedCode(data.gameCode);
+      setGeneratedCode(producedCode);
 
       // Generate AI thumbnail automatically with strict 9:16
       toast.info("Generating thumbnail (9:16)...");
@@ -285,7 +379,6 @@ export default function Create() {
           game_code: generatedCode,
           creator_id: user.id,
           thumbnail_url: thumbnailUrl || null,
-          sound_url: finalSoundUrl || null,
         };
         const retry = await supabase.from('games').insert(minimalPayload).select().single();
         if (retry.error) throw retry.error;
