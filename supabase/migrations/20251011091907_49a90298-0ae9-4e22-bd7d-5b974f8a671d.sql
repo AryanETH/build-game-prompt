@@ -15,7 +15,7 @@ BEGIN
    END IF;
 END$$;
 
--- Enable RLS (no harm if already enabled)
+-- Enable RLS
 ALTER TABLE public.game_comments ENABLE ROW LEVEL SECURITY;
 
 -- ======================
@@ -27,7 +27,7 @@ DO $$
 BEGIN
    IF NOT EXISTS (
       SELECT 1 FROM pg_policies 
-      WHERE polname = 'Anyone can view comments' AND tablename = 'game_comments'
+      WHERE policyname = 'Anyone can view comments' AND tablename = 'game_comments'
    ) THEN
       CREATE POLICY "Anyone can view comments"
       ON public.game_comments
@@ -41,7 +41,7 @@ DO $$
 BEGIN
    IF NOT EXISTS (
       SELECT 1 FROM pg_policies 
-      WHERE polname = 'Authenticated users can create comments' AND tablename = 'game_comments'
+      WHERE policyname = 'Authenticated users can create comments' AND tablename = 'game_comments'
    ) THEN
       CREATE POLICY "Authenticated users can create comments"
       ON public.game_comments
@@ -55,7 +55,7 @@ DO $$
 BEGIN
    IF NOT EXISTS (
       SELECT 1 FROM pg_policies 
-      WHERE polname = 'Users can delete their own comments' AND tablename = 'game_comments'
+      WHERE policyname = 'Users can delete their own comments' AND tablename = 'game_comments'
    ) THEN
       CREATE POLICY "Users can delete their own comments"
       ON public.game_comments
