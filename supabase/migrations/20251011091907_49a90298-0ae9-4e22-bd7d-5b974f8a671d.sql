@@ -1,5 +1,5 @@
--- Create game_comments table
-CREATE TABLE public.game_comments (
+-- Create game_comments table if not exists
+CREATE TABLE IF NOT EXISTS public.game_comments (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   game_id UUID NOT NULL REFERENCES public.games(id) ON DELETE CASCADE,
   user_id UUID NOT NULL,
