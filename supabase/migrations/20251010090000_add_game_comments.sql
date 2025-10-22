@@ -15,12 +15,12 @@ CREATE POLICY "Comments are viewable by everyone"
   USING (true);
 
 -- RLS: authenticated users can insert their own comments
-CREATE POLICY IF NOT EXISTS "Users can write their own comments"
+CREATE POLICY "Users can write their own comments"
   ON public.game_comments FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- RLS: users can delete their own comments
-CREATE POLICY IF NOT EXISTS "Users can delete their own comments"
+CREATE POLICY "Users can delete their own comments"
   ON public.game_comments FOR DELETE
   USING (auth.uid() = user_id);
 
