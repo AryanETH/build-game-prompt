@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS public.game_comments (
 ALTER TABLE public.game_comments ENABLE ROW LEVEL SECURITY;
 
 -- RLS: everyone can read
-CREATE POLICY IF NOT EXISTS "Comments are viewable by everyone"
+CREATE POLICY "Comments are viewable by everyone"
   ON public.game_comments FOR SELECT
   USING (true);
 
