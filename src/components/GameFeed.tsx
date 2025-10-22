@@ -88,7 +88,7 @@ export const GameFeed = () => {
           .range(from, to);
 
       // 1) Full schema
-      let { data, error } = await attemptSelect('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, creator_id, is_multiplayer, multiplayer_type, graphics_quality, sound_url, country, city, original_game_id');
+      let { data, error } = await attemptSelect('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, creator_id, is_multiplayer, multiplayer_type, graphics_quality, sound_url, country, city, original_game_id, is_public');
       if (error) {
         // 2) Minimal columns widely available
         const minimal = await attemptSelect('id, title, description, thumbnail_url, creator_id, likes_count, plays_count');

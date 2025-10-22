@@ -144,14 +144,46 @@ export default function Profile() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       setCurrentUserId(user.id);
-      const { data } = await supabase
+      // Ensure profile exists; if missing, create one with a unique username
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (!data) {
+        const base = (user.email?.split('@')[0] || `user_${user.id.slice(0,8)}`)
+          .toLowerCase()
+          .replace(/[^a-z0-9_]/g, '_')
+          .replace(/_+/g, '_')
+          .replace(/^_+|_+$/g, '')
+          .slice(0, 24);
+        let attempt = 0;
+        let candidate = base || `user_${user.id.slice(0,8)}`;
+        while (attempt < 50) {
+          const { data: row } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('username', candidate)
+            .maybeSingle();
+          if (!row) break;
+          attempt += 1;
+          const suffix = `_${attempt}`;
+          const maxBaseLength = Math.max(1, 24 - suffix.length);
+          candidate = `${(base || 'user').slice(0, maxBaseLength)}${suffix}`;
+        }
+        await supabase.from('profiles').insert({ id: user.id, username: candidate });
+      }
+
+      const refreshed = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
-      setProfile(data);
-      if (data?.username) setFormUsername(data.username);
-      if (data?.avatar_url) setPreviewUrl(data.avatar_url);
+
+      setProfile(refreshed.data);
+      if (refreshed.data?.username) setFormUsername(refreshed.data.username);
+      if (refreshed.data?.avatar_url) setPreviewUrl(refreshed.data.avatar_url);
     }
   };
 

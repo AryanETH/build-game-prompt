@@ -36,13 +36,22 @@ jobs:
         run: |
           supabase db push --project-ref $SUPABASE_PROJECT_REF
 
-      - name: Set function secret (OPENROUTER)
-        if: ${{ secrets.OPENROUTER_API_KEY != '' }}
+      - name: Set function secrets
         env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          supabase secrets set OPENROUTER_API_KEY=${OPENROUTER_API_KEY} --project-ref $SUPABASE_PROJECT_REF
+          if [ -n "$OPENROUTER_API_KEY" ]; then
+            supabase secrets set OPENROUTER_API_KEY=${OPENROUTER_API_KEY} --project-ref $SUPABASE_PROJECT_REF
+          fi
+          if [ -n "$SUPABASE_URL" ]; then
+            supabase secrets set SUPABASE_URL=${SUPABASE_URL} --project-ref $SUPABASE_PROJECT_REF
+          fi
+          if [ -n "$SUPABASE_ANON_KEY" ]; then
+            supabase secrets set SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY} --project-ref $SUPABASE_PROJECT_REF
+          fi
 
       - name: Deploy Edge Functions
         env:
@@ -51,5 +60,6 @@ jobs:
           supabase functions deploy generate-game --project-ref $SUPABASE_PROJECT_REF
           supabase functions deploy analyze-interface --project-ref $SUPABASE_PROJECT_REF
           supabase functions deploy generate-interface-image --project-ref $SUPABASE_PROJECT_REF
+          supabase functions deploy generate-interface --project-ref $SUPABASE_PROJECT_REF
           supabase functions deploy generate-music --project-ref $SUPABASE_PROJECT_REF
           supabase functions deploy generate-thumbnail --project-ref $SUPABASE_PROJECT_REF
