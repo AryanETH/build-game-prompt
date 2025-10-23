@@ -194,14 +194,16 @@ export const WatchFeed = () => {
                 <div className="font-semibold">{selected.title}</div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground"><Users className="h-4 w-4" />{viewerCount}</div>
               </div>
-              <div className="aspect-video bg-background">
-                {fullGameData?.game_code ? (
-                  <iframe title={selected.title} srcDoc={fullGameData.game_code} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                  </div>
-                )}
+              <div className="bg-white dark:bg-black flex items-center justify-center">
+                <div className="relative nineBySixteen w-full md:vh-9-16">
+                  {fullGameData?.game_code ? (
+                    <iframe title={selected.title} srcDoc={fullGameData.game_code} className="absolute inset-0 w-full h-full border-0" sandbox="allow-scripts allow-same-origin" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    </div>
+                  )}
+                </div>
               </div>
             </Card>
           )}

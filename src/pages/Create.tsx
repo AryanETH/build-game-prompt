@@ -228,7 +228,15 @@ export default function Create() {
 
       // Generate AI thumbnail automatically with strict 9:16
       toast.info("Generating thumbnail (9:16)...");
-      const thumbnailResponse = await supabase.functions.invoke('generate-thumbnail', { body: { prompt } });
+      const thumbnailResponse = await supabase.functions.invoke('generate-thumbnail', { body: { 
+        prompt,
+        metadata: {
+          title: title || prompt.slice(0, 50),
+          genre: isMultiplayer ? multiplayerType : 'single-player',
+          colorPalette: graphicsQuality,
+          tags: [graphicsQuality, isMultiplayer ? 'multiplayer' : 'solo']
+        }
+      } });
       const autoThumb = thumbnailResponse.data?.thumbnailUrl || "/placeholder.svg";
       setThumbnailUrl(autoThumb);
       setCoverUrl(autoThumb);
@@ -395,7 +403,16 @@ export default function Create() {
 
       // Regenerate thumbnail tied to game and persist cover/thumbnail URLs
       try {
-        await supabase.functions.invoke('generate-thumbnail', { body: { prompt: title.trim(), game_id: insertedGame.id } });
+        await supabase.functions.invoke('generate-thumbnail', { body: { 
+          prompt: title.trim(), 
+          game_id: insertedGame.id,
+          metadata: {
+            title: title.trim(),
+            genre: isMultiplayer ? multiplayerType : 'single-player',
+            colorPalette: graphicsQuality,
+            tags: [graphicsQuality, isMultiplayer ? 'multiplayer' : 'solo']
+          }
+        } });
       } catch { /* fail-soft */ }
 
       // Log activity: game published
