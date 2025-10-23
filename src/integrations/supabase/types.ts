@@ -219,6 +219,23 @@ export type Database = {
           username: string
           xp: number | null
           emoji_cursor?: string | null
+          display_name?: string | null
+          bio?: string | null
+          date_of_birth?: string | null
+          age_tier?: number | null
+          onboarding_complete?: boolean | null
+          interests?: string[] | null
+          goal?: string | null
+          skill_level?: string | null
+          device_type?: string | null
+          preferred_styles?: string[] | null
+          region?: string | null
+          language?: string | null
+          ai_personalization_consent?: boolean | null
+          guardian_consent?: boolean | null
+          avatar_choice?: string | null
+          phone?: string | null
+          trust_score?: number | null
         }
         Insert: {
           avatar_url?: string | null
@@ -234,6 +251,23 @@ export type Database = {
           username: string
           xp?: number | null
           emoji_cursor?: string | null
+          display_name?: string | null
+          bio?: string | null
+          date_of_birth?: string | null
+          age_tier?: number | null
+          onboarding_complete?: boolean | null
+          interests?: string[] | null
+          goal?: string | null
+          skill_level?: string | null
+          device_type?: string | null
+          preferred_styles?: string[] | null
+          region?: string | null
+          language?: string | null
+          ai_personalization_consent?: boolean | null
+          guardian_consent?: boolean | null
+          avatar_choice?: string | null
+          phone?: string | null
+          trust_score?: number | null
         }
         Update: {
           avatar_url?: string | null
@@ -249,6 +283,23 @@ export type Database = {
           username?: string
           xp?: number | null
           emoji_cursor?: string | null
+          display_name?: string | null
+          bio?: string | null
+          date_of_birth?: string | null
+          age_tier?: number | null
+          onboarding_complete?: boolean | null
+          interests?: string[] | null
+          goal?: string | null
+          skill_level?: string | null
+          device_type?: string | null
+          preferred_styles?: string[] | null
+          region?: string | null
+          language?: string | null
+          ai_personalization_consent?: boolean | null
+          guardian_consent?: boolean | null
+          avatar_choice?: string | null
+          phone?: string | null
+          trust_score?: number | null
         }
         Relationships: []
       }

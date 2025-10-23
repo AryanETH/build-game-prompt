@@ -13,6 +13,8 @@ import PublicProfile from "./pages/PublicProfile";
 import NotFound from "./pages/NotFound";
 import { LocationProvider } from "./context/LocationContext";
 import RocketCursor from "@/components/RocketCursor";
+import Onboarding from "@/pages/Onboarding";
+import { OnboardingGuard } from "@/components/OnboardingGuard";
 
 const queryClient = new QueryClient();
 
@@ -27,10 +29,11 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/feed" element={<Feed />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/create" element={<Create />} />
-            <Route path="/profile" element={<Profile />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/feed" element={<OnboardingGuard><Feed /></OnboardingGuard>} />
+            <Route path="/search" element={<OnboardingGuard><Search /></OnboardingGuard>} />
+            <Route path="/create" element={<OnboardingGuard><Create /></OnboardingGuard>} />
+            <Route path="/profile" element={<OnboardingGuard><Profile /></OnboardingGuard>} />
             <Route path="/u/:username" element={<PublicProfile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
