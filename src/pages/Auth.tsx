@@ -7,12 +7,18 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [awaitingOtp, setAwaitingOtp] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acceptPrivacy, setAcceptPrivacy] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -30,22 +36,70 @@ export default function Auth() {
         toast.success("Welcome back!");
         navigate("/feed");
       } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { username },
-            emailRedirectTo: `${window.location.origin}/`,
-          },
-        });
-        if (error) throw error;
-        toast.success("Account created! Please check your email.");
-        setIsLogin(true);
+        // Password policy: >=8, 1 symbol, 1 number, 1 uppercase
+        const policy = {
+          length: password.length >= 8,
+          symbol: /[^A-Za-z0-9]/.test(password),
+          number: /[0-9]/.test(password),
+          uppercase: /[A-Z]/.test(password),
+        };
+        if (!policy.length || !policy.symbol || !policy.number || !policy.uppercase) {
+          throw new Error("Password must be 8+ chars incl. symbol, number, uppercase letter");
+        }
+        if (!acceptTerms || !acceptPrivacy) {
+          throw new Error("Please accept Terms & Privacy to continue");
+        }
+        if (!phone) {
+          throw new Error("Phone number is required for OTP verification");
+        }
+
+        if (!awaitingOtp) {
+          const { error } = await supabase.auth.signUp({
+            email,
+            password,
+            phone,
+            options: {
+              data: { username },
+              emailRedirectTo: `${window.location.origin}/`,
+            },
+          });
+          if (error) throw error;
+          setAwaitingOtp(true);
+          toast.success("OTP sent to your phone. Enter the code to verify.");
+          toast.message("Check your email to verify later.");
+        } else {
+          if (!otp || otp.trim().length < 4) {
+            throw new Error("Enter the OTP sent to your phone");
+          }
+          const { error } = await supabase.auth.verifyOtp({
+            phone,
+            token: otp.trim(),
+            type: "sms",
+          });
+          if (error) throw error;
+          toast.success("Phone verified. Let's finish setup.");
+          navigate("/onboarding");
+        }
       }
     } catch (error: any) {
       toast.error(error.message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    try {
+      if (!phone) {
+        toast.error("Enter your phone number first");
+        return;
+      }
+      const { error } = await supabase.auth.signInWithOtp({ phone });
+      if (error) throw error;
+      setAwaitingOtp(true);
+      toast.success("OTP resent");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to resend OTP");
     }
   };
 
@@ -134,6 +188,23 @@ export default function Auth() {
                 />
               </div>
             )}
+            {!isLogin && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone (for OTP)</Label>
+                  <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 555 555 5555" disabled={isLoading} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="otp">OTP</Label>
+                  <Input id="otp" type="text" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="123456" disabled={isLoading || !awaitingOtp} />
+                  <div className="text-right">
+                    <button type="button" className="text-xs text-primary" onClick={handleResendOtp} disabled={isLoading}>
+                      Resend code
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -156,9 +227,21 @@ export default function Auth() {
                 required
                 placeholder="••••••••"
                 disabled={isLoading}
-                minLength={6}
+                minLength={8}
               />
             </div>
+            {!isLogin && (
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="terms" checked={acceptTerms} onCheckedChange={(v) => setAcceptTerms(Boolean(v))} />
+                  <Label htmlFor="terms">I agree to Terms & Conditions</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="privacy" checked={acceptPrivacy} onCheckedChange={(v) => setAcceptPrivacy(Boolean(v))} />
+                  <Label htmlFor="privacy">I agree to Privacy Policy</Label>
+                </div>
+              </div>
+            )}
             <Button
               type="submit"
               className="w-full gradient-primary glow-primary"
