@@ -374,16 +374,17 @@ export const GameFeed = () => {
     );
   }
 
-  // TikTok-style vertical snap scroll for both mobile and desktop
+  // TikTok-style vertical snap scroll with strict 9:16 container on desktop
   return (
     <>
     {/* Snap scrolling feed - both mobile and desktop */}
-    <div className="relative h-screen w-full overflow-hidden">
+    <div className="relative h-screen w-full overflow-hidden bg-white dark:bg-black">
       <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar" style={{ scrollSnapType: 'y mandatory', scrollBehavior: 'smooth' }}>
         {hydratedGames?.map((game) => (
           <div key={game.id} className="h-full w-full snap-start snap-always flex items-center justify-center">
-            <div className="relative w-full max-w-[420px] md:max-w-[500px] h-[calc(100vh-8rem)] md:h-[90vh]">
-              <Card className="relative h-full overflow-hidden rounded-2xl border border-border/60">
+            {/* 9:16 frame centered; on desktop uses viewport-fitted width */}
+            <div className="relative nineBySixteen w-full h-full md:vh-9-16">
+              <Card className="absolute inset-0 overflow-hidden rounded-2xl border border-border/60">
                 <img
                   src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
                   alt={game.title}
