@@ -35,7 +35,8 @@ export function useVoiceChat(roomId: string): UseVoiceChatResult {
 
     async function setup() {
       try {
-        const userId = (window as any).Clerk?.user?.id || `anon_${Math.random().toString(36).slice(2)}`;
+        const { data } = await supabase.auth.getUser();
+        const userId = data.user?.id || `anon_${Math.random().toString(36).slice(2)}`;
         myUserIdRef.current = userId;
 
         const channel = supabase.channel(`voice:${roomId}`, {

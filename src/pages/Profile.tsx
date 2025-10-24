@@ -99,21 +99,23 @@ export default function Profile() {
 
 
   const checkFollowStatus = async () => {
-    const userId = (window as any).Clerk?.user?.id || null;
+    const { data: userRes } = await supabase.auth.getUser();
+    const userId = userRes.user?.id || null;
     if (!userId || !profile) return;
 
-    const { data } = await supabase
+    const { data: followRow } = await supabase
       .from('follows')
       .select('*')
       .eq('follower_id', userId)
       .eq('following_id', profile.id)
       .single();
 
-    setIsFollowing(!!data);
+    setIsFollowing(!!followRow);
   };
 
   const toggleFollow = async () => {
-    const userId = (window as any).Clerk?.user?.id || null;
+    const { data } = await supabase.auth.getUser();
+    const userId = data.user?.id || null;
     if (!userId || !profile) return;
 
     if (isFollowing) {
@@ -141,7 +143,8 @@ export default function Profile() {
   };
 
   const fetchProfile = async () => {
-    const uid = (window as any).Clerk?.user?.id || null;
+    const { data } = await supabase.auth.getUser();
+    const uid = data.user?.id || null;
     if (uid) {
       setCurrentUserId(uid);
       // Ensure profile exists; if missing, create one with a unique username
@@ -152,8 +155,7 @@ export default function Profile() {
         .maybeSingle();
 
       if (!data) {
-        const email = (window as any).Clerk?.user?.primaryEmailAddress?.emailAddress || '';
-        const base = (email.split('@')[0] || `user_${uid.slice(0,8)}`)
+        const base = `user_${uid.slice(0,8)}`
           .toLowerCase()
           .replace(/[^a-z0-9_]/g, '_')
           .replace(/_+/g, '_')
@@ -207,48 +209,51 @@ export default function Profile() {
   };
 
   const fetchUserGames = async () => {
-    const user = (window as any).Clerk?.user;
-    if (user?.id) {
-      const { data, error } = await supabase
+    const { data: userRes } = await supabase.auth.getUser();
+    const uid = userRes.user?.id;
+    if (uid) {
+      const { data: games, error } = await supabase
         .from('games')
         .select('*')
-        .eq('creator_id', user.id)
+        .eq('creator_id', uid)
         .order('created_at', { ascending: false });
       
       if (error) {
         console.error('Error fetching user games:', error);
       }
-      setUserGames(data || []);
+      setUserGames(games || []);
     }
   };
 
   const fetchRemixedGames = async () => {
-    const user = (window as any).Clerk?.user;
-    if (user?.id) {
-      const { data, error } = await supabase
+    const { data: userRes } = await supabase.auth.getUser();
+    const uid = userRes.user?.id;
+    if (uid) {
+      const { data: remixes, error } = await supabase
         .from('games')
         .select('*')
-        .eq('creator_id', user.id)
+        .eq('creator_id', uid)
         .not('original_game_id', 'is', null)
         .order('created_at', { ascending: false });
       
       if (error) {
         console.error('Error fetching remixed games:', error);
       }
-      setRemixedGames(data || []);
+      setRemixedGames(remixes || []);
     }
   };
 
   const deleteGame = async (gameId: string) => {
-    const user = (window as any).Clerk?.user;
-    if (!user?.id) return;
+    const { data } = await supabase.auth.getUser();
+    const uid = data.user?.id;
+    if (!uid) return;
     setDeletingId(gameId);
     try {
       const { error } = await supabase
         .from('games')
         .delete()
         .eq('id', gameId)
-        .eq('creator_id', user.id);
+        .eq('creator_id', uid);
       if (error) throw error;
       setUserGames((prev) => prev.filter((g) => g.id !== gameId));
       toast.success('Game deleted');
@@ -310,7 +315,8 @@ export default function Profile() {
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      const uid = (window as any).Clerk?.user?.id || null;
+      const { data: userRes } = await supabase.auth.getUser();
+      const uid = userRes.user?.id || null;
       if (!uid) {
         toast.error('Please sign in to update your profile');
         return;

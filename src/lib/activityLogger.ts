@@ -11,7 +11,8 @@ interface LogActivityParams {
 
 export const logActivity = async ({ type, gameId, targetUserId, metadata = {} }: LogActivityParams) => {
   try {
-    const userId = (window as any).Clerk?.user?.id || null;
+    const { data } = await supabase.auth.getUser();
+    const userId = data.user?.id || null;
     if (!userId) return;
 
     await supabase.from('user_activities').insert({

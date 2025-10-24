@@ -51,8 +51,8 @@ export const ActivityFeed = () => {
   }, []);
 
   const getCurrentUser = async () => {
-    const uid = (window as any).Clerk?.user?.id || null;
-    setUserId(uid);
+    const { data } = await supabase.auth.getUser();
+    setUserId(data.user?.id || null);
   };
 
   const fetchActivities = async () => {

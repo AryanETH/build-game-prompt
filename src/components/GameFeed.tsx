@@ -67,8 +67,10 @@ export const GameFeed = () => {
   // location UI removed per TikTok-style layout
 
   useEffect(() => {
-    const uid = (window as any).Clerk?.user?.id || null;
-    setUserId(uid);
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      setUserId(data.user?.id || null);
+    })();
   }, []);
 
   const pageSize = 10;
@@ -326,7 +328,7 @@ export const GameFeed = () => {
 
   const handleSendComment = async () => {
     if (!newComment.trim() || !commentsOpenFor) return;
-    const uid = (window as any).Clerk?.user?.id || null;
+    const uid = userId;
     if (!uid) {
       toast.error('Please sign in to comment');
       return;

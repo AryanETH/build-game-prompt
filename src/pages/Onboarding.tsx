@@ -66,17 +66,18 @@ export default function Onboarding() {
 
   useEffect(() => {
     (async () => {
-      const userIdFromClerk = (window as any).Clerk?.user?.id || null;
-      if (!userIdFromClerk) {
+      const { data } = await supabase.auth.getUser();
+      const userIdFromSupabase = data.user?.id || null;
+      if (!userIdFromSupabase) {
         navigate("/auth");
         return;
       }
-      setUserId(userIdFromClerk);
+      setUserId(userIdFromSupabase);
       // Load existing to prefill
       const { data: profile } = await supabase
         .from("profiles")
         .select("username, display_name, bio, date_of_birth, age_tier, onboarding_complete, avatar_choice, goal, skill_level, device_type, interests, preferred_styles, region, language, ai_personalization_consent, guardian_consent")
-        .eq("id", userIdFromClerk)
+        .eq("id", userIdFromSupabase)
         .single();
       if (profile) {
         setUsername(profile.username ?? "");

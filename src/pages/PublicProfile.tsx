@@ -47,7 +47,8 @@ export default function PublicProfile() {
   const handleRemix = async (game: GameRow) => {
     setRemixingId(game.id);
     try {
-      const uid = (window as any).Clerk?.user?.id || null;
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u.user?.id || null;
       if (!uid) {
         toast.error('Please sign in to remix');
         return;
@@ -90,7 +91,8 @@ export default function PublicProfile() {
       setRemixedGames((remixed || []) as GameRow[]);
 
       // Check follow status
-      const myId = (window as any).Clerk?.user?.id || null;
+      const { data: me } = await supabase.auth.getUser();
+      const myId = me.user?.id || null;
       if (myId) {
         const { data: followRow } = await supabase
           .from('follows')
@@ -128,7 +130,8 @@ export default function PublicProfile() {
 
   const toggleFollow = async () => {
     if (!profile) return;
-    const userId = (window as any).Clerk?.user?.id || null;
+    const { data } = await supabase.auth.getUser();
+    const userId = data.user?.id || null;
     if (!userId) {
       toast.error('Please sign in to follow');
       return;
