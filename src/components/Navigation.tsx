@@ -1,7 +1,6 @@
 import { Home, Sparkles, User, LogOut, Search, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ThemeToggle } from "./ThemeToggle";
 import { useLocationContext } from "@/context/LocationContext";
@@ -12,9 +11,14 @@ export const Navigation = ({ hideBrand = false }: { hideBrand?: boolean }) => {
   const { mode, city, country } = useLocationContext();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    toast.success("Signed out successfully");
-    navigate("/auth");
+    try {
+      await (window as any).Clerk?.signOut?.();
+      toast.success("Signed out successfully");
+    } catch (_) {
+      // ignore
+    } finally {
+      navigate("/auth");
+    }
   };
 
   const navItems = [

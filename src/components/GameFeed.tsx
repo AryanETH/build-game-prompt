@@ -67,9 +67,8 @@ export const GameFeed = () => {
   // location UI removed per TikTok-style layout
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id || null);
-    });
+    const uid = (window as any).Clerk?.user?.id || null;
+    setUserId(uid);
   }, []);
 
   const pageSize = 10;
@@ -327,8 +326,8 @@ export const GameFeed = () => {
 
   const handleSendComment = async () => {
     if (!newComment.trim() || !commentsOpenFor) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const uid = (window as any).Clerk?.user?.id || null;
+    if (!uid) {
       toast.error('Please sign in to comment');
       return;
     }
@@ -336,7 +335,7 @@ export const GameFeed = () => {
       .from('game_comments')
       .insert({
         game_id: commentsOpenFor.id,
-        user_id: user.id,
+        user_id: uid,
         content: newComment.trim(),
       });
     if (error) {
@@ -384,7 +383,7 @@ export const GameFeed = () => {
           <div key={game.id} className="h-full w-full snap-start snap-always flex items-center justify-center">
             {/* 9:16 frame centered; on desktop uses viewport-fitted width */}
             <div className="relative nineBySixteen w-full h-full md:vh-9-16">
-              <Card className="absolute inset-0 overflow-hidden rounded-2xl border border-border/60">
+              <Card className="absolute inset-0 overflow-hidden rounded-[28px] border border-border/60">
                 <img
                   src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
                   alt={game.title}
@@ -402,7 +401,7 @@ export const GameFeed = () => {
                   </button>
                 </div>
 
-                <div className="absolute left-0 right-20 bottom-32 md:bottom-28 p-4 text-white">
+                <div className="absolute left-0 right-24 bottom-36 md:bottom-32 p-5 md:p-6 text-white">
                   <div className="flex items-center gap-2 mb-2">
                     <button 
                       className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -421,11 +420,11 @@ export const GameFeed = () => {
                   <div className="text-sm text-white/90 line-clamp-2 drop-shadow-md">{game.description || ''}</div>
                 </div>
 
-                <div className="absolute bottom-24 md:bottom-20 right-0 p-4 flex flex-col gap-5 items-center text-white">
+                <div className="absolute bottom-28 md:bottom-24 right-0 p-5 flex flex-col gap-5 items-center text-white">
                   <div className="flex flex-col items-center gap-1">
                     <button
                       aria-label="Like"
-                      className={`h-14 w-14 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-md hover:bg-black/60 hover:scale-110 active:scale-95 transition-all duration-200 shadow-xl ${likedGames.has(game.id) ? 'text-red-500' : ''}`}
+                      className={`h-16 w-16 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-md hover:bg-black/60 hover:scale-110 active:scale-95 transition-all duration-200 shadow-xl ${likedGames.has(game.id) ? 'text-red-500' : ''}`}
                       onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
                     >
                       <Heart className={`h-7 w-7 ${likedGames.has(game.id) ? 'fill-current' : ''}`} strokeWidth={1.5} />
@@ -435,7 +434,7 @@ export const GameFeed = () => {
                   
                   <button
                     aria-label="Comments"
-                    className="h-12 w-12 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
+                    className="h-14 w-14 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
                     onClick={() => setCommentsOpenFor(game)}
                   >
                     <MessageCircle className="h-6 w-6" strokeWidth={1.5} />
@@ -443,7 +442,7 @@ export const GameFeed = () => {
                   
                   <button
                     aria-label="Share"
-                    className="h-12 w-12 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
+                    className="h-14 w-14 rounded-full flex items-center justify-center bg-black/30 backdrop-blur-md hover:bg-black/50 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
                     onClick={() => handleShare(game)}
                   >
                     <Share2 className="h-6 w-6" strokeWidth={1.5} />
@@ -451,7 +450,7 @@ export const GameFeed = () => {
                   
                   <button
                     aria-label="Play"
-                    className="h-12 w-12 rounded-full flex items-center justify-center bg-primary/90 backdrop-blur-md text-primary-foreground hover:bg-primary hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg shadow-primary/50"
+                    className="h-14 w-14 rounded-full flex items-center justify-center bg-primary/90 backdrop-blur-md text-primary-foreground hover:bg-primary hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg shadow-primary/50"
                     onClick={() => handlePlay(game)}
                   >
                     <Play className="h-6 w-6 fill-current" strokeWidth={1.5} />

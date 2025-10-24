@@ -109,8 +109,8 @@ export const WatchFeed = () => {
   const [text, setText] = useState("");
   const send = async () => {
     if (!text.trim() || !selected) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const uid = (window as any).Clerk?.user?.id || null;
+    if (!uid) return;
     const { error } = await supabase.from("game_comments").insert({ game_id: selected.id, user_id: user.id, content: text.trim() });
     if (!error) setText("");
   };

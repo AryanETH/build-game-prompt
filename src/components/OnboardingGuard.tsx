@@ -13,16 +13,16 @@ export const OnboardingGuard = ({ children }: OnboardingGuardProps) => {
   useEffect(() => {
     let isMounted = true;
     (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      const user = auth.user;
-      if (!user) {
+      const clerkUser = (window as any).Clerk?.user;
+      const userId = clerkUser?.id || null;
+      if (!userId) {
         navigate("/auth");
         return;
       }
       const { data: profile } = await supabase
         .from("profiles")
         .select("onboarding_complete")
-        .eq("id", user.id)
+        .eq("id", userId)
         .single();
       if (!isMounted) return;
       if (!profile || profile.onboarding_complete !== true) {

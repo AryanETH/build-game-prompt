@@ -156,13 +156,60 @@ Return ONLY the complete HTML code, nothing else. No explanations, no markdown c
     // Optionally insert a new game record on behalf of the authenticated user
     let insertedGame: any | null = null;
     if (autoInsert) {
-      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        global: { headers: { Authorization: req.headers.get('Authorization') || '' } },
-      });
+      // Verify Clerk JWT from Authorization header
+      const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+      const PUBLIC_KEY = Deno.env.get('CLERK_PUBLIC_KEY') || `-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAohIBo2Co+L66+FL7v0L3\n+otXywXxCjYHBamtG9mDKwYOZoLzV4DyfVRb/MmIWal4SpOVXaPekRG3x0JmFKht\n+3LueC7fXJjPWEvXxQeQNLPCfqypH4foOGkeymIJhPjUk+i1ZGp6uhFcKWnnfhyE\nl61S+8fmhjrL+Dr5aTSnT4VfgGzt/RPREr448IxbjWkX/1d65YrKnv1ZYGS2XFXP\n9OqIrRtMiw4i3a0Ye4H0jNN4GLw2RkL9FNec1uHwzgSVBb2fJOGeLGVyOyHiBa+m\ns9Kehww+eswiR/mCQ4RprePwfY2GPqJ4EssZeeMUbvxh2BePxhvq/5uNEOkq0vOk\ndQIDAQAB\n-----END PUBLIC KEY-----`;
 
-      const { data: userRes } = await supabase.auth.getUser();
-      const authedUser = userRes?.user;
-      if (!authedUser) {
+      async function base64UrlToUint8Array(base64Url: string): Promise<Uint8Array> {
+        const pad = base64Url.length % 4 === 2 ? "==" : base64Url.length % 4 === 3 ? "=" : "";
+        const b64 = base64Url.replace(/-/g, "+").replace(/_/g, "/") + pad;
+        const raw = atob(b64);
+        const uint8 = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) uint8[i] = raw.charCodeAt(i);
+        return uint8;
+      }
+
+      function pemToArrayBuffer(pem: string): ArrayBuffer {
+        const cleaned = pem.replace(/-----BEGIN PUBLIC KEY-----/g, "").replace(/-----END PUBLIC KEY-----/g, "").replace(/\s+/g, "");
+        const binaryDer = atob(cleaned);
+        const bytes = new Uint8Array(binaryDer.length);
+        for (let i = 0; i < binaryDer.length; i++) {
+          bytes[i] = binaryDer.charCodeAt(i);
+        }
+        return bytes.buffer;
+      }
+
+      async function importRsaPublicKey(spkiPem: string): Promise<CryptoKey> {
+        const keyBuffer = pemToArrayBuffer(spkiPem);
+        return await crypto.subtle.importKey(
+          'spki',
+          keyBuffer,
+          { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+          false,
+          ['verify']
+        );
+      }
+
+      async function verifyClerkJwt(t: string, publicKeyPem: string): Promise<Record<string, any> | null> {
+        try {
+          const parts = t.split('.')
+          if (parts.length !== 3) return null;
+          const [h, p, s] = parts;
+          const data = new TextEncoder().encode(`${h}.${p}`);
+          const signature = await base64UrlToUint8Array(s);
+          const key = await importRsaPublicKey(publicKeyPem);
+          const ok = await crypto.subtle.verify({ name: 'RSASSA-PKCS1-v1_5' }, key, signature, data);
+          if (!ok) return null;
+          const payloadJson = new TextDecoder().decode(await base64UrlToUint8Array(p));
+          return JSON.parse(payloadJson);
+        } catch {
+          return null;
+        }
+      }
+
+      const claims = token ? await verifyClerkJwt(token, PUBLIC_KEY) : null;
+      const authedUserId = claims?.sub as (string | undefined);
+      if (!authedUserId) {
         return new Response(
           JSON.stringify({ error: 'Unauthorized' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -175,7 +222,7 @@ Return ONLY the complete HTML code, nothing else. No explanations, no markdown c
         title: (title ?? prompt ?? 'Untitled').toString().slice(0, 100),
         description: (description ?? `An AI-generated game`).toString().slice(0, 500),
         game_code: gameCode,
-        creator_id: authedUser.id,
+        creator_id: authedUserId,
         is_multiplayer: !!options?.isMultiplayer,
         multiplayer_type: options?.isMultiplayer ? options?.multiplayerType ?? null : null,
         graphics_quality: options?.graphicsQuality ?? 'high',
@@ -191,7 +238,7 @@ Return ONLY the complete HTML code, nothing else. No explanations, no markdown c
           title: (title ?? prompt ?? 'Untitled').toString().slice(0, 100),
           description: (description ?? `An AI-generated game`).toString().slice(0, 500),
           game_code: gameCode,
-          creator_id: authedUser.id,
+          creator_id: authedUserId,
         };
         insertRes = await supabase.from('games').insert(minimalPayload).select('*').single();
       }

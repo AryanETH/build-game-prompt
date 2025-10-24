@@ -99,13 +99,13 @@ export default function Profile() {
 
 
   const checkFollowStatus = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !profile) return;
+    const userId = (window as any).Clerk?.user?.id || null;
+    if (!userId || !profile) return;
 
     const { data } = await supabase
       .from('follows')
       .select('*')
-      .eq('follower_id', user.id)
+      .eq('follower_id', userId)
       .eq('following_id', profile.id)
       .single();
 
@@ -113,14 +113,14 @@ export default function Profile() {
   };
 
   const toggleFollow = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !profile) return;
+    const userId = (window as any).Clerk?.user?.id || null;
+    if (!userId || !profile) return;
 
     if (isFollowing) {
       await supabase
         .from('follows')
         .delete()
-        .eq('follower_id', user.id)
+        .eq('follower_id', userId)
         .eq('following_id', profile.id);
       
       toast.success("Unfollowed user");
@@ -128,7 +128,7 @@ export default function Profile() {
     } else {
       await supabase
         .from('follows')
-        .insert({ follower_id: user.id, following_id: profile.id });
+        .insert({ follower_id: userId, following_id: profile.id });
       
       // Log follow activity
       await logActivity({ type: 'user_followed', targetUserId: profile.id });
@@ -141,18 +141,19 @@ export default function Profile() {
   };
 
   const fetchProfile = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      setCurrentUserId(user.id);
+    const uid = (window as any).Clerk?.user?.id || null;
+    if (uid) {
+      setCurrentUserId(uid);
       // Ensure profile exists; if missing, create one with a unique username
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', uid)
         .maybeSingle();
 
       if (!data) {
-        const base = (user.email?.split('@')[0] || `user_${user.id.slice(0,8)}`)
+        const email = (window as any).Clerk?.user?.primaryEmailAddress?.emailAddress || '';
+        const base = (email.split('@')[0] || `user_${uid.slice(0,8)}`)
           .toLowerCase()
           .replace(/[^a-z0-9_]/g, '_')
           .replace(/_+/g, '_')
@@ -172,13 +173,13 @@ export default function Profile() {
           const maxBaseLength = Math.max(1, 24 - suffix.length);
           candidate = `${(base || 'user').slice(0, maxBaseLength)}${suffix}`;
         }
-        await supabase.from('profiles').insert({ id: user.id, username: candidate });
+        await supabase.from('profiles').insert({ id: uid, username: candidate });
       }
 
       const refreshed = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', uid)
         .single();
 
       setProfile(refreshed.data);
@@ -206,8 +207,8 @@ export default function Profile() {
   };
 
   const fetchUserGames = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
+    const user = (window as any).Clerk?.user;
+    if (user?.id) {
       const { data, error } = await supabase
         .from('games')
         .select('*')
@@ -222,8 +223,8 @@ export default function Profile() {
   };
 
   const fetchRemixedGames = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
+    const user = (window as any).Clerk?.user;
+    if (user?.id) {
       const { data, error } = await supabase
         .from('games')
         .select('*')
@@ -239,8 +240,8 @@ export default function Profile() {
   };
 
   const deleteGame = async (gameId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const user = (window as any).Clerk?.user;
+    if (!user?.id) return;
     setDeletingId(gameId);
     try {
       const { error } = await supabase
@@ -309,15 +310,15 @@ export default function Profile() {
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const uid = (window as any).Clerk?.user?.id || null;
+      if (!uid) {
         toast.error('Please sign in to update your profile');
         return;
       }
 
       let avatarUrl = profile?.avatar_url || null;
       if (selectedFile) {
-        avatarUrl = await uploadAvatarAndGetUrl(user.id, selectedFile);
+        avatarUrl = await uploadAvatarAndGetUrl(uid, selectedFile);
       }
 
       const newUsername = formUsername.trim();
@@ -329,7 +330,7 @@ export default function Profile() {
       const { error } = await supabase
         .from('profiles')
         .update({ username: newUsername, avatar_url: avatarUrl })
-        .eq('id', user.id);
+        .eq('id', uid);
 
       if (error) {
         const msg = (error.message || '').toLowerCase();

@@ -47,8 +47,8 @@ export default function PublicProfile() {
   const handleRemix = async (game: GameRow) => {
     setRemixingId(game.id);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const uid = (window as any).Clerk?.user?.id || null;
+      if (!uid) {
         toast.error('Please sign in to remix');
         return;
       }
@@ -90,12 +90,12 @@ export default function PublicProfile() {
       setRemixedGames((remixed || []) as GameRow[]);
 
       // Check follow status
-      const { data: me } = await supabase.auth.getUser();
-      if (me?.user?.id) {
+      const myId = (window as any).Clerk?.user?.id || null;
+      if (myId) {
         const { data: followRow } = await supabase
           .from('follows')
           .select('id')
-          .eq('follower_id', me.user.id)
+          .eq('follower_id', myId)
           .eq('following_id', (prof as any).id)
           .maybeSingle();
         setIsFollowing(!!followRow);
@@ -128,24 +128,24 @@ export default function PublicProfile() {
 
   const toggleFollow = async () => {
     if (!profile) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const userId = (window as any).Clerk?.user?.id || null;
+    if (!userId) {
       toast.error('Please sign in to follow');
       return;
     }
-    if (user.id === profile.id) return;
+    if (userId === profile.id) return;
     if (isFollowing) {
       const { error } = await supabase
         .from('follows')
         .delete()
-        .eq('follower_id', user.id)
+        .eq('follower_id', userId)
         .eq('following_id', profile.id);
       if (error) return;
       setIsFollowing(false);
     } else {
       const { error } = await supabase
         .from('follows')
-        .insert({ follower_id: user.id, following_id: profile.id });
+        .insert({ follower_id: userId, following_id: profile.id });
       if (error) return;
       setIsFollowing(true);
     }
