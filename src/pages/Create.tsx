@@ -319,15 +319,15 @@ export default function Create() {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const userId = (window as any).Clerk?.user?.id || null;
+      if (!userId) {
         toast.error("Please sign in to publish games");
         return;
       }
 
       // Ensure profile exists and avoid username unique conflicts
-      const baseUsername = user.email?.split('@')[0] || `user_${user.id.slice(0,8)}`;
-      await ensureProfileExistsForUser(user.id, baseUsername);
+      const baseUsername = (window as any).Clerk?.user?.primaryEmailAddress?.emailAddress?.split?.('@')?.[0] || `user_${userId.slice(0,8)}`;
+      await ensureProfileExistsForUser(userId, baseUsername);
 
       // Get user's location
       let userLocation = { country: null, city: null };
@@ -370,7 +370,7 @@ export default function Create() {
         title: title.trim(),
         description: description.trim(),
         game_code: generatedCode,
-        creator_id: user.id,
+        creator_id: userId,
         is_multiplayer: isMultiplayer,
         multiplayer_type: isMultiplayer ? multiplayerType : null,
         graphics_quality: graphicsQuality,
@@ -388,7 +388,7 @@ export default function Create() {
           title: title.trim(),
           description: description.trim(),
           game_code: generatedCode,
-          creator_id: user.id,
+          creator_id: userId,
           thumbnail_url: thumbnailUrl || null,
         };
         const retry = await supabase.from('games').insert(minimalPayload).select().single();

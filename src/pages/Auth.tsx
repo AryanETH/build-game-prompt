@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,96 +24,34 @@ export default function Auth() {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-        toast.success("Welcome back!");
-        navigate("/feed");
-      } else {
-        // Password policy: >=8, 1 symbol, 1 number, 1 uppercase
-        const policy = {
-          length: password.length >= 8,
-          symbol: /[^A-Za-z0-9]/.test(password),
-          number: /[0-9]/.test(password),
-          uppercase: /[A-Z]/.test(password),
-        };
-        if (!policy.length || !policy.symbol || !policy.number || !policy.uppercase) {
-          throw new Error("Password must be 8+ chars incl. symbol, number, uppercase letter");
+      await (window as any).Clerk?.openSignIn?.({});
+      // user will be redirected/overlayed by Clerk, but attempt immediate sync
+      try {
+        const token = await (window as any).Clerk?.session?.getToken?.();
+        if (token) {
+          await fetch('/api/user-sync', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
         }
-        if (!acceptTerms || !acceptPrivacy) {
-          throw new Error("Please accept Terms & Privacy to continue");
-        }
-        if (!phone) {
-          throw new Error("Phone number is required for OTP verification");
-        }
-
-        if (!awaitingOtp) {
-          const { error } = await supabase.auth.signUp({
-            email,
-            password,
-            phone,
-            options: {
-              data: { username },
-              emailRedirectTo: `${window.location.origin}/`,
-            },
-          });
-          if (error) throw error;
-          setAwaitingOtp(true);
-          toast.success("OTP sent to your phone. Enter the code to verify.");
-          toast.message("Check your email to verify later.");
-        } else {
-          if (!otp || otp.trim().length < 4) {
-            throw new Error("Enter the OTP sent to your phone");
-          }
-          const { error } = await supabase.auth.verifyOtp({
-            phone,
-            token: otp.trim(),
-            type: "sms",
-          });
-          if (error) throw error;
-          toast.success("Phone verified. Let's finish setup.");
-          navigate("/onboarding");
-        }
-      }
+      } catch {}
+      navigate('/feed');
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(error?.message || 'Authentication failed');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleResendOtp = async () => {
-    try {
-      if (!phone) {
-        toast.error("Enter your phone number first");
-        return;
-      }
-      const { error } = await supabase.auth.signInWithOtp({ phone });
-      if (error) throw error;
-      setAwaitingOtp(true);
-      toast.success("OTP resent");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to resend OTP");
-    }
+    toast.info('Use Clerk sign-in to receive codes');
   };
 
   const handleGoogleAuth = async () => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/feed`,
-        },
-      });
-      if (error) throw error;
+      await (window as any).Clerk?.openSignIn?.({});
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(error?.message || 'Google sign-in failed');
+    } finally {
       setIsLoading(false);
     }
   };

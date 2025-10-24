@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { useLocationContext } from "@/context/LocationContext";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Play, Users, Gamepad2, Zap } from "lucide-react";
 
@@ -10,11 +9,13 @@ const Index = () => {
   const { requestCityFromBrowser } = useLocationContext();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/feed");
-      }
-    });
+    const maybeGo = async () => {
+      try {
+        const user = (window as any).Clerk?.user;
+        if (user) navigate("/feed");
+      } catch {}
+    };
+    maybeGo();
     requestCityFromBrowser();
   }, [navigate]);
 
@@ -85,7 +86,7 @@ const Index = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in">
             <Button 
-              onClick={() => navigate("/auth")} 
+              onClick={() => (window as any).Clerk?.openSignIn?.({})} 
               size="lg" 
               className="gradient-primary glow-primary text-xl px-10 py-6 rounded-full hover:scale-105 active:scale-95 transition-all duration-200 shadow-2xl"
             >
