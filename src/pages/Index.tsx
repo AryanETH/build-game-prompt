@@ -11,8 +11,9 @@ const Index = () => {
   useEffect(() => {
     const maybeGo = async () => {
       try {
-        const user = (window as any).Clerk?.user;
-        if (user) navigate("/feed");
+        const { data } = await import("@/integrations/supabase/client");
+        const session = await data.supabase.auth.getSession();
+        if (session.data.session?.user) navigate("/feed");
       } catch {}
     };
     maybeGo();
@@ -86,7 +87,7 @@ const Index = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in">
             <Button 
-              onClick={() => (window as any).Clerk?.openSignIn?.({})} 
+              onClick={() => navigate('/auth')} 
               size="lg" 
               className="gradient-primary glow-primary text-xl px-10 py-6 rounded-full hover:scale-105 active:scale-95 transition-all duration-200 shadow-2xl"
             >

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { ThemeToggle } from "./ThemeToggle";
+import { supabase } from "@/integrations/supabase/client";
 import { useLocationContext } from "@/context/LocationContext";
 
 export const Navigation = ({ hideBrand = false }: { hideBrand?: boolean }) => {
@@ -12,7 +13,7 @@ export const Navigation = ({ hideBrand = false }: { hideBrand?: boolean }) => {
 
   const handleSignOut = async () => {
     try {
-      await (window as any).Clerk?.signOut?.();
+      await supabase.auth.signOut();
       toast.success("Signed out successfully");
     } catch (_) {
       // ignore

@@ -13,8 +13,8 @@ export const OnboardingGuard = ({ children }: OnboardingGuardProps) => {
   useEffect(() => {
     let isMounted = true;
     (async () => {
-      const clerkUser = (window as any).Clerk?.user;
-      const userId = clerkUser?.id || null;
+      const session = await supabase.auth.getSession();
+      const userId = session.data.session?.user?.id || null;
       if (!userId) {
         navigate("/auth");
         return;

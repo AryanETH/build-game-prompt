@@ -319,14 +319,15 @@ export default function Create() {
     }
 
     try {
-      const userId = (window as any).Clerk?.user?.id || null;
+      const { data: userRes } = await supabase.auth.getUser();
+      const userId = userRes.user?.id || null;
       if (!userId) {
         toast.error("Please sign in to publish games");
         return;
       }
 
       // Ensure profile exists and avoid username unique conflicts
-      const baseUsername = (window as any).Clerk?.user?.primaryEmailAddress?.emailAddress?.split?.('@')?.[0] || `user_${userId.slice(0,8)}`;
+      const baseUsername = `user_${userId.slice(0,8)}`;
       await ensureProfileExistsForUser(userId, baseUsername);
 
       // Get user's location
@@ -353,7 +354,7 @@ export default function Create() {
       if (!finalSoundUrl) {
         toast.info("Generating background music...");
         try {
-          const { data: soundData, error: soundError } = await supabase.functions.invoke('generate-music', {
+      const { data: soundData, error: soundError } = await supabase.functions.invoke('generate-music', {
             body: { prompt: title.trim() }
           });
           if (soundData?.musicUrl) {
