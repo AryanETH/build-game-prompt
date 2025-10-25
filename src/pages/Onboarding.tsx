@@ -1,74 +1,39 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "sonner";
 
-function getAgeTier(dob: string | null): number | null {
-  if (!dob) return null;
-  const birth = new Date(dob);
-  if (isNaN(birth.getTime())) return null;
-  const today = new Date();
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-  if (age < 0) return null;
-  if (age <= 12) return 1; // Kids 9–12 -> conservatively bucket <=12
-  if (age <= 17) return 2; // Teens 13–17
-  if (age <= 25) return 3; // Young Adults 18–25
-  return 4; // Adults 26+
-}
-
-const AVATARS = [
-  "astronaut", "robot", "wizard", "ninja", "cat", "dog", "panda", "unicorn"
-];
-
-export default function Onboarding() {
+export const OnboardingGuard = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-
-  // Step 1: Legal + Account
-  const [acceptTerms, setAcceptTerms] = useState(false);
-  const [acceptPrivacy, setAcceptPrivacy] = useState(false);
-
-  // Step 2: DOB + basic identity
-  const [dateOfBirth, setDateOfBirth] = useState<string>("");
-  const computedTier = useMemo(() => getAgeTier(dateOfBirth || null), [dateOfBirth]);
-  const [username, setUsername] = useState("");
-  const [displayName, setDisplayName] = useState("");
-
-  // Step 3: Profile visual
-  const [avatarChoice, setAvatarChoice] = useState<string>(AVATARS[0]);
-  const [bio, setBio] = useState("");
-
-  // Step 4: Preferences
-  const [goal, setGoal] = useState<string>("both");
-  const [skill, setSkill] = useState<string>("beginner");
-  const [device, setDevice] = useState<string>("mobile");
-  const [interests, setInterests] = useState<string[]>([]);
-  const [preferredStyles, setPreferredStyles] = useState<string[]>([]);
-
-  // Step 5: Region/Language/Consent
-  const [region, setRegion] = useState("");
-  const [language, setLanguage] = useState("");
-  const [aiConsent, setAiConsent] = useState(false);
-  const [guardianConsent, setGuardianConsent] = useState(false);
-
-  const [step, setStep] = useState(1);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.auth.getUser();
-      const userIdFromSupabase = data.user?.id || null;
-      if (!userIdFromSupabase) {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        navigate("/auth");
+        return;
+      }
+
+      // Optional: redirect if onboarding not complete
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_complete")
+        .eq("id", data.session.user.id)
+        .single();
+
+      if (!profile?.onboarding_complete) {
+        navigate("/onboarding");
+        return;
+      }
+
+      setLoading(false);
+    })();
+  }, [navigate]);
+
+  if (loading) return <div>Loading...</div>;
+
+  return <>{children}</>;
+};      if (!userIdFromSupabase) {
         navigate("/auth");
         return;
       }
