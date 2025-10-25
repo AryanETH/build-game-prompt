@@ -9,22 +9,28 @@ export default function AuthPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Listen for auth state changes (SPA login)
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN") navigate("/feed");
+    // Listen for auth state changes
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        navigate("/feed");
+      }
     });
-    return () => sub.subscription.unsubscribe();
+
+    // Optional: redirect if session already exists
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        navigate("/feed");
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   return (
     <div className="min-h-screen gradient-hero flex items-center justify-center p-4">
       <Card className="w-full max-w-md gradient-card border-border/50">
         <CardHeader className="text-center">
-          <img
-            src="/logo-playgen.svg"
-            alt="playGen"
-            className="mx-auto h-12 w-12 mb-3"
-          />
+          <img src="/logo-playgen.svg" alt="playGen" className="mx-auto h-12 w-12 mb-3" />
           <CardTitle className="text-3xl font-bold">Welcome to playGen</CardTitle>
         </CardHeader>
         <CardContent>
@@ -44,24 +50,6 @@ export default function AuthPage() {
             }}
             providers={["google"]}
             socialLayout="horizontal"
-            redirectTo={`${window.location.origin}/feed`} // ensures Google OAuth redirects
-          />
-        </CardContent>
-      </Card>
-    </div>
-  );
-}                default: {
-                  colors: { brand: "#6366F1", brandAccent: "#4338CA" },
-                  radii: { buttonBorderRadius: "12px", inputBorderRadius: "12px" },
-                },
-              },
-              className: {
-                button: "gradient-primary glow-primary",
-              },
-            }}
-            providers={["google"]}
-            socialLayout="horizontal"
-            redirectTo={`${window.location.origin}/feed`} // ✅ ensures Google OAuth redirects to /feed
           />
         </CardContent>
       </Card>
