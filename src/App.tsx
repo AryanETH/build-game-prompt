@@ -103,6 +103,42 @@ const App = () => {
   );
 };
 
+export default App;
+                  element={
+                    <OnboardingGuard>
+                      <Search />
+                    </OnboardingGuard>
+                  }
+                />
+                <Route
+                  path="/create"
+                  element={
+                    <OnboardingGuard>
+                      <Create />
+                    </OnboardingGuard>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <OnboardingGuard>
+                      <Profile />
+                    </OnboardingGuard>
+                  }
+                />
+                <Route path="/u/:username" element={<PublicProfile />} />
+
+                {/* Catch-all for unknown routes */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AuthListener>
+          </LocationProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
+
 export default App;      if (event === "SIGNED_IN") navigate("/feed");
     });
 
