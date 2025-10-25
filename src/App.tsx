@@ -22,7 +22,7 @@ import { OnboardingGuard } from "@/components/OnboardingGuard";
 
 const queryClient = new QueryClient();
 
-// Auth listener wrapper
+// AuthListener handles Supabase auth state changes
 const AuthListener = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
@@ -33,8 +33,59 @@ const AuthListener = ({ children }: { children: React.ReactNode }) => {
     });
 
     // Listen for auth state changes
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN") navigate("/feed");
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  return <>{children}</>;
+};
+
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <LocationProvider>
+            <RocketCursor />
+            <AuthListener>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<AuthPage />} />
+                <Route path="/onboarding" element={<Onboarding />} />
+                <Route
+                  path="/feed"
+                  element={<OnboardingGuard><Feed /></OnboardingGuard>}
+                />
+                <Route
+                  path="/search"
+                  element={<OnboardingGuard><Search /></OnboardingGuard>}
+                />
+                <Route
+                  path="/create"
+                  element={<OnboardingGuard><Create /></OnboardingGuard>}
+                />
+                <Route
+                  path="/profile"
+                  element={<OnboardingGuard><Profile /></OnboardingGuard>}
+                />
+                <Route path="/u/:username" element={<PublicProfile />} />
+                {/* Add all custom routes above the catch-all route */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AuthListener>
+          </LocationProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
+
+export default App;      if (event === "SIGNED_IN") navigate("/feed");
     });
 
     return () => sub.subscription.unsubscribe();
