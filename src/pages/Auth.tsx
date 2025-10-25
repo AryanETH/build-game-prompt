@@ -8,12 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 export default function AuthPage() {
   const navigate = useNavigate();
 
-  // Listen for auth state changes (SPA login)
   useEffect(() => {
+    // Listen for auth state changes (SPA login)
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN") navigate("/feed");
     });
-
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
 
@@ -35,6 +34,23 @@ export default function AuthPage() {
               theme: ThemeSupa,
               variables: {
                 default: {
+                  colors: { brand: "#6366F1", brandAccent: "#4338CA" },
+                  radii: { buttonBorderRadius: "12px", inputBorderRadius: "12px" },
+                },
+              },
+              className: {
+                button: "gradient-primary glow-primary",
+              },
+            }}
+            providers={["google"]}
+            socialLayout="horizontal"
+            redirectTo={`${window.location.origin}/feed`} // ensures Google OAuth redirects
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}                default: {
                   colors: { brand: "#6366F1", brandAccent: "#4338CA" },
                   radii: { buttonBorderRadius: "12px", inputBorderRadius: "12px" },
                 },
