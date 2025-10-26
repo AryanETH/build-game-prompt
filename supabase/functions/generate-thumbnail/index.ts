@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { GoogleGenerativeAI, Modality } from 'https://esm.sh/@google/generative-ai';
+import { decodeBase64 } from "https://jsr.io/@std/encoding@0.224.0/base64";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,116 +14,84 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
-    const {
-      prompt,
-      game_id,
-      metadata,
-      backgroundMode = 'dark',
-    }: {
-      prompt?: string;
-      game_id?: string;
-      metadata?: { title?: string; genre?: string; colorPalette?: string; tags?: string[] };
-      backgroundMode?: 'dark' | 'light';
-    } = body || {};
-
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
-    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const POLLINATIONS_BASE_URL = Deno.env.get('POLLINATIONS_BASE_URL') || 'https://image.pollinations.ai/prompt';
-    const POLLINATIONS_API_KEY = Deno.env.get('POLLINATIONS_API_KEY') || '';
-
-    // Build tuned prompt
-    const title = metadata?.title?.toString() || '';
-    const theme = (metadata?.genre || metadata?.colorPalette || '').toString();
-    const tagText = Array.isArray(metadata?.tags) && metadata!.tags!.length ? metadata!.tags!.join(', ') : '';
-    const styleHints = 'digital art, cinematic lighting, high detail, crisp silhouettes, 2D-perfect quality';
-    const tone = backgroundMode === 'light'
-      ? 'bright, clean, high-saturation, airy background'
-      : 'high-contrast, neon highlights, dark space / nebula background';
-
-    const basePrompt = (prompt && typeof prompt === 'string' && prompt.trim()) || [title, theme, tagText].filter(Boolean).join(' ');
-    const promptText = `${basePrompt}. Create a striking vertical 9:16 thumbnail, ${styleHints}, ${tone}. Center main subject and leave negative space for overlay UI. Kid-safe if the creator is under 13.`;
-
-    // Pollinations open endpoint (GET returns image)
-    const encoded = encodeURIComponent(promptText);
-    const pollinationsUrl = `${POLLINATIONS_BASE_URL}/${encoded}`;
-    const headers: HeadersInit = new Headers({ 'Accept': 'image/*' });
-    if (POLLINATIONS_API_KEY) headers.set('Authorization', `Bearer ${POLLINATIONS_API_KEY}`);
-
-    let imageBlob: Blob | null = null;
-    try {
-      const pRes = await fetch(pollinationsUrl, { method: 'GET', headers });
-      if (pRes.ok) {
-        const arrayBuffer = await pRes.arrayBuffer();
-        imageBlob = new Blob([arrayBuffer], { type: 'image/png' });
-      } else {
-        console.error('Pollinations non-ok:', pRes.status, await pRes.text().catch(() => ''));
-      }
-    } catch (e) {
-      console.error('Pollinations fetch error:', e);
+    // 1. Get the prompt from the request
+    const { prompt } = await req.json();
+    if (!prompt) {
+      throw new Error("Missing 'prompt' in request body");
     }
 
-    // Fallback placeholder if image not available
-    let thumbnailUrl = '';
-    let uploadedPath: string | null = null;
-    if (imageBlob && SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
-      try {
-        const service = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-        const filename = `${game_id || 'unlinked'}/${Date.now()}.png`;
-        const { error: uploadErr } = await service.storage
-          .from('thumbnails')
-          .upload(filename, imageBlob, { contentType: 'image/png', cacheControl: '31536000', upsert: false });
-        if (uploadErr) {
-          console.error('Supabase upload error:', uploadErr.message || uploadErr.name);
-        } else {
-          uploadedPath = filename;
-          const { data } = service.storage.from('thumbnails').getPublicUrl(filename);
-          thumbnailUrl = data.publicUrl;
-        }
-      } catch (e) {
-        console.error('Supabase storage error:', e);
-      }
+    // 2. Get Google API Key from Supabase secret (environment variable)
+    const googleApiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!googleApiKey) {
+      throw new Error("Missing GEMINI_API_KEY environment variable");
     }
 
-    if (!thumbnailUrl) {
-      const baseText = (typeof basePrompt === 'string' && basePrompt.trim().length > 0)
-        ? basePrompt.trim().slice(0, 40)
-        : 'Game Thumbnail';
-      const encodedText = encodeURIComponent(baseText).replace(/%20/g, '+');
-      thumbnailUrl = `https://placehold.co/720x1280/png?text=${encodedText}`;
+    // 3. Initialize the Google Gemini client
+    const genAI = new GoogleGenerativeAI(googleApiKey);
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.5-flash-image" 
+    });
+
+    // 4. Ask the model to generate an image
+    const response = await model.generateContent({
+      contents: [{
+        parts: [{ text: `A cinematic game thumbnail for a game about: ${prompt}, 9:16 aspect ratio, high quality` }]
+      }],
+      generationConfig: {
+        responseMimeType: "image/png",
+        responseModalities: [Modality.IMAGE],
+      },
+    });
+
+    // 5. Get the base64-encoded image data from the response
+    const imagePart = response.response.candidates?.[0].content.parts[0];
+    if (imagePart?.inlineData?.data === undefined) {
+      throw new Error("Google AI did not return image data.");
+    }
+    const imageBase64 = imagePart.inlineData.data;
+
+    // 6. Decode the Base64 image into binary data
+    const imageBody = decodeBase64(imageBase64);
+
+    // 7. Create a Supabase admin client to upload the image
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // 8. Upload the image to Supabase Storage
+    const safePrompt = prompt.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30);
+    const filePath = `public/${Date.now()}-${safePrompt}.png`;
+
+    const { error: uploadError } = await supabaseClient
+      .storage
+      .from('thumbnails') // The name of your bucket
+      .upload(filePath, imageBody, {
+        contentType: 'image/png',
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw new Error(`Supabase Storage error: ${uploadError.message}`);
     }
 
-    // Persist to DB if we have a game_id
-    if (game_id && SUPABASE_URL && (SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY)) {
-      try {
-        const client = SUPABASE_SERVICE_ROLE_KEY
-          ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-          : createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { global: { headers: { Authorization: req.headers.get('Authorization') || '' } } });
-        await client
-          .from('games')
-          .update({ cover_url: thumbnailUrl, thumbnail_url: thumbnailUrl })
-          .eq('id', game_id);
-      } catch (e) {
-        console.warn("Couldn't update games table with thumbnail_url:", e);
-      }
-    }
+    // 9. Get the public URL for the newly uploaded image
+    const { data: publicUrlData } = supabaseClient
+      .storage
+      .from('thumbnails')
+      .getPublicUrl(filePath);
 
+    // 10. Return the new image URL to your website
     return new Response(
-      JSON.stringify({ ok: true, thumbnailUrl, imageUrl: thumbnailUrl, storagePath: uploadedPath }),
+      JSON.stringify({ imageUrl: publicUrlData.publicUrl }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+
   } catch (error) {
-    // Log detailed error server-side only
-    console.error('Error in generate-thumbnail function:', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      timestamp: new Date().toISOString()
-    });
-    
-    // Return generic error to client
+    console.error(`Error in generate-thumbnail function: ${error.message}`);
     return new Response(
-      JSON.stringify({ error: 'Unable to generate thumbnail. Please try again later.' }),
+      JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
