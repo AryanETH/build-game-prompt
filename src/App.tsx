@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,59 +19,30 @@ import Onboarding from "./pages/Onboarding";
 
 import { LocationProvider } from "./context/LocationContext";
 import RocketCursor from "@/components/RocketCursor";
+import { ProtectedRoute } from "./components/ProtectedRoute"; // Corrected import
 import { OnboardingGuard } from "@/components/OnboardingGuard";
 
 const queryClient = new QueryClient();
 
-// ✅ Fixed AuthListener – prevents infinite redirect loop
-const AuthListener = ({ children }: { children: React.ReactNode }) => {
-  const navigate = useNavigate();
+const App = () => {
+  const [isSessionLoading, setIsSessionLoading] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
-
-    // Check session on load
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-
-      const session = data.session;
-      const currentPath = window.location.pathname;
-
-      if (session) {
-        // If logged in and on public routes → redirect to feed
-        if (currentPath === "/" || currentPath === "/auth") {
-          navigate("/feed", { replace: true });
-        }
-      } else {
-        // If not logged in and on protected routes → go to auth
-        const protectedRoutes = ["/feed", "/search", "/create", "/profile"];
-        if (protectedRoutes.includes(currentPath)) {
-          navigate("/auth", { replace: true });
-        }
-      }
-    });
-
-    // Listen for auth changes
-    const { data: subscription } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === "SIGNED_IN") {
-          navigate("/feed", { replace: true });
-        } else if (event === "SIGNED_OUT") {
-          navigate("/auth", { replace: true });
-        }
-      }
-    );
-
-    return () => {
-      mounted = false;
-      subscription.subscription.unsubscribe();
+    const checkSession = async () => {
+      await supabase.auth.getSession();
+      setIsSessionLoading(false);
     };
-  }, [navigate]);
+    checkSession();
+  }, []);
 
-  return <>{children}</>;
-};
+  if (isSessionLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div>Loading...</div>
+      </div>
+    );
+  }
 
-const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -79,54 +51,37 @@ const App = () => {
         <BrowserRouter>
           <LocationProvider>
             <RocketCursor />
-            <AuthListener>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<AuthPage />} />
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<AuthPage />} />
 
-                {/* Onboarding */}
-                <Route path="/onboarding" element={<Onboarding />} />
+              {/* Onboarding */}
+              <Route path="/onboarding" element={<Onboarding />} />
 
-                {/* Protected routes */}
-                <Route
-                  path="/feed"
-                  element={
-                    <OnboardingGuard>
-                      <Feed />
-                    </OnboardingGuard>
-                  }
-                />
-                <Route
-                  path="/search"
-                  element={
-                    <OnboardingGuard>
-                      <Search />
-                    </OnboardingGuard>
-                  }
-                />
-                <Route
-                  path="/create"
-                  element={
-                    <OnboardingGuard>
-                      <Create />
-                    </OnboardingGuard>
-                  }
-                />
-                <Route
-                  path="/profile"
-                  element={
-                    <OnboardingGuard>
-                      <Profile />
-                    </OnboardingGuard>
-                  }
-                />
-                <Route path="/u/:username" element={<PublicProfile />} />
+              {/* Protected routes */}
+              <Route
+                path="/feed"
+                element={<ProtectedRoute><Feed /></ProtectedRoute>}
+              />
+              <Route
+                path="/search"
+                element={<ProtectedRoute><Search /></ProtectedRoute>}
+              />
+              <Route
+                path="/create"
+                element={<ProtectedRoute><Create /></ProtectedRoute>}
+              />
+              <Route
+                path="/profile"
+                element={<ProtectedRoute><Profile /></ProtectedRoute>}
+              />
 
-                {/* 404 Fallback */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </AuthListener>
+              <Route path="/u/:username" element={<PublicProfile />} />
+
+              {/* 404 Fallback */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
           </LocationProvider>
         </BrowserRouter>
       </TooltipProvider>

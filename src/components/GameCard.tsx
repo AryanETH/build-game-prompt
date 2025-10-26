@@ -1,6 +1,7 @@
 import { Heart, Play, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import PostActions from "./PostActions"; // Assuming you have this component
 
 interface GameCardProps {
   id: string;
@@ -47,37 +48,23 @@ export const GameCard = ({
       <div className="p-4 flex items-center justify-between">
         <div className="flex gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-1">
-            <Heart className={`h-4 w-4 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
+            <Heart className={`h-3.5 w-3.5 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
             <span>{likesCount}</span>
           </div>
           <div className="flex items-center gap-1">
-            <Play className="h-4 w-4" />
+            <Play className="h-3.5 w-3.5" />
             <span>{playsCount}</span>
           </div>
         </div>
         
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onLike}
-            className="hover:bg-primary/20"
-          >
-            <Heart className={`h-4 w-4 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onShare}
-            className="hover:bg-accent/20"
-          >
-            <Share2 className="h-4 w-4" />
-          </Button>
+        <div className="flex items-center">
+          <PostActions />
           <Button
             onClick={onPlay}
             className="gradient-primary glow-primary"
+            size="sm"
           >
-            Play Now
+            Play
           </Button>
         </div>
       </div>
