@@ -22,22 +22,49 @@ import { OnboardingGuard } from "@/components/OnboardingGuard";
 
 const queryClient = new QueryClient();
 
-// AuthListener component ensures user is redirected on auth changes
+// ✅ Fixed AuthListener – prevents infinite redirect loop
 const AuthListener = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Restore session on page load
+    let mounted = true;
+
+    // Check session on load
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate("/feed");
+      if (!mounted) return;
+
+      const session = data.session;
+      const currentPath = window.location.pathname;
+
+      if (session) {
+        // If logged in and on public routes → redirect to feed
+        if (currentPath === "/" || currentPath === "/auth") {
+          navigate("/feed", { replace: true });
+        }
+      } else {
+        // If not logged in and on protected routes → go to auth
+        const protectedRoutes = ["/feed", "/search", "/create", "/profile"];
+        if (protectedRoutes.includes(currentPath)) {
+          navigate("/auth", { replace: true });
+        }
+      }
     });
 
-    // Listen for auth state changes
-    const { data: subscription } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN") navigate("/feed");
-    });
+    // Listen for auth changes
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === "SIGNED_IN") {
+          navigate("/feed", { replace: true });
+        } else if (event === "SIGNED_OUT") {
+          navigate("/auth", { replace: true });
+        }
+      }
+    );
 
-    return () => subscription.subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.subscription.unsubscribe();
+    };
   }, [navigate]);
 
   return <>{children}</>;
@@ -54,10 +81,14 @@ const App = () => {
             <RocketCursor />
             <AuthListener>
               <Routes>
+                {/* Public routes */}
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<AuthPage />} />
+
+                {/* Onboarding */}
                 <Route path="/onboarding" element={<Onboarding />} />
 
+                {/* Protected routes */}
                 <Route
                   path="/feed"
                   element={
@@ -92,7 +123,7 @@ const App = () => {
                 />
                 <Route path="/u/:username" element={<PublicProfile />} />
 
-                {/* Catch-all for unknown routes */}
+                {/* 404 Fallback */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AuthListener>
