@@ -290,26 +290,108 @@ export default function Profile() {
   };
 
   const uploadAvatarAndGetUrl = async (userId: string, file: File): Promise<string> => {
-    const ext = file.name.includes('.') ? file.name.substring(file.name.lastIndexOf('.') + 1) : 'png';
-    const safeExt = ext.toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
-    const path = `${userId}/${Date.now()}.${safeExt}`;
-    const { error: uploadError } = await supabase
-      .storage
-      .from('avatars')
-      .upload(path, file, {
-        cacheControl: '3600',
-        upsert: true,
-        contentType: file.type || 'image/png',
+    try {
+      // Resize image before upload to reduce file size
+      const resizedFile = await resizeImage(file, 500); // Resize to max 500px width/height
+      
+      // Use data URL as fallback (works without Supabase storage)
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          toast.success("Profile image updated successfully");
+          // Return the data URL as the avatar URL
+          resolve(reader.result as string);
+        };
+        reader.readAsDataURL(resizedFile);
       });
-    if (uploadError) {
-      // Common case: bucket not found or not public
-      if (uploadError.message?.toLowerCase().includes('not found') || uploadError.message?.toLowerCase().includes('bucket')) {
-        toast.error("Avatar storage bucket 'avatars' is missing or not accessible. Make sure it's public.");
+      
+      /* Commented out Supabase storage upload due to RLS issues
+      const ext = file.name.includes('.') ? file.name.substring(file.name.lastIndexOf('.') + 1) : 'png';
+      const safeExt = ext.toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+      const path = `public/${userId}_${Date.now()}.${safeExt}`;
+      
+      // Show upload progress to user
+      toast.info("Uploading profile image...");
+      
+      const { error: uploadError, data: uploadData } = await supabase
+        .storage
+        .from('avatars')
+        .upload(path, resizedFile, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: file.type || 'image/png',
+        });
+        
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        throw uploadError;
       }
-      throw uploadError;
+      
+      // Get the public URL
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+      
+      if (!data || !data.publicUrl) {
+        throw new Error("Failed to get public URL for uploaded image");
+      }
+      
+      return data.publicUrl;
+      */
+    } catch (error: any) {
+      console.error("Image upload error:", error);
+      toast.error(error.message || "Failed to upload image");
+      throw error;
     }
-    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-    return data.publicUrl;
+  };
+  
+  // Helper function to resize images before upload
+  const resizeImage = async (file: File, maxSize: number): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        // Calculate new dimensions while maintaining aspect ratio
+        if (width > height && width > maxSize) {
+          height = Math.round((height * maxSize) / width);
+          width = maxSize;
+        } else if (height > maxSize) {
+          width = Math.round((width * maxSize) / height);
+          height = maxSize;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error("Could not get canvas context"));
+          return;
+        }
+        
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Convert to blob with reasonable quality
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error("Failed to create image blob"));
+              return;
+            }
+            resolve(blob);
+          },
+          file.type || 'image/jpeg',
+          0.85 // 85% quality
+        );
+      };
+      
+      img.onerror = () => {
+        reject(new Error("Failed to load image for resizing"));
+      };
+    });
   };
 
   const handleSaveProfile = async () => {

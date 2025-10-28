@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Sparkles, Globe, Lock, Eye, Pencil, Image as ImageIcon } from "lucide-react";
+import { Loader2, Sparkles, Globe, Lock, Eye, Pencil, Image as ImageIcon, Wand2, Gamepad2, Users, Volume2 } from "lucide-react";
 import { logActivity } from "@/lib/activityLogger";
 import { playClick, playSuccess, playError } from "@/lib/sounds";
 
@@ -29,6 +29,12 @@ const buildFallbackGameCode = (title: string) => `<!DOCTYPE html>
     #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
     #overlay .box{background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.2);padding:20px 24px;border-radius:16px;text-align:center;backdrop-filter:blur(6px)}
     canvas{display:block;margin:0 auto;touch-action:none}
+    #audio-controls{position:fixed;bottom:10px;right:10px;display:flex;gap:8px;z-index:100}
+    #audio-controls button{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+    #audio-controls button:hover{background:rgba(255,255,255,0.15)}
+    #voice-chat{position:fixed;bottom:10px;left:10px;z-index:100;display:flex;align-items:center;gap:8px}
+    #voice-chat button{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:14px;cursor:pointer}
+    #voice-chat button.active{background:rgba(255,0,0,0.3);border-color:rgba(255,0,0,0.5)}
     @media (max-width: 600px){#controls{position:fixed;bottom:16px;left:0;right:0;display:flex;justify-content:center;gap:12px}
       #controls button{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:18px}}
   </style>
@@ -48,7 +54,19 @@ const buildFallbackGameCode = (title: string) => `<!DOCTYPE html>
     <button data-dx="-1">◀</button>
     <button data-dx="1">▶</button>
   </div>
+  
+  <!-- Audio Controls -->
+  <div id="audio-controls">
+    <button id="music-toggle">♫</button>
+  </div>
+  
+  <!-- Voice Chat -->
+  <div id="voice-chat">
+    <button id="mic-toggle">🎤</button>
+  </div>
+  
   <script>
+    // Game variables
     const canvas=document.getElementById('game');
     const ctx=canvas.getContext('2d');
     const scoreEl=document.getElementById('score');
@@ -58,18 +76,216 @@ const buildFallbackGameCode = (title: string) => `<!DOCTYPE html>
     let running=false, score=0, lives=3, t=0, keys={};
     const player={x:180,y:560,w:28,h:28,dx:0,speed:3,color:'#5eead4'};
     const stars=[], enemies=[];
+    
+    // Audio system
+    let audioContext = null;
+    let backgroundMusic = null;
+    let musicGain = null;
+    let soundEffects = {};
+    let isMusicPlaying = false;
+    let isMicActive = false;
+    
+    // Initialize audio
+    function initAudio() {
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Create gain node for music volume control
+        musicGain = audioContext.createGain();
+        musicGain.gain.value = 0.4; // Default volume 40%
+        musicGain.connect(audioContext.destination);
+        
+        // Create background music (simple synth)
+        createBackgroundMusic();
+        
+        // Create sound effects
+        createSoundEffects();
+        
+        // Setup audio controls
+        document.getElementById('music-toggle').addEventListener('click', toggleMusic);
+        document.getElementById('mic-toggle').addEventListener('click', toggleMic);
+      } catch(e) {
+        console.error("Web Audio API not supported:", e);
+      }
+    }
+    
+    // Create background music
+    function createBackgroundMusic() {
+      if (!audioContext) return;
+      
+      const oscillator = audioContext.createOscillator();
+      const lfo = audioContext.createOscillator();
+      const lfoGain = audioContext.createGain();
+      
+      // Setup LFO for subtle pitch modulation
+      lfo.frequency.value = 0.2;
+      lfoGain.gain.value = 5;
+      lfo.connect(lfoGain);
+      lfoGain.connect(oscillator.frequency);
+      
+      // Setup main oscillator
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 220; // A3
+      
+      // Connect to gain node
+      oscillator.connect(musicGain);
+      
+      // Start oscillators
+      lfo.start();
+      oscillator.start();
+      
+      backgroundMusic = oscillator;
+      
+      // Initially muted
+      musicGain.gain.value = 0;
+    }
+    
+    // Create sound effects
+    function createSoundEffects() {
+      if (!audioContext) return;
+      
+      // Collect star sound
+      soundEffects.collect = () => {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        
+        osc.frequency.value = 880;
+        osc.type = 'sine';
+        
+        gain.gain.value = 0.1;
+        
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        
+        osc.start();
+        osc.stop(audioContext.currentTime + 0.1);
+        
+        // Pitch up
+        osc.frequency.linearRampToValueAtTime(1320, audioContext.currentTime + 0.1);
+      };
+      
+      // Hit enemy sound
+      soundEffects.hit = () => {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        
+        osc.frequency.value = 220;
+        osc.type = 'sawtooth';
+        
+        gain.gain.value = 0.1;
+        
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        
+        osc.start();
+        osc.stop(audioContext.currentTime + 0.2);
+        
+        // Pitch down
+        osc.frequency.linearRampToValueAtTime(110, audioContext.currentTime + 0.2);
+      };
+    }
+    
+    // Toggle background music
+    function toggleMusic() {
+      if (!audioContext) return;
+      
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      
+      isMusicPlaying = !isMusicPlaying;
+      
+      if (isMusicPlaying) {
+        musicGain.gain.linearRampToValueAtTime(0.4, audioContext.currentTime + 0.5);
+        document.getElementById('music-toggle').textContent = '♫';
+        document.getElementById('music-toggle').style.background = 'rgba(0,255,0,0.1)';
+      } else {
+        musicGain.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.5);
+        document.getElementById('music-toggle').textContent = '♫';
+        document.getElementById('music-toggle').style.background = 'rgba(255,255,255,0.08)';
+      }
+    }
+    
+    // Toggle microphone
+    function toggleMic() {
+      isMicActive = !isMicActive;
+      
+      if (isMicActive) {
+        document.getElementById('mic-toggle').classList.add('active');
+        
+        // Reduce music volume when mic is active
+        if (isMusicPlaying) {
+          musicGain.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.3);
+        }
+        
+        // Request microphone access
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+              // Microphone is now active
+              console.log("Microphone activated");
+            })
+            .catch(err => {
+              console.error("Error accessing microphone:", err);
+              isMicActive = false;
+              document.getElementById('mic-toggle').classList.remove('active');
+            });
+        }
+      } else {
+        document.getElementById('mic-toggle').classList.remove('active');
+        
+        // Restore music volume when mic is inactive
+        if (isMusicPlaying) {
+          musicGain.gain.linearRampToValueAtTime(0.4, audioContext.currentTime + 0.3);
+        }
+      }
+    }
+    
+    // Game functions
     function rnd(min,max){return Math.random()*(max-min)+min}
     function rect(r,c){ctx.fillStyle=c;ctx.fillRect(r.x,r.y,r.w,r.h)}
     function circle(x,y,r,c){ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
     function spawnStar(){stars.push({x:rnd(12,348),y:-10,r:4+Math.random()*3,vy:1.2+Math.random()*1.5})}
     function spawnEnemy(){const w=20+Math.random()*26;enemies.push({x:rnd(0,360-w),y:-w,w,h:w,vy:1.2+Math.random()*2})}
-    function reset(){score=0;lives=3;player.x=180;player.y=560;stars.length=0;enemies.length=0;t=0}
-    function start(){reset();running=true;overlay.style.display='none'; if('ontouchstart' in window) controls.hidden=false}
-    function end(){running=false;overlay.querySelector('.box').innerHTML='<h2 style="margin:0 0 8px">Game Over</h2><div style="opacity:.85">Score: '+score+'</div><div style="margin-top:12px; opacity:.7; font-size:12px">Press Space / Tap to restart</div>';overlay.style.display='flex'}
-    addEventListener('keydown',e=>{keys[e.key]=true;if(!running&&(e.key===' '||e.key==='Enter'))start()});
+    
+    function reset(){
+      score=0;
+      lives=3;
+      player.x=180;
+      player.y=560;
+      stars.length=0;
+      enemies.length=0;
+      t=0;
+    }
+    
+    function start(){
+      reset();
+      running=true;
+      overlay.style.display='none'; 
+      if('ontouchstart' in window) controls.hidden=false;
+      
+      // Initialize audio when game starts
+      if (!audioContext) {
+        initAudio();
+      }
+    }
+    
+    function end(){
+      running=false;
+      overlay.querySelector('.box').innerHTML='<h2 style="margin:0 0 8px">Game Over</h2><div style="opacity:.85">Score: '+score+'</div><div style="margin-top:12px; opacity:.7; font-size:12px">Press Space / Tap to restart</div>';
+      overlay.style.display='flex';
+    }
+    
+    addEventListener('keydown',e=>{
+      keys[e.key]=true;
+      if(!running&&(e.key===' '||e.key==='Enter'))start();
+    });
+    
     addEventListener('keyup',e=>{keys[e.key]=false});
     controls.addEventListener('touchstart',e=>{const b=e.target.closest('button');if(b){player.dx=parseInt(b.dataset.dx)}});
     controls.addEventListener('touchend',()=>{player.dx=0});
+    overlay.addEventListener('click', () => { if(!running) start(); });
+    
     function update(){
       if(!running){requestAnimationFrame(update);return}
       t++;
@@ -86,11 +302,24 @@ const buildFallbackGameCode = (title: string) => `<!DOCTYPE html>
       if(t%60===0)spawnEnemy();
       // stars
       for(let i=stars.length-1;i>=0;i--){const s=stars[i];s.y+=s.vy;circle(s.x,s.y,s.r,'#fde047');
-        if(Math.hypot(s.x-(player.x+player.w/2),s.y-(player.y+player.h/2))<s.r+14){score+=10;scoreEl.textContent=score;stars.splice(i,1)}
+        if(Math.hypot(s.x-(player.x+player.w/2),s.y-(player.y+player.h/2))<s.r+14){
+          score+=10;
+          scoreEl.textContent=score;
+          stars.splice(i,1);
+          // Play collect sound
+          if (soundEffects.collect) soundEffects.collect();
+        }
         else if(s.y>660)stars.splice(i,1)}
       // enemies
       for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];e.y+=e.vy;rect(e,'#fb7185');
-        if(!(e.x>player.x+player.w||e.x+e.w<player.x||e.y>player.y+player.h||e.y+e.h<player.y)){lives--;livesEl.textContent=lives;enemies.splice(i,1);if(lives<=0)end()}
+        if(!(e.x>player.x+player.w||e.x+e.w<player.x||e.y>player.y+player.h||e.y+e.h<player.y)){
+          lives--;
+          livesEl.textContent=lives;
+          enemies.splice(i,1);
+          // Play hit sound
+          if (soundEffects.hit) soundEffects.hit();
+          if(lives<=0)end();
+        }
         else if(e.y>660)enemies.splice(i,1)}
       requestAnimationFrame(update)
     }
@@ -120,6 +349,7 @@ export default function Create() {
   const [useImagePrompt, setUseImagePrompt] = useState(false);
   const [imageGenerationPrompt, setImageGenerationPrompt] = useState("");
   const [generatedInterfaceImage, setGeneratedInterfaceImage] = useState<string>("");
+  const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
 
   // Sound URL input removed per product direction; audio may be auto-generated
   // If arriving via Remix, load base game code for editing
@@ -162,6 +392,76 @@ export default function Create() {
     } catch (error: any) {
       console.error('Image generation error:', error);
       toast.error("Failed to generate image");
+    }
+  };
+  
+  // Generate thumbnail using Gemini API
+  const handleGenerateThumbnailWithGemini = async () => {
+    if (!title.trim() && !prompt.trim()) {
+      toast.error("Please enter a title or game prompt first");
+      return;
+    }
+    
+    setIsGeneratingThumbnail(true);
+    playClick();
+    
+    try {
+      toast.info("Generating thumbnail with Gemini AI...");
+      
+      // Call Gemini API for image generation
+      const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": "AIzaSyAW1EI82pftDLAjSb6N_eV0l2_MSz69Ij0"
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `Generate a high-quality game thumbnail image for a game titled "${title || prompt.slice(0, 50)}". 
+              The game is about: ${prompt}. 
+              Style: ${graphicsQuality}, 
+              Type: ${isMultiplayer ? multiplayerType : 'single-player'}.
+              Make it visually appealing with vibrant colors and game-related imagery.
+              Return ONLY an image, no text.`
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.9,
+            topK: 32,
+            topP: 1,
+            maxOutputTokens: 2048
+          }
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Gemini API error: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      // Extract image URL from response
+      if (result.candidates && result.candidates[0]?.content?.parts) {
+        const imagePart = result.candidates[0].content.parts.find(part => part.inlineData?.mimeType?.startsWith('image/'));
+        if (imagePart?.inlineData?.data) {
+          const imageUrl = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
+          setThumbnailUrl(imageUrl);
+          setCoverUrl(imageUrl);
+          toast.success("Thumbnail generated with Gemini AI!");
+          playSuccess();
+        } else {
+          throw new Error("No image data in response");
+        }
+      } else {
+        throw new Error("Invalid response format");
+      }
+    } catch (error: any) {
+      console.error('Gemini thumbnail generation error:', error);
+      toast.error("Failed to generate thumbnail with Gemini. Falling back to default method.");
+      playError();
+    } finally {
+      setIsGeneratingThumbnail(false);
     }
   };
 
@@ -440,8 +740,8 @@ export default function Create() {
     <div className="min-h-screen pb-16 md:pt-16">
       <Navigation />
       
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
+      <div className="container mx-auto px-4 py-8 flex justify-center">
+        <div className="max-w-5xl w-full mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold mb-2">Create with AI</h1>
             <p className="text-muted-foreground">
@@ -449,9 +749,9 @@ export default function Create() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 gap-6 mx-auto">
             {/* Input Panel */}
-            <Card className="gradient-card border-border/50 p-6">
+            <Card className="gradient-card border-border/50 p-6 mx-auto w-full">
               <div className="space-y-4">
                 {/* Image Prompt Toggle */}
                 <div className="flex items-center justify-between p-4 rounded-lg bg-accent/10 border border-accent/20">
@@ -592,6 +892,25 @@ export default function Create() {
                     <>
                       <Sparkles className="mr-2 h-4 w-4" />
                       Generate Game
+                    </>
+                  )}
+                </Button>
+                
+                <Button 
+                  onClick={handleGenerateThumbnailWithGemini} 
+                  disabled={isGeneratingThumbnail || (!title.trim() && !prompt.trim())} 
+                  variant="outline"
+                  className="w-full mt-2"
+                >
+                  {isGeneratingThumbnail ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating Thumbnail...
+                    </>
+                  ) : (
+                    <>
+                      <ImageIcon className="mr-2 h-4 w-4" />
+                      Generate Thumbnail with Gemini
                     </>
                   )}
                 </Button>

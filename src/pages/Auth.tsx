@@ -10,7 +10,7 @@ export default function AuthPage() {
 
   useEffect(() => {
     // Listen for auth state changes
-    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session) {
         navigate("/feed");
       }
@@ -23,7 +23,12 @@ export default function AuthPage() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Fix for subscription.unsubscribe error
+    return () => {
+      if (authListener && typeof authListener.unsubscribe === 'function') {
+        authListener.unsubscribe();
+      }
+    };
   }, [navigate]);
 
   return (

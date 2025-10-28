@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 import Index from "./pages/Index";
 import AuthPage from "./pages/Auth";
@@ -48,40 +49,47 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true
+          }}
+        >
           <LocationProvider>
             <RocketCursor />
-            <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<AuthPage />} />
+            <ErrorBoundary>
+              <Routes>
+                {/* Public routes */}
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<AuthPage />} />
 
-              {/* Onboarding */}
-              <Route path="/onboarding" element={<Onboarding />} />
+                {/* Onboarding */}
+                <Route path="/onboarding" element={<Onboarding />} />
 
-              {/* Protected routes */}
-              <Route
-                path="/feed"
-                element={<ProtectedRoute><Feed /></ProtectedRoute>}
-              />
-              <Route
-                path="/search"
-                element={<ProtectedRoute><Search /></ProtectedRoute>}
-              />
-              <Route
-                path="/create"
-                element={<ProtectedRoute><Create /></ProtectedRoute>}
-              />
-              <Route
-                path="/profile"
-                element={<ProtectedRoute><Profile /></ProtectedRoute>}
-              />
+                {/* Protected routes */}
+                <Route
+                  path="/feed"
+                  element={<ProtectedRoute><Feed /></ProtectedRoute>}
+                />
+                <Route
+                  path="/search"
+                  element={<ProtectedRoute><Search /></ProtectedRoute>}
+                />
+                <Route
+                  path="/create"
+                  element={<ProtectedRoute><Create /></ProtectedRoute>}
+                />
+                <Route
+                  path="/profile"
+                  element={<ProtectedRoute><Profile /></ProtectedRoute>}
+                />
 
-              <Route path="/u/:username" element={<PublicProfile />} />
+                <Route path="/u/:username" element={<PublicProfile />} />
 
-              {/* 404 Fallback */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+                {/* 404 Fallback */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </ErrorBoundary>
           </LocationProvider>
         </BrowserRouter>
       </TooltipProvider>
