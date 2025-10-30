@@ -1,7 +1,7 @@
-
 import { useEffect, useState, useRef } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -22,13 +22,20 @@ import Onboarding from "./pages/Onboarding";
 import { LocationProvider } from "./context/LocationContext";
 import RocketCursor from "@/components/RocketCursor";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import { OnboardingGuard } from "@/components/OnboardingGuard";
+import { OnboardingGuard } from "./components/OnboardingGuard";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   const [isSessionLoading, setIsSessionLoading] = useState(true);
   const cleanupRef = useRef<(() => void) | null>(null);
+
+  const handleNewMessage = (payload: any) => {
+    toast("New message", {
+      description: payload.content,
+      action: { label: "View", onClick: () => console.log('View message') },
+    });
+  };
 
   useEffect(() => {
     const checkSession = async () => {
@@ -42,7 +49,7 @@ const App = () => {
         if (cleanupRef.current) {
           cleanupRef.current();
         }
-        cleanupRef.current = setupRealtimeSubscriptions(session.user);
+        cleanupRef.current = setupRealtimeSubscriptions(session.user, handleNewMessage);
       } else if (event === 'SIGNED_OUT') {
         if (cleanupRef.current) {
           cleanupRef.current();
