@@ -1,16 +1,33 @@
 import { supabase } from '@/integrations/supabase/client';
-import { User } from '@supabase/supabase-js';
+import { type User } from '@supabase/supabase-js';
 
 export function setupRealtimeSubscriptions(user: User) {
   console.log('Setting up real-time subscriptions for user:', user.id);
 
   // Presence channel
-  const presenceChannel = supabase.channel('presence:global', { config: { private: true } });
+  const presenceChannel = supabase.channel('presence:global', {
+    config: {
+      presence: {
+        key: user.id,
+      },
+    },
+  });
+
   presenceChannel
-    .on('broadcast', { event: 'presence_update' }, (payload) => {
-      console.log('presence update', payload);
+    .on('presence', { event: 'sync' }, () => {
+      console.log('presence sync', presenceChannel.presenceState());
     })
-    .subscribe();
+    .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+      console.log('presence join', { key, newPresences });
+    })
+    .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+      console.log('presence leave', { key, leftPresences });
+    })
+    .subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await presenceChannel.track({ online_at: new Date().toISOString() });
+      }
+    });
 
   // User-specific channel for direct messages
   const dmChannel = supabase.channel(`user:${user.id}:messages`, { config: { private: true } });
@@ -39,15 +56,15 @@ export function setupRealtimeSubscriptions(user: User) {
 }
 
 export async function sendDirectMessage(recipientId: string, content: string) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
     throw new Error('User must be logged in to send direct messages.');
   }
   const { data, error } = await supabase
     .from('direct_messages')
     .insert([
       {
-        sender_id: user.id,
+        sender_id: session.user.id,
         recipient_id: recipientId,
         content: content
       }

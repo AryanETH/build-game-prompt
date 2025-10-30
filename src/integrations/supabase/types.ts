@@ -1,481 +1,320 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = | string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
-export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
-  }
+export interface Database {
   public: {
     Tables: {
+      direct_messages: {
+        Row: {
+          content: string;
+          created_at: string;
+          id: string;
+          recipient_id: string;
+          sender_id: string;
+        };
+        Insert: {
+          content: string;
+          created_at?: string;
+          id?: string;
+          recipient_id: string;
+          sender_id: string;
+        };
+        Update: {
+          content?: string;
+          created_at?: string;
+          id?: string;
+          recipient_id?: string;
+          sender_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "direct_messages_recipient_id_fkey";
+            columns: ["recipient_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "direct_messages_sender_id_fkey";
+            columns: ["sender_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       follows: {
         Row: {
-          created_at: string | null
-          follower_id: string
-          following_id: string
-          id: string
-        }
+          created_at: string;
+          follower_id: string;
+          following_id: string;
+          id: string;
+        };
         Insert: {
-          created_at?: string | null
-          follower_id: string
-          following_id: string
-          id?: string
-        }
+          created_at?: string;
+          follower_id: string;
+          following_id: string;
+          id?: string;
+        };
         Update: {
-          created_at?: string | null
-          follower_id?: string
-          following_id?: string
-          id?: string
-        }
+          created_at?: string;
+          follower_id?: string;
+          following_id?: string;
+          id?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "follows_follower_id_fkey"
-            columns: ["follower_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            foreignKeyName: "follows_follower_id_fkey";
+            columns: ["follower_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "follows_following_id_fkey"
-            columns: ["following_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+            foreignKeyName: "follows_following_id_fkey";
+            columns: ["following_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       game_comments: {
         Row: {
-          content: string
-          created_at: string
-          game_id: string
-          id: string
-          user_id: string
-        }
+          content: string;
+          created_at: string;
+          game_id: string;
+          id: string;
+          user_id: string;
+        };
         Insert: {
-          content: string
-          created_at?: string
-          game_id: string
-          id?: string
-          user_id: string
-        }
+          content: string;
+          created_at?: string;
+          game_id: string;
+          id?: string;
+          user_id: string;
+        };
         Update: {
-          content?: string
-          created_at?: string
-          game_id?: string
-          id?: string
-          user_id?: string
-        }
+          content?: string;
+          created_at?: string;
+          game_id?: string;
+          id?: string;
+          user_id?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "game_comments_game_id_fkey"
-            columns: ["game_id"]
-            isOneToOne: false
-            referencedRelation: "games"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+            foreignKeyName: "game_comments_game_id_fkey";
+            columns: ["game_id"];
+            referencedRelation: "games";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       game_likes: {
         Row: {
-          created_at: string | null
-          game_id: string
-          id: string
-          user_id: string
-        }
+          created_at: string;
+          game_id: string;
+          id: string;
+          user_id: string;
+        };
         Insert: {
-          created_at?: string | null
-          game_id: string
-          id?: string
-          user_id: string
-        }
+          created_at?: string;
+          game_id: string;
+          id?: string;
+          user_id: string;
+        };
         Update: {
-          created_at?: string | null
-          game_id?: string
-          id?: string
-          user_id?: string
-        }
+          created_at?: string;
+          game_id?: string;
+          id?: string;
+          user_id?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "game_likes_game_id_fkey"
-            columns: ["game_id"]
-            isOneToOne: false
-            referencedRelation: "games"
-            referencedColumns: ["id"]
+            foreignKeyName: "game_likes_game_id_fkey";
+            columns: ["game_id"];
+            referencedRelation: "games";
+            referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "game_likes_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+            foreignKeyName: "game_likes_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       games: {
         Row: {
-          city: string | null
-          country: string | null
-          created_at: string | null
-          creator_id: string
-          description: string | null
-          duration_minutes: number | null
-          game_code: string
-          cover_url: string | null
-          is_public: boolean | null
-          is_multiplayer?: boolean | null
-          multiplayer_type?: string | null
-          graphics_quality?: string | null
-          id: string
-          latitude: number | null
-          likes_count: number | null
-          longitude: number | null
-          plays_count: number | null
-          sound_url: string | null
-          control_mapping?: Json | null
-          sound_effects?: Json | null
-          thumbnail_url: string | null
-          title: string
-          original_game_id?: string | null
-        }
+          city: string | null;
+          control_mapping: Json | null;
+          country: string | null;
+          cover_url: string | null;
+          created_at: string;
+          description: string | null;
+          emoji: string | null;
+          graphics: Json | null;
+          id: string;
+          is_multiplayer: boolean | null;
+          is_public: boolean;
+          latitude: number | null;
+          longitude: number | null;
+          original_game_id: string | null;
+          prompt: string | null;
+          sound_url: string | null;
+          title: string | null;
+          user_id: string | null;
+        };
         Insert: {
-          city?: string | null
-          country?: string | null
-          created_at?: string | null
-          creator_id: string
-          description?: string | null
-          duration_minutes?: number | null
-          game_code: string
-          cover_url?: string | null
-          is_public?: boolean | null
-          is_multiplayer?: boolean | null
-          multiplayer_type?: string | null
-          graphics_quality?: string | null
-          id?: string
-          latitude?: number | null
-          likes_count?: number | null
-          longitude?: number | null
-          plays_count?: number | null
-          sound_url?: string | null
-          control_mapping?: Json | null
-          sound_effects?: Json | null
-          thumbnail_url?: string | null
-          title: string
-          original_game_id?: string | null
-        }
+          city?: string | null;
+          control_mapping?: Json | null;
+          country?: string | null;
+          cover_url?: string | null;
+          created_at?: string;
+          description?: string | null;
+          emoji?: string | null;
+          graphics?: Json | null;
+          id?: string;
+          is_multiplayer?: boolean | null;
+          is_public?: boolean;
+          latitude?: number | null;
+          longitude?: number | null;
+          original_game_id?: string | null;
+          prompt?: string | null;
+          sound_url?: string | null;
+          title?: string | null;
+          user_id?: string | null;
+        };
         Update: {
-          city?: string | null
-          country?: string | null
-          created_at?: string | null
-          creator_id?: string
-          description?: string | null
-          duration_minutes?: number | null
-          game_code?: string
-          cover_url?: string | null
-          is_public?: boolean | null
-          is_multiplayer?: boolean | null
-          multiplayer_type?: string | null
-          graphics_quality?: string | null
-          id?: string
-          latitude?: number | null
-          likes_count?: number | null
-          longitude?: number | null
-          plays_count?: number | null
-          sound_url?: string | null
-          control_mapping?: Json | null
-          sound_effects?: Json | null
-          thumbnail_url?: string | null
-          title?: string
-          original_game_id?: string | null
-        }
+          city?: string | null;
+          control_mapping?: Json | null;
+          country?: string | null;
+          cover_url?: string | null;
+          created_at?: string;
+          description?: string | null;
+          emoji?: string | null;
+          graphics?: Json | null;
+          id?: string;
+          is_multiplayer?: boolean | null;
+          is_public?: boolean;
+          latitude?: number | null;
+          longitude?: number | null;
+          original_game_id?: string | null;
+          prompt?: string | null;
+          sound_url?: string | null;
+          title?: string | null;
+          user_id?: string | null;
+        };
         Relationships: [
           {
-            foreignKeyName: "games_creator_id_fkey"
-            columns: ["creator_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            foreignKeyName: "games_original_game_id_fkey";
+            columns: ["original_game_id"];
+            referencedRelation: "games";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+          {
+            foreignKeyName: "games_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      notifications: {
+        Row: {
+          created_at: string;
+          id: number;
+          payload: Json;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: number;
+          payload: Json;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: number;
+          payload?: Json;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       profiles: {
         Row: {
-          avatar_url: string | null
-          created_at: string | null
-          followers_count: number | null
-          followers_list: string[] | null
-          following_count: number | null
-          following_list: string[] | null
-          id: string
-          level: number | null
-          total_likes: number | null
-          total_plays: number | null
-          username: string
-          xp: number | null
-          emoji_cursor?: string | null
-          display_name?: string | null
-          bio?: string | null
-          date_of_birth?: string | null
-          age_tier?: number | null
-          onboarding_complete?: boolean | null
-          interests?: string[] | null
-          goal?: string | null
-          skill_level?: string | null
-          device_type?: string | null
-          preferred_styles?: string[] | null
-          region?: string | null
-          language?: string | null
-          ai_personalization_consent?: boolean | null
-          guardian_consent?: boolean | null
-          avatar_choice?: string | null
-          phone?: string | null
-          trust_score?: number | null
-        }
+          avatar_url: string | null;
+          display_name: string | null;
+          has_completed_onboarding: boolean | null;
+          id: string;
+          is_safety_enabled: boolean | null;
+        };
         Insert: {
-          avatar_url?: string | null
-          created_at?: string | null
-          followers_count?: number | null
-          followers_list?: string[] | null
-          following_count?: number | null
-          following_list?: string[] | null
-          id: string
-          level?: number | null
-          total_likes?: number | null
-          total_plays?: number | null
-          username: string
-          xp?: number | null
-          emoji_cursor?: string | null
-          display_name?: string | null
-          bio?: string | null
-          date_of_birth?: string | null
-          age_tier?: number | null
-          onboarding_complete?: boolean | null
-          interests?: string[] | null
-          goal?: string | null
-          skill_level?: string | null
-          device_type?: string | null
-          preferred_styles?: string[] | null
-          region?: string | null
-          language?: string | null
-          ai_personalization_consent?: boolean | null
-          guardian_consent?: boolean | null
-          avatar_choice?: string | null
-          phone?: string | null
-          trust_score?: number | null
-        }
+          avatar_url?: string | null;
+          display_name?: string | null;
+          has_completed_onboarding?: boolean | null;
+          id: string;
+          is_safety_enabled?: boolean | null;
+        };
         Update: {
-          avatar_url?: string | null
-          created_at?: string | null
-          followers_count?: number | null
-          followers_list?: string[] | null
-          following_count?: number | null
-          following_list?: string[] | null
-          id?: string
-          level?: number | null
-          total_likes?: number | null
-          total_plays?: number | null
-          username?: string
-          xp?: number | null
-          emoji_cursor?: string | null
-          display_name?: string | null
-          bio?: string | null
-          date_of_birth?: string | null
-          age_tier?: number | null
-          onboarding_complete?: boolean | null
-          interests?: string[] | null
-          goal?: string | null
-          skill_level?: string | null
-          device_type?: string | null
-          preferred_styles?: string[] | null
-          region?: string | null
-          language?: string | null
-          ai_personalization_consent?: boolean | null
-          guardian_consent?: boolean | null
-          avatar_choice?: string | null
-          phone?: string | null
-          trust_score?: number | null
-        }
-        Relationships: []
-      }
-      user_activities: {
-        Row: {
-          activity_type: string
-          created_at: string
-          game_id: string | null
-          id: string
-          metadata: Json | null
-          target_user_id: string | null
-          user_id: string
-        }
-        Insert: {
-          activity_type: string
-          created_at?: string
-          game_id?: string | null
-          id?: string
-          metadata?: Json | null
-          target_user_id?: string | null
-          user_id: string
-        }
-        Update: {
-          activity_type?: string
-          created_at?: string
-          game_id?: string | null
-          id?: string
-          metadata?: Json | null
-          target_user_id?: string | null
-          user_id?: string
-        }
+          avatar_url?: string | null;
+          display_name?: string | null;
+          has_completed_onboarding?: boolean | null;
+          id?: string;
+          is_safety_enabled?: boolean | null;
+        };
         Relationships: [
           {
-            foreignKeyName: "user_activities_game_id_fkey"
-            columns: ["game_id"]
-            isOneToOne: false
-            referencedRelation: "games"
-            referencedColumns: ["id"]
+            foreignKeyName: "profiles_id_fkey";
+            columns: ["id"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      user_activities: {
+        Row: {
+          activity_type: string;
+          created_at: string;
+          game_id: string | null;
+          id: string;
+          user_id: string;
+        };
+        Insert: {
+          activity_type: string;
+          created_at?: string;
+          game_id?: string | null;
+          id?: string;
+          user_id: string;
+        };
+        Update: {
+          activity_type?: string;
+          created_at?: string;
+          game_id?: string | null;
+          id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_activities_game_id_fkey";
+            columns: ["game_id"];
+            referencedRelation: "games";
+            referencedColumns: ["id"];
           },
-        ]
-      }
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      [_ in never]: never
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
+          {
+            foreignKeyName: "user_activities_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+    };
+    Views: { [_ in never]: never };
+    Functions: { [_ in never]: never };
+    Enums: { [_ in never]: never };
+    CompositeTypes: { [_ in never]: never };
+  };
 }
-
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
-
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
-
-export type Tables<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
-    }
-    ? R
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
-
-export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
-
-export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
-
-export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
-
-export const Constants = {
-  public: {
-    Enums: {},
-  },
-} as const
