@@ -1,12 +1,13 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { setupRealtimeSubscriptions } from "@/lib/realtime";
 
 import Index from "./pages/Index";
 import AuthPage from "./pages/Auth";
@@ -20,13 +21,14 @@ import Onboarding from "./pages/Onboarding";
 
 import { LocationProvider } from "./context/LocationContext";
 import RocketCursor from "@/components/RocketCursor";
-import { ProtectedRoute } from "./components/ProtectedRoute"; // Corrected import
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import { OnboardingGuard } from "@/components/OnboardingGuard";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   const [isSessionLoading, setIsSessionLoading] = useState(true);
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -34,6 +36,27 @@ const App = () => {
       setIsSessionLoading(false);
     };
     checkSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        if (cleanupRef.current) {
+          cleanupRef.current();
+        }
+        cleanupRef.current = setupRealtimeSubscriptions(session.user);
+      } else if (event === 'SIGNED_OUT') {
+        if (cleanupRef.current) {
+          cleanupRef.current();
+          cleanupRef.current = null;
+        }
+      }
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+      if (cleanupRef.current) {
+        cleanupRef.current();
+      }
+    };
   }, []);
 
   if (isSessionLoading) {
