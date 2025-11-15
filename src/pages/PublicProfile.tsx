@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-import { Navigation } from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -176,8 +175,7 @@ export default function PublicProfile() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen pb-16 md:pt-16">
-        <Navigation />
+      <div className="min-h-screen pb-16 md:pb-0">
         <div className="max-w-4xl mx-auto p-6 flex justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
@@ -186,8 +184,7 @@ export default function PublicProfile() {
   }
 
   return (
-    <div className="min-h-screen pb-16 md:pt-16">
-      <Navigation />
+    <div className="min-h-screen pb-16 md:pb-0">
       {selectedGame ? (
         <GamePlayer game={selectedGame as any} onClose={() => setSelectedGame(null)} />
       ) : (
