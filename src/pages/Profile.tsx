@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Navigation } from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Heart, Play, Loader2, Pencil, UserPlus, UserCheck, Star, Trash2 } from "lucide-react";
@@ -453,8 +452,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen pb-16 md:pt-16 gradient-hero">
-      <Navigation />
+    <div className="min-h-screen pb-16 md:pb-0 gradient-hero">
       
       <div className="max-w-4xl mx-auto p-4 space-y-6">
         {/* Profile Header */}

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -395,7 +394,7 @@ export default function Create() {
     }
   };
   
-  // Generate thumbnail using Gemini API
+  // Generate thumbnail using Supabase function (secure server-side)
   const handleGenerateThumbnailWithGemini = async () => {
     if (!title.trim() && !prompt.trim()) {
       toast.error("Please enter a title or game prompt first");
@@ -408,57 +407,35 @@ export default function Create() {
     try {
       toast.info("Generating thumbnail with Gemini AI...");
       
-      // Call Gemini API for image generation
-      const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": "AIzaSyAW1EI82pftDLAjSb6N_eV0l2_MSz69Ij0"
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `Generate a high-quality game thumbnail image for a game titled "${title || prompt.slice(0, 50)}". 
-              The game is about: ${prompt}. 
-              Style: ${graphicsQuality}, 
-              Type: ${isMultiplayer ? multiplayerType : 'single-player'}.
-              Make it visually appealing with vibrant colors and game-related imagery.
-              Return ONLY an image, no text.`
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.9,
-            topK: 32,
-            topP: 1,
-            maxOutputTokens: 2048
+      // Call Supabase function instead of direct API call (secure, server-side)
+      const thumbnailResponse = await supabase.functions.invoke('generate-thumbnail', { 
+        body: { 
+          prompt: prompt || title,
+          metadata: {
+            title: title || prompt.slice(0, 50),
+            genre: isMultiplayer ? multiplayerType : 'single-player',
+            colorPalette: graphicsQuality,
+            tags: [graphicsQuality, isMultiplayer ? 'multiplayer' : 'solo']
           }
-        })
+        } 
       });
       
-      if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`);
+      if (thumbnailResponse.error) {
+        throw new Error(thumbnailResponse.error.message || "Failed to generate thumbnail");
       }
       
-      const result = await response.json();
-      
-      // Extract image URL from response
-      if (result.candidates && result.candidates[0]?.content?.parts) {
-        const imagePart = result.candidates[0].content.parts.find(part => part.inlineData?.mimeType?.startsWith('image/'));
-        if (imagePart?.inlineData?.data) {
-          const imageUrl = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
-          setThumbnailUrl(imageUrl);
-          setCoverUrl(imageUrl);
-          toast.success("Thumbnail generated with Gemini AI!");
-          playSuccess();
-        } else {
-          throw new Error("No image data in response");
-        }
+      const thumbnailUrl = thumbnailResponse.data?.thumbnailUrl;
+      if (thumbnailUrl) {
+        setThumbnailUrl(thumbnailUrl);
+        setCoverUrl(thumbnailUrl);
+        toast.success("Thumbnail generated with Gemini AI!");
+        playSuccess();
       } else {
-        throw new Error("Invalid response format");
+        throw new Error("No thumbnail URL in response");
       }
     } catch (error: any) {
       console.error('Gemini thumbnail generation error:', error);
-      toast.error("Failed to generate thumbnail with Gemini. Falling back to default method.");
+      toast.error(error.message || "Failed to generate thumbnail. Please try again.");
       playError();
     } finally {
       setIsGeneratingThumbnail(false);
@@ -737,8 +714,7 @@ export default function Create() {
   };
 
   return (
-    <div className="min-h-screen pb-16 md:pt-16">
-      <Navigation />
+    <div className="min-h-screen pb-16 md:pb-0">
       
       <div className="container mx-auto px-4 py-8 flex justify-center">
         <div className="max-w-5xl w-full mx-auto">

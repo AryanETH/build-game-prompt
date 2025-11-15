@@ -1,23 +1,12 @@
-import { Navigation } from "@/components/Navigation";
 import { GameFeed } from "@/components/GameFeed";
 import { FeedTabs } from "@/components/FeedTabs";
 import { WatchFeed } from "@/components/WatchFeed";
-import { useEffect } from "react";
 
 export default function Feed() {
-
-  // Keep mount effect in case we add future behavior
-  useEffect(() => {}, []);
-
   return (
-    <div className="min-h-screen pb-16 md:pb-0 md:pt-16 bg-white dark:bg-black">
-      <Navigation hideBrand />
-      <div className="w-full md:pt-0">
-        <FeedTabs 
-          playContent={<GameFeed />}
-          watchContent={<WatchFeed />}
-        />
-      </div>
-    </div>
+    <FeedTabs 
+      playContent={<GameFeed />}
+      watchContent={<WatchFeed />}
+    />
   );
 }

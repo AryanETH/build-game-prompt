@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Gamepad2, Eye } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 
 interface FeedTabsProps {
   playContent: React.ReactNode;
@@ -7,26 +7,20 @@ interface FeedTabsProps {
 }
 
 export const FeedTabs = ({ playContent, watchContent }: FeedTabsProps) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentTab = searchParams.get("tab") === "watch" ? "watch" : "play";
+
+  const handleTabChange = (value: string) => {
+    if (value === "watch") {
+      setSearchParams({ tab: "watch" });
+    } else {
+      setSearchParams({});
+    }
+  };
+
   return (
-    <Tabs defaultValue="play" className="w-full">
-      <div className="sticky top-0 md:top-16 z-40 bg-background/95 backdrop-blur-lg border-b border-border">
-        <TabsList className="w-full h-12 rounded-none bg-transparent">
-          <TabsTrigger 
-            value="play" 
-            className="flex-1 gap-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
-          >
-            <Gamepad2 className="w-5 h-5" />
-            <span className="font-semibold">Play Feed</span>
-          </TabsTrigger>
-          <TabsTrigger 
-            value="watch" 
-            className="flex-1 gap-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
-          >
-            <Eye className="w-5 h-5" />
-            <span className="font-semibold">Watch Feed</span>
-          </TabsTrigger>
-        </TabsList>
-      </div>
+    <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full h-full">
+      {/* Removed top navigation - tabs are now in sidebar */}
 
       <TabsContent value="play" className="mt-0">
         {playContent}

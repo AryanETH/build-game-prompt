@@ -23,6 +23,7 @@ import { LocationProvider } from "./context/LocationContext";
 import RocketCursor from "@/components/RocketCursor";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { OnboardingGuard } from "./components/OnboardingGuard";
+import { AppLayout } from "./components/AppLayout";
 
 const queryClient = new QueryClient();
 
@@ -99,19 +100,19 @@ const App = () => {
                 {/* Protected routes */}
                 <Route
                   path="/feed"
-                  element={<ProtectedRoute><Feed /></ProtectedRoute>}
+                  element={<ProtectedRoute><AppLayout><Feed /></AppLayout></ProtectedRoute>}
                 />
                 <Route
                   path="/search"
-                  element={<ProtectedRoute><Search /></ProtectedRoute>}
+                  element={<ProtectedRoute><AppLayout><Search /></AppLayout></ProtectedRoute>}
                 />
                 <Route
                   path="/create"
-                  element={<ProtectedRoute><Create /></ProtectedRoute>}
+                  element={<ProtectedRoute><AppLayout><Create /></AppLayout></ProtectedRoute>}
                 />
                 <Route
                   path="/profile"
-                  element={<ProtectedRoute><Profile /></ProtectedRoute>}
+                  element={<ProtectedRoute><AppLayout><Profile /></AppLayout></ProtectedRoute>}
                 />
 
                 <Route path="/u/:username" element={<PublicProfile />} />

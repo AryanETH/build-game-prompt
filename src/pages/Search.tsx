@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Navigation } from "@/components/Navigation";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -96,8 +95,7 @@ export default function Search() {
   }
 
   return (
-    <div className="min-h-screen pb-16 md:pt-16 bg-background">
-      <Navigation />
+    <div className="min-h-screen pb-16 md:pb-0 bg-background">
       
       <main className="container mx-auto px-4 py-6 max-w-7xl">
         {/* Search Bar */}
