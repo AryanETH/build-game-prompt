@@ -35,8 +35,8 @@ export default function AuthPage() {
     <div className="min-h-screen gradient-hero flex items-center justify-center p-4">
       <Card className="w-full max-w-md gradient-card border-border/50">
         <CardHeader className="text-center">
-          <img src="/logo-playgen.svg" alt="playGen" className="mx-auto h-12 w-12 mb-3" />
-          <CardTitle className="text-3xl font-bold">Welcome to playGen</CardTitle>
+          <img src="/FEEP.png" alt="Feep" className="mx-auto h-12 w-12 mb-3" />
+          <CardTitle className="text-3xl font-bold">Welcome to Feep</CardTitle>
         </CardHeader>
         <CardContent>
           <Auth
@@ -53,8 +53,7 @@ export default function AuthPage() {
                 button: "gradient-primary glow-primary",
               },
             }}
-            providers={["google"]}
-            socialLayout="horizontal"
+            providers={[]}
           />
         </CardContent>
       </Card>
