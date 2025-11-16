@@ -384,7 +384,8 @@ export const GameFeed = () => {
         {hydratedGames?.map((game) => (
           <div key={game.id} className="h-screen w-full snap-start snap-always flex items-center justify-center" style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
             {/* Desktop: Centered card with 5% border-radius, Mobile: Full screen fit */}
-            <div className="relative w-full max-w-[420px] h-[calc(100vh-80px)] md:h-[90vh] flex items-center justify-center">
+            <div className="relative w-full max-w-[420px] h-[calc(100vh-150px)] md:h-[90vh] flex items-center justify-center">
+
               <Card className="absolute inset-0 overflow-hidden rounded-none md:rounded-[5%] border-0 md:border md:border-border/60 bg-black shadow-2xl">
                 <img
                   src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
