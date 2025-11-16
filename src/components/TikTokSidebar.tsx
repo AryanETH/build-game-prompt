@@ -110,9 +110,16 @@ export const TikTokSidebar = () => {
       <div className="px-6 py-4 border-b border-border/50">
         <div className="flex items-center">
           <img 
-            src="/feep-logo.svg" 
-            alt="Feep" 
-            className="h-10 w-auto dark:invert"
+            src="/feep-logo.png" 
+            alt="FEEP" 
+            className="h-10 w-auto"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              if (target.src !== `${window.location.origin}/feep-logo.svg`) {
+                target.src = "/feep-logo.svg";
+                target.classList.add("dark:invert");
+              }
+            }}
           />
         </div>
       </div>

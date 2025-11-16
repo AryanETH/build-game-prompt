@@ -349,6 +349,7 @@ export default function Create() {
   const [imageGenerationPrompt, setImageGenerationPrompt] = useState("");
   const [generatedInterfaceImage, setGeneratedInterfaceImage] = useState<string>("");
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string>("");
 
   // Sound URL input removed per product direction; audio may be auto-generated
   // If arriving via Remix, load base game code for editing
@@ -394,47 +395,104 @@ export default function Create() {
     }
   };
   
-  // Generate thumbnail using Supabase function (secure server-side)
-  const handleGenerateThumbnailWithGemini = async () => {
-    if (!title.trim() && !prompt.trim()) {
-      toast.error("Please enter a title or game prompt first");
+  // Upload thumbnail to Supabase Storage
+  const uploadThumbnail = async (base64: string): Promise<string | null> => {
+    try {
+      const fileName = `thumbnail-${Date.now()}.png`;
+      const file = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+      
+      const { data: uploadData, error } = await supabase.storage
+        .from("thumbnails")
+        .upload(fileName, file, { contentType: "image/png" });
+
+      if (error) {
+        console.error("Upload error:", error);
+        throw error;
+      }
+
+      if (!uploadData?.path) {
+        throw new Error("Upload succeeded but no path returned");
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from("thumbnails")
+        .getPublicUrl(uploadData.path);
+
+      return publicUrl || null;
+    } catch (error: any) {
+      console.error("Error uploading thumbnail:", error);
+      throw error;
+    }
+  };
+
+  // Generate thumbnail using new Supabase Edge Function with ComfyUI
+  const generateThumbnail = async () => {
+    if (!prompt.trim()) {
+      toast.error("Please enter a prompt first");
       return;
     }
-    
+
     setIsGeneratingThumbnail(true);
     playClick();
-    
+    setThumbnailPreview("");
+
     try {
-      toast.info("Generating thumbnail with Gemini AI...");
-      
-      // Call Supabase function instead of direct API call (secure, server-side)
-      const thumbnailResponse = await supabase.functions.invoke('generate-thumbnail', { 
-        body: { 
-          prompt: prompt || title,
-          metadata: {
-            title: title || prompt.slice(0, 50),
-            genre: isMultiplayer ? multiplayerType : 'single-player',
-            colorPalette: graphicsQuality,
-            tags: [graphicsQuality, isMultiplayer ? 'multiplayer' : 'solo']
-          }
-        } 
-      });
-      
-      if (thumbnailResponse.error) {
-        throw new Error(thumbnailResponse.error.message || "Failed to generate thumbnail");
+      toast.info("Generating thumbnail...");
+
+      // Get auth token and API key for the Edge Function
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      // Call the Supabase Edge Function
+      const response = await fetch(
+        "https://zyozjzfkmmtuxvjgryhk.supabase.co/functions/v1/generate-thumbnail",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": apiKey || "",
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+          body: JSON.stringify({
+            prompt: prompt,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
+
+      const data = await response.json();
+
+      // Check if response has images array with base64
+      if (!data.images || !Array.isArray(data.images) || data.images.length === 0) {
+        throw new Error("No images in response");
+      }
+
+      const base64String = data.images[0];
       
-      const thumbnailUrl = thumbnailResponse.data?.thumbnailUrl;
-      if (thumbnailUrl) {
-        setThumbnailUrl(thumbnailUrl);
-        setCoverUrl(thumbnailUrl);
-        toast.success("Thumbnail generated with Gemini AI!");
+      // Convert base64 to data URL for preview
+      const dataUrl = `data:image/png;base64,${base64String}`;
+      setThumbnailPreview(dataUrl);
+
+      // Upload to Supabase Storage
+      toast.info("Uploading thumbnail...");
+      const publicUrl = await uploadThumbnail(base64String);
+
+      if (publicUrl) {
+        setThumbnailUrl(publicUrl);
+        setCoverUrl(publicUrl);
+        toast.success("Thumbnail generated and uploaded!");
         playSuccess();
       } else {
-        throw new Error("No thumbnail URL in response");
+        throw new Error("Failed to get public URL after upload");
       }
     } catch (error: any) {
-      console.error('Gemini thumbnail generation error:', error);
+      console.error("Thumbnail generation error:", error);
       toast.error(error.message || "Failed to generate thumbnail. Please try again.");
       playError();
     } finally {
@@ -503,20 +561,42 @@ export default function Create() {
 
       setGeneratedCode(producedCode);
 
-      // Generate AI thumbnail automatically with strict 9:16
-      toast.info("Generating thumbnail (9:16)...");
-      const thumbnailResponse = await supabase.functions.invoke('generate-thumbnail', { body: { 
-        prompt,
-        metadata: {
-          title: title || prompt.slice(0, 50),
-          genre: isMultiplayer ? multiplayerType : 'single-player',
-          colorPalette: graphicsQuality,
-          tags: [graphicsQuality, isMultiplayer ? 'multiplayer' : 'solo']
+      // Generate AI thumbnail automatically with new system
+      try {
+        toast.info("Generating thumbnail...");
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+        const thumbnailResponse = await fetch(
+          "https://zyozjzfkmmtuxvjgryhk.supabase.co/functions/v1/generate-thumbnail",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": apiKey || "",
+              ...(token && { Authorization: `Bearer ${token}` }),
+            },
+            body: JSON.stringify({ prompt }),
+          }
+        );
+
+        if (thumbnailResponse.ok) {
+          const thumbnailData = await thumbnailResponse.json();
+          if (thumbnailData.images && thumbnailData.images.length > 0) {
+            const base64String = thumbnailData.images[0];
+            const publicUrl = await uploadThumbnail(base64String);
+            if (publicUrl) {
+              setThumbnailUrl(publicUrl);
+              setCoverUrl(publicUrl);
+            }
+          }
         }
-      } });
-      const autoThumb = thumbnailResponse.data?.thumbnailUrl || "/placeholder.svg";
-      setThumbnailUrl(autoThumb);
-      setCoverUrl(autoThumb);
+      } catch (err) {
+        console.log("Thumbnail generation failed, using placeholder");
+        setThumbnailUrl("/placeholder.svg");
+        setCoverUrl("/placeholder.svg");
+      }
       
       // Auto-generate title and description if not provided
       if (!title) {
@@ -681,16 +761,37 @@ export default function Create() {
 
       // Regenerate thumbnail tied to game and persist cover/thumbnail URLs
       try {
-        await supabase.functions.invoke('generate-thumbnail', { body: { 
-          prompt: title.trim(), 
-          game_id: insertedGame.id,
-          metadata: {
-            title: title.trim(),
-            genre: isMultiplayer ? multiplayerType : 'single-player',
-            colorPalette: graphicsQuality,
-            tags: [graphicsQuality, isMultiplayer ? 'multiplayer' : 'solo']
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+        const thumbnailResponse = await fetch(
+          "https://zyozjzfkmmtuxvjgryhk.supabase.co/functions/v1/generate-thumbnail",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": apiKey || "",
+              ...(token && { Authorization: `Bearer ${token}` }),
+            },
+            body: JSON.stringify({ prompt: title.trim() }),
           }
-        } });
+        );
+
+        if (thumbnailResponse.ok) {
+          const thumbnailData = await thumbnailResponse.json();
+          if (thumbnailData.images && thumbnailData.images.length > 0) {
+            const base64String = thumbnailData.images[0];
+            const publicUrl = await uploadThumbnail(base64String);
+            if (publicUrl) {
+              // Update the game with the new thumbnail URL
+              await supabase
+                .from('games')
+                .update({ thumbnail_url: publicUrl, cover_url: publicUrl })
+                .eq('id', insertedGame.id);
+            }
+          }
+        }
       } catch { /* fail-soft */ }
 
       // Log activity: game published
@@ -873,8 +974,8 @@ export default function Create() {
                 </Button>
                 
                 <Button 
-                  onClick={handleGenerateThumbnailWithGemini} 
-                  disabled={isGeneratingThumbnail || (!title.trim() && !prompt.trim())} 
+                  onClick={generateThumbnail} 
+                  disabled={isGeneratingThumbnail || !prompt.trim()} 
                   variant="outline"
                   className="w-full mt-2"
                 >
@@ -886,10 +987,34 @@ export default function Create() {
                   ) : (
                     <>
                       <ImageIcon className="mr-2 h-4 w-4" />
-                      Generate Thumbnail with Gemini
+                      Generate Thumbnail
                     </>
                   )}
                 </Button>
+
+                {/* Thumbnail Preview */}
+                {thumbnailPreview && (
+                  <div className="mt-4 p-4 border border-accent/30 rounded-lg bg-muted/50">
+                    <Label className="mb-2 block">Generated Thumbnail</Label>
+                    <img 
+                      src={thumbnailPreview} 
+                      alt="Generated Thumbnail" 
+                      className="w-full rounded-lg max-h-64 object-contain"
+                    />
+                  </div>
+                )}
+
+                {/* Display uploaded thumbnail URL if available */}
+                {thumbnailUrl && !thumbnailPreview && (
+                  <div className="mt-4 p-4 border border-accent/30 rounded-lg bg-muted/50">
+                    <Label className="mb-2 block">Thumbnail</Label>
+                    <img 
+                      src={thumbnailUrl} 
+                      alt="Thumbnail" 
+                      className="w-full rounded-lg max-h-64 object-contain"
+                    />
+                  </div>
+                )}
 
                 {generatedCode && (
                   <div className="grid grid-cols-2 gap-2">
