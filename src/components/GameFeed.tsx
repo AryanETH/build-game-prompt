@@ -378,13 +378,13 @@ export const GameFeed = () => {
   // TikTok-style vertical snap scroll with centered layout
   return (
     <>
-    {/* Snap scrolling feed - TikTok style with sidebar - using dvh for mobile browser stability */}
-    <div className="relative w-full overflow-hidden bg-white dark:bg-black pb-16 md:pb-0" style={{ height: '100dvh' }}>
+    {/* Snap scrolling feed - TikTok style with sidebar */}
+    <div className="relative h-screen w-full overflow-hidden bg-white dark:bg-black pb-16 md:pb-0">
       <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar" style={{ scrollSnapType: 'y mandatory', scrollBehavior: 'smooth', scrollPaddingTop: '0px', scrollPaddingBottom: '0px' }}>
         {hydratedGames?.map((game) => (
-          <div key={game.id} className="w-full snap-start snap-always md:h-screen md:flex md:items-center md:justify-center" style={{ height: 'calc(100dvh - 120px)', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
-            {/* Desktop: Centered card with 5% border-radius, Mobile: Full bleed fit */}
-            <div className="relative w-full h-full md:max-w-[420px] md:h-[90vh]">
+          <div key={game.id} className="h-screen w-full snap-start snap-always flex items-center justify-center" style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
+            {/* Desktop: Centered card with 5% border-radius, Mobile: Full screen fit */}
+            <div className="relative w-full max-w-[420px] h-[calc(100vh-80px)] md:h-[90vh] flex items-center justify-center">
               <Card className="absolute inset-0 overflow-hidden rounded-none md:rounded-[5%] border-0 md:border md:border-border/60 bg-black shadow-2xl">
                 <img
                   src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
@@ -404,9 +404,9 @@ export const GameFeed = () => {
                   </button>
                 </div>
 
-                {/* Game info - bottom left - moved lower like TikTok - fixed position on mobile */}
-                <div className="absolute left-0 right-[70px] md:right-[80px] bottom-6 md:bottom-16 p-3 md:p-5 text-white z-10">
-                  <div className="flex items-center gap-2 mb-2">
+                {/* Game info - bottom left - moved lower like TikTok */}
+                <div className="absolute left-0 right-[70px] md:right-[80px] bottom-24 md:bottom-16 p-4 md:p-5 text-white z-10">
+                  <div className="flex items-center gap-2 mb-3">
                     <button 
                       className="flex items-center gap-2 hover:opacity-80 transition-opacity group"
                       onClick={() => game.creator?.username && navigate(`/u/${game.creator.username}`)}
