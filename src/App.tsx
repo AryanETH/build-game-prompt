@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { setupRealtimeSubscriptions } from "@/lib/realtime";
 
 import Index from "./pages/Index";
@@ -16,6 +17,7 @@ import Search from "./pages/Search";
 import Create from "./pages/Create";
 import Profile from "./pages/Profile";
 import PublicProfile from "./pages/PublicProfile";
+import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 import Onboarding from "./pages/Onboarding";
 
@@ -97,22 +99,56 @@ const App = () => {
                 {/* Onboarding */}
                 <Route path="/onboarding" element={<Onboarding />} />
 
-                {/* Protected routes */}
+                {/* Protected routes with error boundaries */}
                 <Route
                   path="/feed"
-                  element={<ProtectedRoute><AppLayout><Feed /></AppLayout></ProtectedRoute>}
+                  element={
+                    <ProtectedRoute>
+                      <RouteErrorBoundary>
+                        <AppLayout><Feed /></AppLayout>
+                      </RouteErrorBoundary>
+                    </ProtectedRoute>
+                  }
                 />
                 <Route
                   path="/search"
-                  element={<ProtectedRoute><AppLayout><Search /></AppLayout></ProtectedRoute>}
+                  element={
+                    <ProtectedRoute>
+                      <RouteErrorBoundary>
+                        <AppLayout><Search /></AppLayout>
+                      </RouteErrorBoundary>
+                    </ProtectedRoute>
+                  }
                 />
                 <Route
                   path="/create"
-                  element={<ProtectedRoute><AppLayout><Create /></AppLayout></ProtectedRoute>}
+                  element={
+                    <ProtectedRoute>
+                      <RouteErrorBoundary>
+                        <AppLayout><Create /></AppLayout>
+                      </RouteErrorBoundary>
+                    </ProtectedRoute>
+                  }
                 />
                 <Route
                   path="/profile"
-                  element={<ProtectedRoute><AppLayout><Profile /></AppLayout></ProtectedRoute>}
+                  element={
+                    <ProtectedRoute>
+                      <RouteErrorBoundary>
+                        <AppLayout><Profile /></AppLayout>
+                      </RouteErrorBoundary>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/messages"
+                  element={
+                    <ProtectedRoute>
+                      <RouteErrorBoundary>
+                        <AppLayout><Messages /></AppLayout>
+                      </RouteErrorBoundary>
+                    </ProtectedRoute>
+                  }
                 />
 
                 <Route path="/u/:username" element={<PublicProfile />} />

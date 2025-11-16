@@ -1,4 +1,4 @@
-import { Home, Search, Sparkles, User } from "lucide-react";
+import { Home, Search, Sparkles, User, Send } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export const MobileBottomNav = () => {
@@ -9,6 +9,7 @@ export const MobileBottomNav = () => {
     { icon: Home, label: "Feed", path: "/feed" },
     { icon: Search, label: "Explore", path: "/search" },
     { icon: Sparkles, label: "Create", path: "/create" },
+    { icon: Send, label: "Messages", path: "/messages" },
     { icon: User, label: "Profile", path: "/profile" },
   ];
 

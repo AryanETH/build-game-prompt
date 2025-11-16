@@ -15,7 +15,6 @@ interface GamePlayerProps {
 }
 
 export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
-  const [timeLeft, setTimeLeft] = useState(120); // 2 minutes
   const roomId = `game-${game.id}`;
   const { isReady, isMicOn, remoteAudios, participants, toggleMic, error } = useVoiceChat(roomId);
   const [soundOn, setSoundOn] = useState(true);
@@ -69,19 +68,7 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
     };
   }, [game.id]);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
 
-    return () => clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     if (!game.sound_url) return;
@@ -89,21 +76,16 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
     bgAudioRef.current.muted = !soundOn;
   }, [soundOn, game.sound_url]);
 
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
-
   return (
-    <div className="fixed inset-0 z-50 bg-background">
+    <div className="fixed inset-0 z-[100] bg-background">
       <div className="h-full flex flex-col">
         {/* Header */}
         <div className="border-b border-border/50 p-4 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold">{game.title}</h2>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Timer className="h-4 w-4" />
-              <span>
-                {minutes}:{seconds.toString().padStart(2, '0')}
-              </span>
+              <Users className="h-4 w-4" />
+              <span>{participants.length} playing</span>
             </div>
           </div>
           <div className="flex items-center gap-2">

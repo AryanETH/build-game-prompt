@@ -815,9 +815,9 @@ export default function Create() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-[100dvh] overflow-y-auto" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       
-      <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
+      <div className="container mx-auto px-3 md:px-4 py-4 md:py-8 pb-24 md:pb-8">
         <div className="max-w-7xl w-full mx-auto">
           <div className="text-center mb-4 md:mb-8">
             <h1 className="text-2xl md:text-4xl font-bold mb-1 md:mb-2">Create with AI</h1>

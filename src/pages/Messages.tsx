@@ -1,0 +1,408 @@
+import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Card } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Send, Image as ImageIcon, Smile, Eye, EyeOff, ArrowLeft, Search, MoreVertical } from "lucide-react";
+import { toast } from "sonner";
+import { OnlineIndicator } from "@/components/OnlineIndicator";
+import { GifPicker } from "@/components/GifPicker";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useNavigate } from "react-router-dom";
+
+interface Message {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  is_one_time: boolean;
+  viewed_at: string | null;
+  created_at: string;
+  sender?: {
+    id: string;
+    username: string;
+    avatar_url: string | null;
+  };
+}
+
+interface Conversation {
+  user_id: string;
+  username: string;
+  avatar_url: string | null;
+  last_message: string;
+  last_message_time: string;
+  unread_count: number;
+}
+
+export default function Messages() {
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedUser, setSelectedUser] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [isOneTime, setIsOneTime] = useState(false);
+  const [gifPickerOpen, setGifPickerOpen] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showMobileList, setShowMobileList] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      setUserId(data.user?.id || null);
+    })();
+  }, []);
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !selectedUser || !userId) return;
+
+    try {
+      const { error } = await supabase
+        .from('direct_messages')
+        .insert({
+          sender_id: userId,
+          receiver_id: selectedUser.user_id,
+          content: newMessage.trim(),
+          is_one_time: isOneTime,
+        });
+
+      if (error) throw error;
+
+      setNewMessage("");
+      setIsOneTime(false);
+      toast.success('Message sent!');
+      loadMessages(selectedUser.user_id);
+    } catch (err) {
+      console.error('Send message error:', err);
+      toast.error('Failed to send message');
+    }
+  };
+
+  const handleGifSelect = async (gifUrl: string) => {
+    if (!selectedUser || !userId) return;
+
+    try {
+      const { error } = await supabase
+        .from('direct_messages')
+        .insert({
+          sender_id: userId,
+          receiver_id: selectedUser.user_id,
+          content: `[GIF]${gifUrl}`,
+          is_one_time: isOneTime,
+        });
+
+      if (error) throw error;
+
+      setGifPickerOpen(false);
+      setIsOneTime(false);
+      toast.success('GIF sent!');
+      loadMessages(selectedUser.user_id);
+    } catch (err) {
+      console.error('Send GIF error:', err);
+      toast.error('Failed to send GIF');
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedUser || !userId) return;
+
+    try {
+      // Convert to base64 for simple storage
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        
+        const { error } = await supabase
+          .from('direct_messages')
+          .insert({
+            sender_id: userId,
+            receiver_id: selectedUser.user_id,
+            content: `[IMAGE]${base64}`,
+            is_one_time: isOneTime,
+          });
+
+        if (error) throw error;
+
+        setIsOneTime(false);
+        toast.success('Image sent!');
+        loadMessages(selectedUser.user_id);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Send image error:', err);
+      toast.error('Failed to send image');
+    }
+  };
+
+  const loadMessages = async (otherUserId: string) => {
+    if (!userId) return;
+
+    const { data, error } = await supabase
+      .from('direct_messages')
+      .select('*, sender:profiles!direct_messages_sender_id_fkey(id, username, avatar_url)')
+      .or(`and(sender_id.eq.${userId},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${userId})`)
+      .order('created_at', { ascending: true });
+
+    if (!error && data) {
+      setMessages(data as unknown as Message[]);
+      
+      // Mark messages as viewed
+      await supabase
+        .from('direct_messages')
+        .update({ viewed_at: new Date().toISOString() })
+        .eq('receiver_id', userId)
+        .eq('sender_id', otherUserId)
+        .is('viewed_at', null);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedUser) {
+      loadMessages(selectedUser.user_id);
+      setShowMobileList(false);
+    }
+  }, [selectedUser, userId]);
+
+  const filteredConversations = conversations.filter(conv =>
+    conv.username.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="h-screen flex flex-col md:flex-row pb-16 md:pb-0 bg-background">
+      {/* Conversations list - responsive */}
+      <div className={`${showMobileList ? 'flex' : 'hidden'} md:flex w-full md:w-96 border-r border-border flex-col bg-background`}>
+        {/* Header */}
+        <div className="p-4 border-b space-y-3">
+          <h2 className="text-2xl font-bold">Messages</h2>
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search conversations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+
+        {/* Conversations */}
+        <ScrollArea className="flex-1">
+          {filteredConversations.length === 0 ? (
+            <div className="p-8 text-center">
+              <div className="text-muted-foreground text-sm">
+                {searchQuery ? 'No conversations found' : 'No conversations yet'}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Visit a user's profile to start messaging
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {filteredConversations.map((conv) => (
+                <button
+                  key={conv.user_id}
+                  onClick={() => setSelectedUser(conv)}
+                  className={`w-full p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors ${
+                    selectedUser?.user_id === conv.user_id ? 'bg-muted' : ''
+                  }`}
+                >
+                  <div className="relative flex-shrink-0">
+                    <Avatar className="h-12 w-12 ring-2 ring-background">
+                      <AvatarImage src={conv.avatar_url || undefined} />
+                      <AvatarFallback className="gradient-primary text-white text-sm font-semibold">
+                        {conv.username?.[0]?.toUpperCase() || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <OnlineIndicator userId={conv.user_id} className="absolute bottom-0 right-0 w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="font-semibold truncate">{conv.username}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(conv.last_message_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                    <div className="text-sm text-muted-foreground truncate">{conv.last_message}</div>
+                  </div>
+                  {conv.unread_count > 0 && (
+                    <div className="w-6 h-6 rounded-full gradient-primary text-white text-xs flex items-center justify-center font-bold flex-shrink-0">
+                      {conv.unread_count > 9 ? '9+' : conv.unread_count}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </div>
+
+      {/* Messages area - responsive */}
+      {selectedUser ? (
+        <div className={`${showMobileList ? 'hidden' : 'flex'} md:flex flex-1 flex-col bg-background`}>
+          {/* Header */}
+          <div className="p-4 border-b flex items-center gap-3 bg-background/95 backdrop-blur-sm">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => {
+                setShowMobileList(true);
+                setSelectedUser(null);
+              }}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <button 
+              onClick={() => selectedUser.username && navigate(`/u/${selectedUser.username}`)}
+              className="flex items-center gap-3 flex-1 min-w-0"
+            >
+              <div className="relative flex-shrink-0">
+                <Avatar className="h-10 w-10 ring-2 ring-background">
+                  <AvatarImage src={selectedUser.avatar_url || undefined} />
+                  <AvatarFallback className="gradient-primary text-white text-sm font-semibold">
+                    {selectedUser.username?.[0]?.toUpperCase() || '?'}
+                  </AvatarFallback>
+                </Avatar>
+                <OnlineIndicator userId={selectedUser.user_id} className="absolute bottom-0 right-0 w-3 h-3" />
+              </div>
+              <div className="text-left min-w-0">
+                <div className="font-semibold truncate">{selectedUser.username}</div>
+                <div className="text-xs text-muted-foreground">Tap to view profile</div>
+              </div>
+            </button>
+            <Button variant="ghost" size="icon">
+              <MoreVertical className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Messages */}
+          <ScrollArea className="flex-1 p-4 bg-muted/20">
+            <div className="space-y-3 max-w-4xl mx-auto">
+              {messages.map((msg) => {
+                const isMine = msg.sender_id === userId;
+                const isGif = msg.content.startsWith('[GIF]');
+                const isImage = msg.content.startsWith('[IMAGE]');
+                const isOneTimeViewed = msg.is_one_time && msg.viewed_at;
+
+                return (
+                  <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+                    <div className={`max-w-[75%] md:max-w-[60%] ${
+                      isMine 
+                        ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground' 
+                        : 'bg-background border border-border'
+                    } rounded-2xl ${isMine ? 'rounded-br-sm' : 'rounded-bl-sm'} shadow-sm`}>
+                      {isOneTimeViewed ? (
+                        <div className="flex items-center gap-2 text-sm opacity-60 p-3">
+                          <EyeOff className="h-4 w-4" />
+                          <span>One-time message viewed</span>
+                        </div>
+                      ) : isGif ? (
+                        <div className="p-1">
+                          <img src={msg.content.substring(5)} alt="GIF" className="rounded-xl max-w-[250px] w-full" />
+                        </div>
+                      ) : isImage ? (
+                        <div className="p-1">
+                          <img src={msg.content.substring(7)} alt="Image" className="rounded-xl max-w-[250px] w-full" />
+                        </div>
+                      ) : (
+                        <div className="px-4 py-2.5 whitespace-pre-wrap break-words">{msg.content}</div>
+                      )}
+                      {msg.is_one_time && !isOneTimeViewed && (
+                        <div className={`flex items-center gap-1 text-xs px-4 pb-2 ${isMine ? 'opacity-80' : 'text-muted-foreground'}`}>
+                          <Eye className="h-3 w-3" />
+                          <span>View once</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+          </ScrollArea>
+
+          {/* Input */}
+          <div className="p-4 border-t bg-background/95 backdrop-blur-sm">
+            <div className="flex gap-2 items-end max-w-4xl mx-auto">
+              <Popover open={gifPickerOpen} onOpenChange={setGifPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" className="flex-shrink-0">
+                    <Smile className="h-5 w-5" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[320px] p-0" align="start" side="top">
+                  <GifPicker onSelect={handleGifSelect} />
+                </PopoverContent>
+              </Popover>
+
+              <Button variant="outline" size="icon" className="flex-shrink-0" asChild>
+                <label className="cursor-pointer">
+                  <ImageIcon className="h-5 w-5" />
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                </label>
+              </Button>
+
+              <Button
+                variant={isOneTime ? "default" : "outline"}
+                size="icon"
+                onClick={() => setIsOneTime(!isOneTime)}
+                title="One-time message"
+                className={`flex-shrink-0 ${isOneTime ? 'gradient-primary' : ''}`}
+              >
+                {isOneTime ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+              </Button>
+
+              <Input
+                placeholder="Type a message..."
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && newMessage.trim()) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                className="flex-1 h-11"
+              />
+
+              <Button 
+                onClick={handleSendMessage} 
+                disabled={!newMessage.trim()} 
+                className="gradient-primary flex-shrink-0 h-11 w-11"
+                size="icon"
+              >
+                <Send className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="hidden md:flex flex-1 items-center justify-center bg-muted/20">
+          <div className="text-center space-y-3">
+            <div className="w-20 h-20 rounded-full gradient-primary mx-auto flex items-center justify-center">
+              <Send className="h-10 w-10 text-white" />
+            </div>
+            <h3 className="text-xl font-semibold">Your Messages</h3>
+            <p className="text-muted-foreground text-sm max-w-sm">
+              Select a conversation from the list to start messaging
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

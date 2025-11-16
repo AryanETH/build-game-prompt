@@ -15,6 +15,8 @@ import { logActivity } from "@/lib/activityLogger";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Switch } from "@/components/ui/switch";
 import { Dialog as UIDialog, DialogContent as UIDialogContent, DialogHeader as UIDialogHeader, DialogTitle as UIDialogTitle } from "@/components/ui/dialog";
+import { useNavigate } from "react-router-dom";
+import { OnlineIndicator } from "@/components/OnlineIndicator";
 
 export default function Profile() {
   const [profile, setProfile] = useState<any>(null);
@@ -740,6 +742,13 @@ export function FollowersFollowingDialogs({
   followers,
   following,
 }: any) {
+  const navigate = useNavigate();
+  
+  const handleUserClick = (username: string, closeDialog: () => void) => {
+    closeDialog();
+    navigate(`/u/${username}`);
+  };
+  
   return (
     <>
       <UIDialog open={followersOpen} onOpenChange={setFollowersOpen}>
@@ -747,18 +756,27 @@ export function FollowersFollowingDialogs({
           <UIDialogHeader>
             <UIDialogTitle>Followers</UIDialogTitle>
           </UIDialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1">
+          <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-1">
             {followers.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No followers yet.</div>
+              <div className="text-sm text-muted-foreground text-center py-4">No followers yet.</div>
             ) : (
               followers.map((u: any) => (
-                <div key={u.id} className="flex items-center gap-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={u.avatar_url || undefined} />
-                    <AvatarFallback>{u.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
-                  </Avatar>
+                <button
+                  key={u.id}
+                  onClick={() => handleUserClick(u.username, () => setFollowersOpen(false))}
+                  className="flex items-center gap-3 w-full hover:bg-muted/50 p-3 rounded-lg transition-colors text-left"
+                >
+                  <div className="relative">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={u.avatar_url || undefined} />
+                      <AvatarFallback className="gradient-primary text-white text-sm">
+                        {u.username?.[0]?.toUpperCase() || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <OnlineIndicator userId={u.id} className="absolute bottom-0 right-0 w-3 h-3" />
+                  </div>
                   <div className="text-sm font-medium">@{u.username}</div>
-                </div>
+                </button>
               ))
             )}
           </div>
@@ -769,18 +787,27 @@ export function FollowersFollowingDialogs({
           <UIDialogHeader>
             <UIDialogTitle>Following</UIDialogTitle>
           </UIDialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1">
+          <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-1">
             {following.length === 0 ? (
-              <div className="text-sm text-muted-foreground">Not following anyone.</div>
+              <div className="text-sm text-muted-foreground text-center py-4">Not following anyone.</div>
             ) : (
               following.map((u: any) => (
-                <div key={u.id} className="flex items-center gap-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={u.avatar_url || undefined} />
-                    <AvatarFallback>{u.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
-                  </Avatar>
+                <button
+                  key={u.id}
+                  onClick={() => handleUserClick(u.username, () => setFollowingOpen(false))}
+                  className="flex items-center gap-3 w-full hover:bg-muted/50 p-3 rounded-lg transition-colors text-left"
+                >
+                  <div className="relative">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={u.avatar_url || undefined} />
+                      <AvatarFallback className="gradient-primary text-white text-sm">
+                        {u.username?.[0]?.toUpperCase() || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <OnlineIndicator userId={u.id} className="absolute bottom-0 right-0 w-3 h-3" />
+                  </div>
                   <div className="text-sm font-medium">@{u.username}</div>
-                </div>
+                </button>
               ))
             )}
           </div>

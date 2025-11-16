@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { GamePlayer } from "./GamePlayer";
-import { Loader2, Heart, MessageCircle, Share2, Play, Sparkles } from "lucide-react";
+import { Loader2, Heart, MessageCircle, Share2, Play, Sparkles, Smile, ChevronDown, ChevronUp } from "lucide-react";
 import { playClick, playSuccess, playError } from "@/lib/sounds";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/activityLogger";
@@ -13,6 +13,9 @@ import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { useLocation as useRouterLocation, useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
+import { GifPicker } from "./GifPicker";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { OnlineIndicator } from "./OnlineIndicator";
 
 interface Game {
   id: string;
@@ -23,6 +26,7 @@ interface Game {
   cover_url?: string | null;
   likes_count: number;
   plays_count: number;
+  comments_count?: number;
   creator_id: string;
   is_multiplayer?: boolean | null;
   multiplayer_type?: string | null;
@@ -47,6 +51,8 @@ interface CommentRow {
   created_at: string;
   user_id: string;
   game_id: string;
+  likes_count?: number;
+  parent_comment_id?: string | null;
   user?: { id: string; username: string; avatar_url: string | null } | null;
 }
 
@@ -59,6 +65,7 @@ interface Profile {
 export const GameFeed = () => {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [likedGames, setLikedGames] = useState<Set<string>>(new Set());
+  const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const routerLocation = useRouterLocation();
@@ -73,41 +80,27 @@ export const GameFeed = () => {
     })();
   }, []);
 
-  const pageSize = 10;
+  const pageSize = 20; // Increased from 10 for better UX
   const { data: pages, isLoading, isError, error, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = useInfiniteQuery({
-    queryKey: ['games'],
+    queryKey: ['games', 'feed'],
     queryFn: async ({ pageParam = 0 }) => {
       const from = pageParam * pageSize;
       const to = from + pageSize - 1;
 
-      // Try full select first; fall back to minimal columns if remote DB lags migrations
-      const attemptSelect = async (columns: string, orderBy: string = 'created_at') =>
-        supabase
-          .from('games')
-          .select(columns)
-          .order(orderBy as any, { ascending: false })
-          .range(from, to);
+      // Optimized: Exclude game_code from list query (fetch only when playing)
+      const { data, error } = await supabase
+        .from('games')
+        .select('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, comments_count, creator_id')
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
-      // 1) Full schema
-      let { data, error } = await attemptSelect('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, creator_id, is_multiplayer, multiplayer_type, graphics_quality, sound_url, country, city, original_game_id, is_public');
-      if (error) {
-        // 2) Minimal columns widely available
-        const minimal = await attemptSelect('id, title, description, thumbnail_url, creator_id, likes_count, plays_count');
-        if (minimal.error) {
-          // 3) Last resort: wildcard select (includes game_code); tolerate heavier payload to avoid empty feed
-          const wildcard = await attemptSelect('*');
-          if (wildcard.error) throw wildcard.error;
-          data = wildcard.data as any[];
-        } else {
-          data = minimal.data as any[];
-        }
-      }
-
+      if (error) throw error;
       return (data || []) as unknown as GameWithCreator[];
     },
     getNextPageParam: (lastPage, allPages) => (lastPage.length === pageSize ? allPages.length : undefined),
     initialPageParam: 0,
     retry: 1,
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
 
   const games = useMemo(() => (pages?.pages || []).flat(), [pages]);
@@ -178,6 +171,28 @@ export const GameFeed = () => {
     }
   }, [userLikes]);
 
+  // Fetch user's following list
+  const { data: userFollows } = useQuery({
+    queryKey: ['userFollows', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      if (!userId) return [];
+      const { data, error } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', userId);
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  useEffect(() => {
+    if (userFollows) {
+      setFollowedUsers(new Set(userFollows.map(f => f.following_id)));
+    }
+  }, [userFollows]);
+
   const likeMutation = useMutation({
     mutationFn: async ({ gameId, isLiked }: { gameId: string; isLiked: boolean }) => {
       if (!userId) {
@@ -220,28 +235,39 @@ export const GameFeed = () => {
 
   const handlePlay = async (game: Game) => {
     playClick();
-    // Fetch full game data including game_code
-    const { data: fullGame, error } = await supabase
-      .from('games')
-      .select('*')
-      .eq('id', game.id)
-      .single();
     
-    if (error || !fullGame) {
-      toast.error("Failed to load game");
-      return;
-    }
-    
-    setSelectedGame(fullGame as Game);
-    
-    // Increment play count
-    if (userId) {
-      await supabase
+    try {
+      // Fetch full game data including game_code (only when needed)
+      const { data: fullGame, error } = await supabase
         .from('games')
-        .update({ plays_count: game.plays_count + 1 })
-        .eq('id', game.id);
+        .select('*')
+        .eq('id', game.id)
+        .single();
       
-      queryClient.invalidateQueries({ queryKey: ['games'] });
+      if (error || !fullGame) {
+        toast.error("Failed to load game");
+        playError();
+        return;
+      }
+      
+      setSelectedGame(fullGame as Game);
+      
+      // Increment play count (optimistic update)
+      if (userId) {
+        await supabase
+          .from('games')
+          .update({ plays_count: (game.plays_count || 0) + 1 })
+          .eq('id', game.id);
+        
+        // Log activity
+        await logActivity({ type: 'game_played', gameId: game.id });
+        
+        queryClient.invalidateQueries({ queryKey: ['games', 'feed'] });
+      }
+    } catch (err) {
+      console.error('Play game error:', err);
+      toast.error("Failed to load game");
+      playError();
     }
   };
 
@@ -297,6 +323,10 @@ export const GameFeed = () => {
   // Comments state
   const [commentsOpenFor, setCommentsOpenFor] = useState<GameWithCreator | null>(null);
   const [newComment, setNewComment] = useState("");
+  const [replyingTo, setReplyingTo] = useState<CommentRow | null>(null);
+  const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
+  const [gifPickerOpen, setGifPickerOpen] = useState(false);
 
   const { data: comments = [], refetch: refetchComments } = useQuery({
     queryKey: ['comments', commentsOpenFor?.id],
@@ -333,18 +363,140 @@ export const GameFeed = () => {
       toast.error('Please sign in to comment');
       return;
     }
-    const { error } = await supabase
-      .from('game_comments')
-      .insert({
-        game_id: commentsOpenFor.id,
-        user_id: uid,
-        content: newComment.trim(),
-      });
-    if (error) {
+    
+    try {
+      const { error } = await supabase
+        .from('game_comments')
+        .insert({
+          game_id: commentsOpenFor.id,
+          user_id: uid,
+          content: newComment.trim(),
+          parent_comment_id: replyingTo?.id || null,
+        });
+      
+      if (error) {
+        console.error('Comment error:', error);
+        toast.error('Failed to send comment');
+      } else {
+        setNewComment("");
+        setReplyingTo(null);
+        toast.success('Comment added!');
+        refetchComments();
+        queryClient.invalidateQueries({ queryKey: ['games'] });
+      }
+    } catch (err) {
+      console.error('Comment error:', err);
       toast.error('Failed to send comment');
-    } else {
-      setNewComment("");
     }
+  };
+
+  const handleGifSelect = async (gifUrl: string) => {
+    if (!commentsOpenFor) return;
+    const uid = userId;
+    if (!uid) {
+      toast.error('Please sign in to comment');
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('game_comments')
+        .insert({
+          game_id: commentsOpenFor.id,
+          user_id: uid,
+          content: `[GIF]${gifUrl}`,
+          parent_comment_id: replyingTo?.id || null,
+        });
+      
+      if (error) {
+        console.error('Comment error:', error);
+        toast.error('Failed to send GIF');
+      } else {
+        setGifPickerOpen(false);
+        setReplyingTo(null);
+        toast.success('GIF sent!');
+        refetchComments();
+        queryClient.invalidateQueries({ queryKey: ['games'] });
+      }
+    } catch (err) {
+      console.error('Comment error:', err);
+      toast.error('Failed to send GIF');
+    }
+  };
+
+  const handleFollowUser = async (creatorId: string) => {
+    if (!userId) {
+      toast.error('Please sign in to follow');
+      return;
+    }
+
+    const isFollowing = followedUsers.has(creatorId);
+
+    try {
+      if (isFollowing) {
+        await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', userId)
+          .eq('following_id', creatorId);
+        setFollowedUsers(prev => {
+          const next = new Set(prev);
+          next.delete(creatorId);
+          return next;
+        });
+        toast.success('Unfollowed');
+      } else {
+        await supabase
+          .from('follows')
+          .insert({ follower_id: userId, following_id: creatorId });
+        setFollowedUsers(prev => new Set(prev).add(creatorId));
+        await logActivity({ type: 'user_followed', targetUserId: creatorId });
+        toast.success('Following!');
+      }
+      queryClient.invalidateQueries({ queryKey: ['userFollows'] });
+    } catch (err) {
+      console.error('Follow error:', err);
+      toast.error('Failed to follow user');
+    }
+  };
+
+  const handleLikeComment = async (commentId: string) => {
+    if (!userId) {
+      toast.error('Please sign in to like comments');
+      return;
+    }
+    
+    const isLiked = likedComments.has(commentId);
+    
+    setLikedComments(prev => {
+      const next = new Set(prev);
+      if (isLiked) {
+        next.delete(commentId);
+      } else {
+        next.add(commentId);
+      }
+      return next;
+    });
+    
+    // Show optimistic update
+    toast.success(isLiked ? 'Unliked' : 'Liked!');
+  };
+
+  // Import formatTimeAgo from hook instead of duplicating
+  const formatTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h`;
+    const days = Math.floor(hours / 24);
+    if (days < 365) return `${days}d`;
+    const years = Math.floor(days / 365);
+    return `${years}y`;
   };
 
   if (isLoading) {
@@ -378,14 +530,14 @@ export const GameFeed = () => {
   // TikTok-style vertical snap scroll with centered layout
   return (
     <>
-    {/* Snap scrolling feed - TikTok style with sidebar */}
-    <div className="relative h-screen w-full overflow-hidden bg-white dark:bg-black pb-16 md:pb-0">
-      <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar" style={{ scrollSnapType: 'y mandatory', scrollBehavior: 'smooth', scrollPaddingTop: '0px', scrollPaddingBottom: '0px' }}>
+    {/* Snap scrolling feed - TikTok style with sidebar - using dvh for mobile browser stability */}
+    <div className="relative w-full overflow-hidden bg-white dark:bg-black" style={{ height: '100dvh' }}>
+      <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar pb-16 md:pb-0" style={{ scrollSnapType: 'y mandatory', scrollBehavior: 'smooth' }}>
         {hydratedGames?.map((game) => (
-          <div key={game.id} className="h-screen w-full snap-start snap-always flex items-center justify-center" style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
-            {/* Desktop: Centered card with 5% border-radius, Mobile: Full screen fit */}
-            <div className="relative w-full max-w-[420px] h-[calc(100vh-80px)] md:h-[90vh] flex items-center justify-center">
-              <Card className="absolute inset-0 overflow-hidden rounded-none md:rounded-[5%] border-0 md:border md:border-border/60 bg-black shadow-2xl">
+          <div key={game.id} className="w-full snap-start snap-always flex items-center justify-center md:h-screen" style={{ height: 'calc(100dvh - 120px)', minHeight: 'calc(100dvh - 120px)', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
+            {/* Desktop: Centered card with proper sizing, Mobile: Full bleed fit */}
+            <div className="relative w-full h-full md:w-[min(450px,90vw)] md:h-[95vh]">
+              <Card className="absolute inset-0 overflow-hidden rounded-none md:rounded-3xl border-0 md:border-2 md:border-border/20 md:shadow-2xl bg-black dark:bg-black md:bg-background md:dark:bg-background">
                 <img
                   src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
                   alt={game.title}
@@ -404,85 +556,89 @@ export const GameFeed = () => {
                   </button>
                 </div>
 
-                {/* Game info - bottom left - moved lower like TikTok */}
-                <div className="absolute left-0 right-[70px] md:right-[80px] bottom-24 md:bottom-16 p-4 md:p-5 text-white z-10">
-                  <div className="flex items-center gap-2 mb-3">
+                {/* Game info - bottom left - fixed position on mobile to avoid browser UI */}
+                <div className="absolute left-0 right-[70px] md:right-[80px] bottom-6 md:bottom-16 p-3 md:p-5 text-white z-10">
+                  <div className="flex items-center gap-2 mb-2">
                     <button 
                       className="flex items-center gap-2 hover:opacity-80 transition-opacity group"
                       onClick={() => game.creator?.username && navigate(`/u/${game.creator.username}`)}
                     >
                       <div className="relative">
-                        <Avatar className="w-10 h-10 md:w-12 md:h-12 border-2 border-white/50 group-hover:border-white transition-colors">
+                        <Avatar className="w-9 h-9 md:w-12 md:h-12 border-2 border-white/50 group-hover:border-white transition-colors">
                           <AvatarImage src={game.creator?.avatar_url || undefined} />
                           <AvatarFallback className="gradient-primary text-white text-xs md:text-sm font-semibold">
                             {game.creator?.username?.[0]?.toUpperCase() || 'U'}
                           </AvatarFallback>
                         </Avatar>
-                        {/* Plus icon for follow - with gradient */}
-                        <button
-                          className="absolute -bottom-0.5 -right-0.5 w-5 h-5 md:w-6 md:h-6 rounded-full gradient-primary flex items-center justify-center text-white shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 border-2 border-white"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toast.success("Follow feature coming soon!");
-                          }}
-                        >
-                          <span className="text-xs md:text-sm font-bold leading-none">+</span>
-                        </button>
+                        {/* Plus icon for follow - only show if not following */}
+                        {game.creator_id !== userId && !followedUsers.has(game.creator_id) && (
+                          <button
+                            className="absolute -bottom-0.5 -right-0.5 w-5 h-5 md:w-6 md:h-6 rounded-full gradient-primary flex items-center justify-center text-white shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 border-2 border-white"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleFollowUser(game.creator_id);
+                            }}
+                          >
+                            <span className="text-xs md:text-sm font-bold leading-none">+</span>
+                          </button>
+                        )}
                       </div>
                       <span className="text-sm md:text-base font-bold drop-shadow-lg">@{game.creator?.username || 'creator'}</span>
                     </button>
                   </div>
-                  <div className="text-sm md:text-lg font-semibold leading-snug mb-1 md:mb-2 drop-shadow-lg line-clamp-2">{game.title}</div>
-                  <div className="text-xs md:text-sm text-white/95 line-clamp-2 md:line-clamp-3 drop-shadow-md leading-relaxed">{game.description || ''}</div>
+                  <div className="text-sm md:text-lg font-semibold leading-tight mb-1 drop-shadow-lg line-clamp-2">{game.title}</div>
+                  <div className="text-xs md:text-sm text-white/95 line-clamp-2 drop-shadow-md leading-snug">{game.description || ''}</div>
                 </div>
               </Card>
               
-              {/* Right action bar - Floating outside container on desktop, inside on mobile - fixed position */}
-              <div className="absolute right-3 md:-right-20 bottom-24 md:bottom-16 flex flex-col gap-3 md:gap-4 items-center text-white z-20">
-                {/* Play button - Gradient */}
+              {/* Right action bar - Inside on mobile, floating right on desktop */}
+              <div className="absolute right-3 bottom-20 flex flex-col gap-3 items-center text-white z-20 md:right-6 md:bottom-24 md:gap-5">
+                {/* Play button - Gradient - 48px touch target, larger on desktop */}
                 <button
-                  aria-label="Play"
-                  className="h-11 w-11 md:h-12 md:w-12 rounded-full flex items-center justify-center gradient-primary text-white hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg glow-primary"
+                  aria-label="Play game"
+                  className="h-12 w-12 md:h-14 md:w-14 rounded-full flex items-center justify-center gradient-primary text-white hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg glow-primary"
                   onClick={() => handlePlay(game)}
                 >
-                  <Play className="h-4 w-4 md:h-5 md:w-5 fill-current" strokeWidth={2} />
+                  <Play className="h-5 w-5 md:h-6 md:w-6 fill-current" strokeWidth={2} />
                 </button>
                 
-                {/* Like button */}
-                <div className="flex flex-col items-center gap-0.5">
+                {/* Like button - 48px touch target, larger on desktop */}
+                <div className="flex flex-col items-center gap-0.5 md:gap-1">
                   <button
-                    aria-label="Like"
-                    className={`h-11 w-11 md:h-12 md:w-12 rounded-full flex items-center justify-center backdrop-blur-md hover:scale-110 active:scale-95 transition-all duration-200 shadow-xl ${
+                    aria-label={likedGames.has(game.id) ? 'Unlike game' : 'Like game'}
+                    className={`h-12 w-12 md:h-14 md:w-14 rounded-full flex items-center justify-center backdrop-blur-md hover:scale-110 active:scale-95 transition-all duration-200 shadow-xl ${
                       likedGames.has(game.id) 
                         ? 'bg-red-500/90 text-white hover:bg-red-500 hover:shadow-red-500/50' 
                         : 'bg-black/40 dark:bg-black/60 text-white hover:bg-black/60 dark:hover:bg-black/80'
                     }`}
                     onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
                   >
-                    <Heart className={`h-4 w-4 md:h-5 md:w-5 ${likedGames.has(game.id) ? 'fill-current' : ''}`} strokeWidth={2} />
+                    <Heart className={`h-5 w-5 md:h-6 md:w-6 ${likedGames.has(game.id) ? 'fill-current' : ''}`} strokeWidth={2} />
                   </button>
-                  <span className="text-[10px] md:text-xs font-bold text-white drop-shadow-lg">{game.likes_count ?? 0}</span>
+                  <span className="text-[10px] md:text-sm font-bold text-white drop-shadow-lg">{game.likes_count ?? 0}</span>
                 </div>
                 
-                {/* Comments button */}
-                <div className="flex flex-col items-center gap-0.5">
+                {/* Comments button - 48px touch target, larger on desktop */}
+                <div className="flex flex-col items-center gap-0.5 md:gap-1">
                   <button
-                    aria-label="Comments"
-                    className="h-11 w-11 md:h-12 md:w-12 rounded-full flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-md text-white hover:bg-black/60 dark:hover:bg-black/80 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
+                    aria-label="View comments"
+                    className="h-12 w-12 md:h-14 md:w-14 rounded-full flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-md text-white hover:bg-black/60 dark:hover:bg-black/80 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
                     onClick={() => setCommentsOpenFor(game)}
                   >
-                    <MessageCircle className="h-4 w-4 md:h-5 md:w-5" strokeWidth={2} />
+                    <MessageCircle className="h-5 w-5 md:h-6 md:w-6" strokeWidth={2} />
                   </button>
-                  <span className="text-[10px] md:text-xs font-bold text-white drop-shadow-lg">0</span>
+                  <span className="text-[10px] md:text-sm font-bold text-white drop-shadow-lg">
+                    {commentsOpenFor?.id === game.id ? comments.length : (game.comments_count || 0)}
+                  </span>
                 </div>
                 
-                {/* Share button */}
+                {/* Share button - 48px touch target, larger on desktop */}
                 <button
-                  aria-label="Share"
-                  className="h-11 w-11 md:h-12 md:w-12 rounded-full flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-md text-white hover:bg-black/60 dark:hover:bg-black/80 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
+                  aria-label="Share game"
+                  className="h-12 w-12 md:h-14 md:w-14 rounded-full flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-md text-white hover:bg-black/60 dark:hover:bg-black/80 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
                   onClick={() => handleShare(game)}
                 >
-                  <Share2 className="h-4 w-4 md:h-5 md:w-5" strokeWidth={2} />
+                  <Share2 className="h-5 w-5 md:h-6 md:w-6" strokeWidth={2} />
                 </button>
               </div>
             </div>
@@ -505,36 +661,178 @@ export const GameFeed = () => {
 
 
     {/* Comments Panel */}
-    <Sheet open={!!commentsOpenFor} onOpenChange={(o) => !o && setCommentsOpenFor(null)}>
-      <SheetContent side="right" className="w-[420px] sm:w-[480px]">
-        <SheetHeader>
-          <SheetTitle>Comments</SheetTitle>
+    <Sheet open={!!commentsOpenFor} onOpenChange={(o) => {
+      if (!o) {
+        setCommentsOpenFor(null);
+        setReplyingTo(null);
+      }
+    }}>
+      <SheetContent side="right" className="w-full sm:w-[420px] md:w-[480px] flex flex-col p-0">
+        <SheetHeader className="px-6 py-4 border-b">
+          <SheetTitle>Comments ({comments.length})</SheetTitle>
         </SheetHeader>
-        <div className="mt-4 flex flex-col h-full">
-          <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-            {comments.map((c) => (
-              <div key={c.id} className="flex items-start gap-3">
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src={c.user?.avatar_url || undefined} />
-                  <AvatarFallback>{c.user?.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="text-sm font-semibold">{c.user?.username || 'User'}</div>
-                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">{c.content}</div>
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {comments.filter(c => !c.parent_comment_id).map((c) => {
+            const replies = comments.filter(r => r.parent_comment_id === c.id);
+            const isExpanded = expandedComments.has(c.id);
+            const isGif = c.content.startsWith('[GIF]');
+            const gifUrl = isGif ? c.content.substring(5) : null;
+            
+            return (
+              <div key={c.id} className="space-y-2">
+                <div className="flex items-start gap-3">
+                  <button onClick={() => c.user?.username && navigate(`/u/${c.user.username}`)} className="relative flex-shrink-0">
+                    <Avatar className="h-9 w-9 hover:opacity-80 transition-opacity">
+                      <AvatarImage src={c.user?.avatar_url || undefined} />
+                      <AvatarFallback className="gradient-primary text-white text-xs">
+                        {c.user?.username?.[0]?.toUpperCase() || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    {c.user_id && <OnlineIndicator userId={c.user_id} className="absolute bottom-0 right-0 w-2.5 h-2.5" />}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => c.user?.username && navigate(`/u/${c.user.username}`)}
+                        className="text-sm font-semibold hover:underline"
+                      >
+                        {c.user?.username || 'User'}
+                      </button>
+                      <span className="text-xs text-muted-foreground">{formatTimeAgo(c.created_at)}</span>
+                    </div>
+                    {isGif ? (
+                      <img src={gifUrl!} alt="GIF" className="mt-2 rounded-lg max-w-[200px] max-h-[200px] object-cover" />
+                    ) : (
+                      <div className="text-sm text-foreground whitespace-pre-wrap break-words mt-1">{c.content}</div>
+                    )}
+                    <div className="flex items-center gap-4 mt-2">
+                      <button
+                        onClick={() => handleLikeComment(c.id)}
+                        className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors group"
+                      >
+                        <span className={`text-lg font-bold transition-colors ${likedComments.has(c.id) ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'}`}>+</span>
+                        <span className="text-muted-foreground">{likedComments.has(c.id) ? 1 : 0}</span>
+                      </button>
+                      <button
+                        onClick={() => setReplyingTo(c)}
+                        className="text-xs text-muted-foreground hover:text-primary transition-colors font-medium"
+                      >
+                        Reply
+                      </button>
+                      {replies.length > 0 && (
+                        <button
+                          onClick={() => setExpandedComments(prev => {
+                            const next = new Set(prev);
+                            if (next.has(c.id)) next.delete(c.id);
+                            else next.add(c.id);
+                            return next;
+                          })}
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors font-medium"
+                        >
+                          {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                          {isExpanded ? 'Hide' : 'View'} {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
+                
+                {/* Nested replies */}
+                {isExpanded && replies.length > 0 && (
+                  <div className="ml-12 space-y-3 border-l-2 border-muted pl-4">
+                    {replies.map((r) => {
+                      const isReplyGif = r.content.startsWith('[GIF]');
+                      const replyGifUrl = isReplyGif ? r.content.substring(5) : null;
+                      
+                      return (
+                        <div key={r.id} className="flex items-start gap-3">
+                          <button onClick={() => r.user?.username && navigate(`/u/${r.user.username}`)} className="relative flex-shrink-0">
+                            <Avatar className="h-8 w-8 hover:opacity-80 transition-opacity">
+                              <AvatarImage src={r.user?.avatar_url || undefined} />
+                              <AvatarFallback className="gradient-primary text-white text-xs">
+                                {r.user?.username?.[0]?.toUpperCase() || '?'}
+                              </AvatarFallback>
+                            </Avatar>
+                            {r.user_id && <OnlineIndicator userId={r.user_id} className="absolute bottom-0 right-0 w-2.5 h-2.5" />}
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => r.user?.username && navigate(`/u/${r.user.username}`)}
+                                className="text-sm font-semibold hover:underline"
+                              >
+                                {r.user?.username || 'User'}
+                              </button>
+                              <span className="text-xs text-muted-foreground">{formatTimeAgo(r.created_at)}</span>
+                            </div>
+                            {isReplyGif ? (
+                              <img src={replyGifUrl!} alt="GIF" className="mt-2 rounded-lg max-w-[180px] max-h-[180px] object-cover" />
+                            ) : (
+                              <div className="text-sm text-foreground whitespace-pre-wrap break-words mt-1">{r.content}</div>
+                            )}
+                            <div className="flex items-center gap-4 mt-2">
+                              <button
+                                onClick={() => handleLikeComment(r.id)}
+                                className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors group"
+                              >
+                                <span className={`text-lg font-bold transition-colors ${likedComments.has(r.id) ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'}`}>+</span>
+                                <span className="text-muted-foreground">{likedComments.has(r.id) ? 1 : 0}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            ))}
-            {comments.length === 0 && (
+            );
+          })}
+          {comments.length === 0 && (
+            <div className="text-center py-8">
               <div className="text-sm text-muted-foreground">No comments yet. Be the first!</div>
-            )}
-          </div>
-          <div className="mt-4 flex gap-2">
+            </div>
+          )}
+        </div>
+        <div className="border-t px-6 py-4 bg-background">
+          {replyingTo && (
+            <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Replying to @{replyingTo.user?.username}</span>
+              <button onClick={() => setReplyingTo(null)} className="text-primary hover:underline">
+                Cancel
+              </button>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Popover open={gifPickerOpen} onOpenChange={setGifPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="icon" className="flex-shrink-0">
+                  <Smile className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[320px] p-0" align="start">
+                <GifPicker onSelect={handleGifSelect} />
+              </PopoverContent>
+            </Popover>
             <Input
-              placeholder="Add a comment..."
+              placeholder={replyingTo ? "Write a reply..." : "Add a comment..."}
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && newComment.trim()) {
+                  e.preventDefault();
+                  handleSendComment();
+                }
+              }}
+              className="flex-1"
             />
-            <Button onClick={handleSendComment} disabled={!newComment.trim()}>Send</Button>
+            <Button 
+              onClick={handleSendComment} 
+              disabled={!newComment.trim()}
+              className="gradient-primary"
+            >
+              {replyingTo ? 'Reply' : 'Send'}
+            </Button>
           </div>
         </div>
       </SheetContent>

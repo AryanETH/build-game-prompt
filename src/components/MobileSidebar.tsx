@@ -20,7 +20,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export const MobileSidebar = () => {
+export const MobileSidebar = ({ hideButton = false }: { hideButton?: boolean }) => {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -61,15 +61,17 @@ export const MobileSidebar = () => {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden fixed top-4 left-4 z-50 bg-white dark:bg-black border border-border/50"
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
-      </SheetTrigger>
+      {!hideButton && (
+        <SheetTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden fixed top-4 left-4 z-50 bg-white dark:bg-black border border-border/50"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        </SheetTrigger>
+      )}
       <SheetContent side="left" className="w-[240px] p-0 overflow-hidden">
         <div className="h-full flex flex-col bg-white dark:bg-black" style={{ margin: 0, padding: 0 }}>
           {/* Logo */}

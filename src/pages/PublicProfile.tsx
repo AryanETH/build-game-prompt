@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { Play, Heart, Mail, UserPlus, UserCheck, Loader2, RefreshCw } from "lucide-react";
+import { Play, Heart, Mail, UserPlus, UserCheck, Loader2, RefreshCw, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { GamePlayer } from "@/components/GamePlayer";
 import { sendDirectMessage } from "@/lib/realtime";
@@ -189,23 +189,35 @@ export default function PublicProfile() {
         <GamePlayer game={selectedGame as any} onClose={() => setSelectedGame(null)} />
       ) : (
         <div className="max-w-4xl mx-auto p-4 space-y-6">
-          <Card className="p-6 gradient-card border-primary/20">
-            <div className="flex items-center gap-4">
-              <Avatar className="w-20 h-20 ring-2 ring-primary/30 relative">
-                <AvatarImage src={profile.avatar_url || undefined} />
-                <AvatarFallback>{profile.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+          {/* Back button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(-1)}
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          <Card className="p-4 md:p-6 gradient-card border-primary/20">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+              <div className="relative">
+                <Avatar className="w-20 h-20 ring-2 ring-primary/30">
+                  <AvatarImage src={profile.avatar_url || undefined} />
+                  <AvatarFallback>{profile.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+                </Avatar>
                 {isOnline && <div className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background" />}
-              </Avatar>
-              <div className="flex-1">
-                <div className="text-2xl font-bold">{profile.username}</div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-2xl font-bold truncate">{profile.username}</div>
                 <div className="text-sm text-muted-foreground">{profile.followers_count || 0} followers &bull; {profile.following_count || 0} following</div>
               </div>
-              <div className="flex gap-2">
-                <Button variant={isFollowing ? "outline" : "default"} className="gap-2" onClick={toggleFollow}>
+              <div className="flex gap-2 w-full md:w-auto">
+                <Button variant={isFollowing ? "outline" : "default"} className="gap-2 flex-1 md:flex-none" onClick={toggleFollow}>
                   {isFollowing ? <><UserCheck className="w-4 h-4"/> Following</> : <><UserPlus className="w-4 h-4"/> Follow</>}
                 </Button>
-                <Button variant="outline" className="gap-2" onClick={() => setMessageOpen(true)}>
-                  <Mail className="w-4 h-4" /> Message
+                <Button variant="outline" className="gap-2 flex-1 md:flex-none" onClick={() => setMessageOpen(true)}>
+                  <Mail className="w-4 h-4" /> <span className="hidden sm:inline">Message</span>
                 </Button>
               </div>
             </div>
