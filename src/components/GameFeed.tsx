@@ -380,8 +380,15 @@ export const GameFeed = () => {
     <>
     {/* Snap scrolling feed - TikTok style with sidebar */}
     <div className="relative h-screen w-full overflow-hidden bg-white dark:bg-black pb-16 md:pb-0">
-      <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar" style={{ scrollSnapType: 'y mandatory', scrollBehavior: 'smooth', scrollPaddingTop: '0px', scrollPaddingBottom: '0px' }}>
-        {hydratedGames?.map((game) => (
+      <div
+  key={game.id}
+  className="
+    w-full snap-start snap-always flex items-center justify-center
+    h-[calc(100vh-150px)]     /* MOBILE FIX */
+    md:h-screen              /* DESKTOP SAME */
+  "
+>
+
           <div key={game.id} className="h-screen w-full snap-start snap-always flex items-center justify-center" style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
             {/* Desktop: Centered card with 5% border-radius, Mobile: Full screen fit */}
             <div className="relative w-full max-w-[420px] h-[calc(100vh-150px)] md:h-[90vh] flex items-center justify-center">
