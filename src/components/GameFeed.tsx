@@ -380,14 +380,7 @@ export const GameFeed = () => {
     <>
     {/* Snap scrolling feed - TikTok style with sidebar */}
     <div className="relative h-screen w-full overflow-hidden bg-white dark:bg-black pb-16 md:pb-0">
-      <div
-  key={game.id}
-  className="
-    w-full snap-start snap-always flex items-center justify-center
-    h-[calc(100vh-150px)]     /* MOBILE FIX */
-    md:h-screen              /* DESKTOP SAME */
-  "
->
+      <div key={game.id} className=" w-full snap-start snap-always flex items-center justify-center h-[calc(100vh-150px)]     /* MOBILE FIX */ md:h-screen              /* DESKTOP SAME */ ">
 
           <div key={game.id} className="h-screen w-full snap-start snap-always flex items-center justify-center" style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
             {/* Desktop: Centered card with 5% border-radius, Mobile: Full screen fit */}
