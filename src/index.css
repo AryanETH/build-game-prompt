@@ -141,6 +141,8 @@ All colors MUST be HSL.
     -moz-text-size-adjust: 100%;
     -ms-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    /* Support for dynamic viewport units on mobile */
+    height: 100%;
   }
 
   body {
@@ -148,6 +150,15 @@ All colors MUST be HSL.
     background: hsl(var(--background));
     min-width: 320px;
     overflow-x: hidden;
+    /* Prevent iOS Safari bounce scroll */
+    overscroll-behavior-y: none;
+  }
+
+  /* Fallback for browsers that don't support dvh */
+  @supports not (height: 100dvh) {
+    .mobile-feed-container {
+      height: calc(100vh - 120px);
+    }
   }
   
   /* Hide native cursor when rocket cursor is active on pointer devices */
