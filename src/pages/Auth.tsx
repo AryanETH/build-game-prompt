@@ -92,11 +92,17 @@ export default function AuthPage() {
           <div>
             <div className="mb-12">
               <img 
-                src="/feep-logo.svg" 
-                alt="Feep" 
-                className="h-10 w-auto dark:invert mb-4" 
+                src="/feep-logo.png" 
+                alt="FEEP" 
+                className="h-10 w-auto mb-4" 
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  if (target.src !== `${window.location.origin}/feep-logo.svg`) {
+                    target.src = "/feep-logo.svg";
+                    target.classList.add("dark:invert");
+                  }
+                }}
               />
-              <div className="text-white/80 text-sm font-medium">• Feep</div>
             </div>
             
             <h1 className="text-4xl font-bold text-white mb-4">
