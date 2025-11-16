@@ -405,7 +405,9 @@ export const GameFeed = () => {
                 </div>
 
                 {/* Game info - bottom left - moved lower like TikTok */}
-                <div className="absolute left-0 right-[70px] md:right-[80px] bottom-24 md:bottom-16 p-4 md:p-5 text-white z-10">
+               <div
+  className=" absolute left-4 right-24 md:right-28  bottom-6 md:bottom-8 p-4 md:p-5  text-white z-1 " >
+
                   <div className="flex items-center gap-2 mb-3">
                     <button 
                       className="flex items-center gap-2 hover:opacity-80 transition-opacity group"
