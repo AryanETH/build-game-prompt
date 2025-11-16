@@ -147,8 +147,8 @@ export const TikTokSidebar = () => {
               onClick={() => handleNavigate(path)}
               className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 group ${
                 active
-                  ? "bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 font-semibold"
-                  : "text-foreground hover:bg-muted/50 hover:text-purple-600 dark:hover:text-purple-400"
+                  ? "bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary font-semibold"
+                  : "text-foreground hover:bg-muted/50 hover:text-primary dark:hover:text-primary"
               }`}
             >
               <Icon 
@@ -178,7 +178,7 @@ export const TikTokSidebar = () => {
               >
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={user.avatar_url || undefined} />
-                  <AvatarFallback className="bg-purple-500/20 text-purple-600 dark:text-purple-400 text-xs">
+                  <AvatarFallback className="gradient-primary text-white text-xs font-semibold">
                     {user.username[0]?.toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
@@ -190,7 +190,7 @@ export const TikTokSidebar = () => {
             ))}
             <button
               onClick={() => handleNavigate("/search")}
-              className="w-full text-xs text-purple-600 dark:text-purple-400 hover:underline text-left px-2 py-1"
+              className="w-full text-xs text-primary dark:text-primary hover:underline text-left px-2 py-1"
             >
               See more
             </button>

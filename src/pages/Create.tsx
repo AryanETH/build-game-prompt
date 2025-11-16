@@ -815,57 +815,58 @@ export default function Create() {
   };
 
   return (
-    <div className="min-h-screen pb-16 md:pb-0">
+    <div className="min-h-screen">
       
-      <div className="container mx-auto px-4 py-8 flex justify-center">
-        <div className="max-w-5xl w-full mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-2">Create with AI</h1>
-            <p className="text-muted-foreground">
+      <div className="container mx-auto px-3 md:px-4 py-4 md:py-8">
+        <div className="max-w-7xl w-full mx-auto">
+          <div className="text-center mb-4 md:mb-8">
+            <h1 className="text-2xl md:text-4xl font-bold mb-1 md:mb-2">Create with AI</h1>
+            <p className="text-sm md:text-base text-muted-foreground">
               Describe your game idea and let AI bring it to life
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6 mx-auto">
+          {/* Desktop: Horizontal layout, Mobile: Vertical layout */}
+          <div className="flex flex-col md:flex-row gap-4 md:gap-6">
             {/* Input Panel */}
-            <Card className="gradient-card border-border/50 p-6 mx-auto w-full">
-              <div className="space-y-4">
+            <Card className="gradient-card border-border/50 p-4 md:p-6 w-full md:flex-1">
+              <div className="space-y-3 md:space-y-4">
                 {/* Image Prompt Toggle */}
-                <div className="flex items-center justify-between p-4 rounded-lg bg-accent/10 border border-accent/20">
-                  <div className="flex items-center gap-3">
-                    <ImageIcon className="h-5 w-5 text-accent" />
+                <div className="flex items-center justify-between p-3 md:p-4 rounded-lg bg-accent/10 border border-accent/20">
+                  <div className="flex items-center gap-2 md:gap-3">
+                    <ImageIcon className="h-4 w-4 md:h-5 md:w-5 text-accent" />
                     <div>
-                      <p className="font-medium">Image Prompt</p>
-                      <p className="text-xs text-muted-foreground">Generate from UI design</p>
+                      <p className="font-medium text-sm md:text-base">Image Prompt</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground">Generate from UI design</p>
                     </div>
                   </div>
                   <Switch checked={useImagePrompt} onCheckedChange={setUseImagePrompt} />
                 </div>
 
                 {useImagePrompt && (
-                  <div className="space-y-4 p-4 rounded-lg bg-muted/50">
+                  <div className="space-y-3 md:space-y-4 p-3 md:p-4 rounded-lg bg-muted/50">
                     <div>
-                      <Label htmlFor="imageGenPrompt">Describe Your Game Interface</Label>
+                      <Label htmlFor="imageGenPrompt" className="text-sm md:text-base">Describe Your Game Interface</Label>
                       <Textarea
                         id="imageGenPrompt"
                         value={imageGenerationPrompt}
                         onChange={(e) => setImageGenerationPrompt(e.target.value)}
                         placeholder="e.g., 'Modern mobile game UI with colorful buttons and score display in a 9:16 vertical layout'"
-                        className="mt-2 min-h-24"
+                        className="mt-2 min-h-20 md:min-h-24 text-sm md:text-base"
                       />
                       <Button
                         type="button"
                         onClick={handleGenerateInterfaceImage}
                         variant="secondary"
                         size="sm"
-                        className="mt-3 w-full"
+                        className="mt-3 w-full text-xs md:text-sm"
                       >
-                        <Sparkles className="h-4 w-4 mr-2" />
+                        <Sparkles className="h-3 w-3 md:h-4 md:w-4 mr-2" />
                         Generate Interface Design
                       </Button>
                       {generatedInterfaceImage && (
                         <div className="mt-3 p-2 border border-accent/30 rounded-lg">
-                          <img src={generatedInterfaceImage} alt="Generated" className="w-full rounded-lg max-h-64 object-contain" />
+                          <img src={generatedInterfaceImage} alt="Generated" className="w-full rounded-lg max-h-48 md:max-h-64 object-contain" />
                         </div>
                       )}
                     </div>
@@ -873,37 +874,37 @@ export default function Create() {
                 )}
 
                 <div>
-                  <Label htmlFor="prompt">Game Prompt</Label>
+                  <Label htmlFor="prompt" className="text-sm md:text-base">Game Prompt</Label>
                   <Textarea
                     id="prompt"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder={useImagePrompt ? "Additional instructions (optional)" : "e.g., 'A space shooter where you dodge asteroids and collect stars'"}
-                    className="min-h-32 mt-2"
+                    className="min-h-24 md:min-h-32 mt-2 text-sm md:text-base"
                     disabled={isGenerating}
                     ref={promptRef}
                   />
                 </div>
 
                 {/* Visibility */}
-                <div className="grid grid-cols-2 gap-4 items-center">
-                  <div className="flex items-center gap-3">
+                <div className="grid grid-cols-2 gap-3 md:gap-4 items-center">
+                  <div className="flex items-center gap-2 md:gap-3">
                     <Switch id="isPublic" checked={isPublic} onCheckedChange={setIsPublic} />
-                    <Label htmlFor="isPublic" className="flex items-center gap-2">
-                      {isPublic ? (<><Globe className="h-4 w-4" /> Public</>) : (<><Lock className="h-4 w-4" /> Private</>)}
+                    <Label htmlFor="isPublic" className="flex items-center gap-1.5 md:gap-2 text-sm md:text-base">
+                      {isPublic ? (<><Globe className="h-3 w-3 md:h-4 md:w-4" /> Public</>) : (<><Lock className="h-3 w-3 md:h-4 md:w-4" /> Private</>)}
                     </Label>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 items-center">
-                  <div className="flex items-center gap-3">
+                <div className="grid grid-cols-2 gap-3 md:gap-4 items-center">
+                  <div className="flex items-center gap-2 md:gap-3">
                     <Switch id="isMultiplayer" checked={isMultiplayer} onCheckedChange={setIsMultiplayer} />
-                    <Label htmlFor="isMultiplayer">Multiplayer</Label>
+                    <Label htmlFor="isMultiplayer" className="text-sm md:text-base">Multiplayer</Label>
                   </div>
                   <div>
-                    <Label className="mb-2 block">Multiplayer Type</Label>
+                    <Label className="mb-2 block text-sm md:text-base">Multiplayer Type</Label>
                     <Select value={multiplayerType} onValueChange={setMultiplayerType} disabled={!isMultiplayer}>
-                      <SelectTrigger className="w-full"><SelectValue placeholder="Select type" /></SelectTrigger>
+                      <SelectTrigger className="w-full text-sm md:text-base"><SelectValue placeholder="Select type" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="co-op">Co-op</SelectItem>
                         <SelectItem value="versus">Versus</SelectItem>
@@ -916,9 +917,9 @@ export default function Create() {
                 </div>
 
                 <div>
-                  <Label className="mb-2 block">Graphics Quality</Label>
+                  <Label className="mb-2 block text-sm md:text-base">Graphics Quality</Label>
                   <Select value={graphicsQuality} onValueChange={setGraphicsQuality}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Graphics" /></SelectTrigger>
+                    <SelectTrigger className="w-full text-sm md:text-base"><SelectValue placeholder="Graphics" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="low">Low</SelectItem>
                       <SelectItem value="medium">Medium</SelectItem>
@@ -932,24 +933,24 @@ export default function Create() {
                 {/* Thumbnail and cover URLs are auto-generated; inputs removed per requirements */}
 
                 <div>
-                  <Label htmlFor="title">Game Title</Label>
+                  <Label htmlFor="title" className="text-sm md:text-base">Game Title</Label>
                   <Input
                     id="title"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="My Awesome Game"
-                    className="mt-2"
+                    className="mt-2 text-sm md:text-base"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="description">Description (optional)</Label>
+                  <Label htmlFor="description" className="text-sm md:text-base">Description (optional)</Label>
                   <Textarea
                     id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Brief description of your game"
-                    className="mt-2"
+                    className="mt-2 text-sm md:text-base"
                   />
                 </div>
 
@@ -957,17 +958,17 @@ export default function Create() {
 
                 <Button
                   onClick={handleGenerate}
-                  className="w-full gradient-primary glow-primary"
+                  className="w-full gradient-primary glow-primary text-sm md:text-base"
                   disabled={isGenerating}
                 >
                   {isGenerating ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="mr-2 h-3 w-3 md:h-4 md:w-4 animate-spin" />
                       Generating...
                     </>
                   ) : (
                     <>
-                      <Sparkles className="mr-2 h-4 w-4" />
+                      <Sparkles className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                       Generate Game
                     </>
                   )}
@@ -977,16 +978,16 @@ export default function Create() {
                   onClick={generateThumbnail} 
                   disabled={isGeneratingThumbnail || !prompt.trim()} 
                   variant="outline"
-                  className="w-full mt-2"
+                  className="w-full mt-2 text-sm md:text-base"
                 >
                   {isGeneratingThumbnail ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="mr-2 h-3 w-3 md:h-4 md:w-4 animate-spin" />
                       Generating Thumbnail...
                     </>
                   ) : (
                     <>
-                      <ImageIcon className="mr-2 h-4 w-4" />
+                      <ImageIcon className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                       Generate Thumbnail
                     </>
                   )}
@@ -994,36 +995,36 @@ export default function Create() {
 
                 {/* Thumbnail Preview */}
                 {thumbnailPreview && (
-                  <div className="mt-4 p-4 border border-accent/30 rounded-lg bg-muted/50">
-                    <Label className="mb-2 block">Generated Thumbnail</Label>
+                  <div className="mt-3 md:mt-4 p-3 md:p-4 border border-accent/30 rounded-lg bg-muted/50">
+                    <Label className="mb-2 block text-sm md:text-base">Generated Thumbnail</Label>
                     <img 
                       src={thumbnailPreview} 
                       alt="Generated Thumbnail" 
-                      className="w-full rounded-lg max-h-64 object-contain"
+                      className="w-full rounded-lg max-h-48 md:max-h-64 object-contain"
                     />
                   </div>
                 )}
 
                 {/* Display uploaded thumbnail URL if available */}
                 {thumbnailUrl && !thumbnailPreview && (
-                  <div className="mt-4 p-4 border border-accent/30 rounded-lg bg-muted/50">
-                    <Label className="mb-2 block">Thumbnail</Label>
+                  <div className="mt-3 md:mt-4 p-3 md:p-4 border border-accent/30 rounded-lg bg-muted/50">
+                    <Label className="mb-2 block text-sm md:text-base">Thumbnail</Label>
                     <img 
                       src={thumbnailUrl} 
                       alt="Thumbnail" 
-                      className="w-full rounded-lg max-h-64 object-contain"
+                      className="w-full rounded-lg max-h-48 md:max-h-64 object-contain"
                     />
                   </div>
                 )}
 
                 {generatedCode && (
                   <div className="grid grid-cols-2 gap-2">
-                    <Button onClick={() => setPreviewOpen(true)} variant="secondary" className="w-full gap-2">
-                      <Eye className="h-4 w-4" /> Preview
+                    <Button onClick={() => setPreviewOpen(true)} variant="secondary" className="w-full gap-2 text-sm md:text-base">
+                      <Eye className="h-3 w-3 md:h-4 md:w-4" /> Preview
                     </Button>
                     <Button
                       onClick={handlePublish}
-                      className="w-full"
+                      className="w-full text-sm md:text-base"
                       variant="outline"
                     >
                       Publish to Feed
@@ -1033,8 +1034,26 @@ export default function Create() {
               </div>
             </Card>
 
-            {/* Right column intentionally empty: preview moved to dialog */}
-            <div className="hidden md:block"></div>
+            {/* Desktop: Preview panel on the right */}
+            <div className="hidden md:flex md:flex-1 items-center justify-center">
+              {generatedCode ? (
+                <Card className="w-full max-w-md overflow-hidden">
+                  <div className="aspect-[9/16] rounded-[28px] overflow-hidden shadow-2xl ring-1 ring-border bg-background">
+                    <iframe
+                      srcDoc={generatedCode}
+                      className="w-full h-full border-0"
+                      title="Game Preview"
+                      sandbox="allow-scripts allow-same-origin"
+                    />
+                  </div>
+                </Card>
+              ) : (
+                <div className="text-center text-muted-foreground p-8">
+                  <Gamepad2 className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                  <p>Generate a game to see preview</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

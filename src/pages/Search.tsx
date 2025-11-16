@@ -95,19 +95,19 @@ export default function Search() {
   }
 
   return (
-    <div className="min-h-screen pb-16 md:pb-0 bg-background">
+    <div className="min-h-screen bg-background">
       
-      <main className="container mx-auto px-4 py-6 max-w-7xl">
+      <main className="w-full mx-auto px-3 md:px-4 py-4 md:py-6 md:container md:max-w-7xl">
         {/* Search Bar */}
-        <div className="mb-6">
-          <div className="relative mb-3">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+        <div className="mb-4 md:mb-6">
+          <div className="relative mb-2 md:mb-3">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 md:h-5 md:w-5 text-muted-foreground" />
             <Input
               type="text"
               placeholder="Search games or usernames..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-12 bg-card border-border text-lg"
+              className="pl-9 md:pl-10 h-10 md:h-12 bg-card border-border text-sm md:text-lg"
             />
           </div>
           
@@ -115,14 +115,14 @@ export default function Search() {
           <div className="flex gap-2">
             <Badge
               variant={sortBy === 'popular' ? "default" : "secondary"}
-              className="cursor-pointer px-4 py-2 text-sm hover:bg-primary/90"
+              className="cursor-pointer px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm hover:bg-primary/90"
               onClick={() => setSortBy('popular')}
             >
               💥 Popular
             </Badge>
             <Badge
               variant={sortBy === 'newest' ? "default" : "secondary"}
-              className="cursor-pointer px-4 py-2 text-sm hover:bg-primary/90"
+              className="cursor-pointer px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm hover:bg-primary/90"
               onClick={() => setSortBy('newest')}
             >
               ✨ Newest
@@ -131,14 +131,14 @@ export default function Search() {
         </div>
 
         {/* Category Tags */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold mb-3">Tags</h3>
+        <div className="mb-6 md:mb-8">
+          <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-3">Tags</h3>
           <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
             {categories.map((category) => (
               <Badge
                 key={category.id}
                 variant={selectedCategory === category.id ? "default" : "secondary"}
-                className="cursor-pointer whitespace-nowrap px-4 py-2 text-sm hover:bg-primary/90"
+                className="cursor-pointer whitespace-nowrap px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm hover:bg-primary/90"
                 onClick={() => setSelectedCategory(
                   selectedCategory === category.id ? null : category.id
                 )}
@@ -152,17 +152,17 @@ export default function Search() {
 
         {/* Search Results - Profiles */}
         {searchQuery && profiles.length > 0 && (
-          <section className="mb-8">
-            <h2 className="text-xl font-bold mb-4">Creators</h2>
+          <section className="mb-6 md:mb-8">
+            <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Creators</h2>
             <div className="space-y-2">
               {profiles.map((profile) => (
-                <Card key={profile.id} className="p-4 flex items-center gap-4 hover:bg-accent/50 transition-smooth cursor-pointer" onClick={() => navigate(`/u/${profile.username}`)}>
-                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center text-white font-bold text-lg">
+                <Card key={profile.id} className="p-3 md:p-4 flex items-center gap-3 md:gap-4 hover:bg-accent/50 transition-smooth cursor-pointer" onClick={() => navigate(`/u/${profile.username}`)}>
+                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-full gradient-primary flex items-center justify-center text-white font-bold text-base md:text-lg">
                     {profile.username[0].toUpperCase()}
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold">{profile.username}</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 className="font-semibold text-sm md:text-base">{profile.username}</h3>
+                    <p className="text-xs md:text-sm text-muted-foreground">
                       {profile.total_plays || 0} plays
                     </p>
                   </div>
@@ -174,23 +174,23 @@ export default function Search() {
 
         {/* New Games Section */}
         {!searchQuery && (
-          <section className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold flex items-center gap-2">
+          <section className="mb-6 md:mb-8">
+            <div className="flex items-center justify-between mb-3 md:mb-4">
+              <h2 className="text-lg md:text-xl font-bold flex items-center gap-2">
                 ✨ New games
               </h2>
-              <Button variant="ghost" size="sm" className="text-muted-foreground">
+              <Button variant="ghost" size="sm" className="text-muted-foreground text-xs md:text-sm">
                 See more
               </Button>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
               {games.slice(0, 8).map((game) => (
                 <Card 
                   key={game.id} 
-                  className="overflow-hidden hover:ring-2 hover:ring-primary transition-smooth cursor-pointer group"
+                  className="overflow-hidden hover:ring-2 hover:ring-primary transition-smooth cursor-pointer group w-full"
                   onClick={() => handlePlayGame(game)}
                 >
-                  <div className="aspect-[3/4] relative overflow-hidden bg-gradient-to-br from-accent to-accent/50">
+                  <div className="aspect-[3/4] relative overflow-hidden bg-gradient-to-br from-accent to-accent/50 w-full">
                     <img
                       src={game.thumbnail_url || game.cover_url || "/placeholder.svg"}
                       alt={game.title}
@@ -199,17 +199,17 @@ export default function Search() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                     
                     {/* Category Badge */}
-                    <Badge className="absolute top-2 left-2 text-xs">
+                    <Badge className="absolute top-1 sm:top-1.5 md:top-2 left-1 sm:left-1.5 md:left-2 text-[9px] sm:text-[10px] md:text-xs px-1 sm:px-1.5 md:px-2 py-0.5 md:py-1">
                       🎮 {selectedCategory || "Game"}
                     </Badge>
 
                     {/* Play Count */}
-                    <div className="absolute bottom-0 left-0 right-0 p-3">
-                      <h3 className="font-bold text-white text-sm mb-1 line-clamp-1">
+                    <div className="absolute bottom-0 left-0 right-0 p-1.5 sm:p-2 md:p-3">
+                      <h3 className="font-bold text-white text-[10px] sm:text-xs md:text-sm mb-0.5 line-clamp-1">
                         {game.title}
                       </h3>
-                      <div className="flex items-center gap-1 text-white/80 text-xs">
-                        <Play className="h-3 w-3" />
+                      <div className="flex items-center gap-0.5 sm:gap-1 text-white/80 text-[9px] sm:text-[10px] md:text-xs">
+                        <Play className="h-2 w-2 sm:h-2.5 sm:w-2.5 md:h-3 md:w-3" />
                         <span>{game.plays_count > 1000 ? `${(game.plays_count / 1000).toFixed(1)}K` : game.plays_count}</span>
                       </div>
                     </div>
@@ -222,20 +222,20 @@ export default function Search() {
 
         {/* Popular Games */}
         {!searchQuery && games.length > 8 && (
-          <section className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold flex items-center gap-2">
+          <section className="mb-6 md:mb-8">
+            <div className="flex items-center justify-between mb-3 md:mb-4">
+              <h2 className="text-lg md:text-xl font-bold flex items-center gap-2">
                 💥 Popular
               </h2>
-              <Button variant="ghost" size="sm" className="text-muted-foreground">
+              <Button variant="ghost" size="sm" className="text-muted-foreground text-xs md:text-sm">
                 See more
               </Button>
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
+            <div className="flex gap-2 md:gap-3 overflow-x-auto pb-2 no-scrollbar -mx-3 px-3 md:mx-0 md:px-0">
               {games.slice(8, 16).map((game) => (
                 <Card 
                   key={game.id}
-                  className="min-w-[180px] overflow-hidden hover:ring-2 hover:ring-primary transition-smooth cursor-pointer group"
+                  className="flex-shrink-0 w-[140px] md:w-[180px] overflow-hidden hover:ring-2 hover:ring-primary transition-smooth cursor-pointer group"
                   onClick={() => handlePlayGame(game)}
                 >
                   <div className="aspect-square relative overflow-hidden bg-gradient-to-br from-accent to-accent/50">
@@ -245,9 +245,9 @@ export default function Search() {
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
                   </div>
-                  <div className="p-3">
-                    <h3 className="font-semibold text-sm line-clamp-1">{game.title}</h3>
-                    <p className="text-xs text-muted-foreground">
+                  <div className="p-2 md:p-3">
+                    <h3 className="font-semibold text-xs md:text-sm line-clamp-1">{game.title}</h3>
+                    <p className="text-[10px] md:text-xs text-muted-foreground">
                       {game.plays_count > 1000 ? `${(game.plays_count / 1000).toFixed(1)}K` : game.plays_count} plays
                     </p>
                   </div>
@@ -260,17 +260,17 @@ export default function Search() {
         {/* Search Results - Games */}
         {searchQuery && games.length > 0 && (
           <section>
-            <h2 className="text-xl font-bold mb-4">
+            <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">
               Games ({games.length})
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
               {games.map((game) => (
                 <Card 
                   key={game.id} 
-                  className="overflow-hidden hover:ring-2 hover:ring-primary transition-smooth cursor-pointer group"
+                  className="overflow-hidden hover:ring-2 hover:ring-primary transition-smooth cursor-pointer group w-full"
                   onClick={() => handlePlayGame(game)}
                 >
-                  <div className="aspect-[3/4] relative overflow-hidden bg-gradient-to-br from-accent to-accent/50">
+                  <div className="aspect-[3/4] relative overflow-hidden bg-gradient-to-br from-accent to-accent/50 w-full">
                     <img
                       src={game.thumbnail_url || game.cover_url || "/placeholder.svg"}
                       alt={game.title}
@@ -278,12 +278,12 @@ export default function Search() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                     
-                    <div className="absolute bottom-0 left-0 right-0 p-3">
-                      <h3 className="font-bold text-white text-sm mb-1 line-clamp-1">
+                    <div className="absolute bottom-0 left-0 right-0 p-1.5 sm:p-2 md:p-3">
+                      <h3 className="font-bold text-white text-[10px] sm:text-xs md:text-sm mb-0.5 line-clamp-1">
                         {game.title}
                       </h3>
-                      <div className="flex items-center gap-1 text-white/80 text-xs">
-                        <Play className="h-3 w-3" />
+                      <div className="flex items-center gap-0.5 sm:gap-1 text-white/80 text-[9px] sm:text-[10px] md:text-xs">
+                        <Play className="h-2 w-2 sm:h-2.5 sm:w-2.5 md:h-3 md:w-3" />
                         <span>{game.plays_count > 1000 ? `${(game.plays_count / 1000).toFixed(1)}K` : game.plays_count}</span>
                       </div>
                     </div>
@@ -296,18 +296,18 @@ export default function Search() {
 
         {/* Empty States */}
         {searchQuery && games.length === 0 && profiles.length === 0 && !isLoading && (
-          <div className="text-center py-16">
-            <SearchIcon className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <h3 className="text-xl font-semibold mb-2">No results found</h3>
-            <p className="text-muted-foreground">
+          <div className="text-center py-12 md:py-16">
+            <SearchIcon className="h-12 w-12 md:h-16 md:w-16 text-muted-foreground mx-auto mb-3 md:mb-4 opacity-50" />
+            <h3 className="text-lg md:text-xl font-semibold mb-2">No results found</h3>
+            <p className="text-sm md:text-base text-muted-foreground">
               Try searching for something else
             </p>
           </div>
         )}
 
         {isLoading && (
-          <div className="text-center py-16">
-            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+          <div className="text-center py-12 md:py-16">
+            <div className="animate-spin h-6 w-6 md:h-8 md:w-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
           </div>
         )}
       </main>

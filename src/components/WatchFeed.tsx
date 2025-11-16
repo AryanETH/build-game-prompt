@@ -142,9 +142,9 @@ export const WatchFeed = () => {
   const [flippedId, setFlippedId] = useState<string | null>(null);
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-3 md:p-4 space-y-4 md:space-y-6 pb-20 md:pb-4">
       {/* 9:16 grid of up to 4 live streams visible; scroll for more */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
         {liveGames.map((g) => (
           <div key={g.id} className="aspect-[9/16] [perspective:1000px]">
             <div className={`relative w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${flippedId === g.id ? '[transform:rotateY(180deg)]' : ''}`}>
@@ -182,18 +182,18 @@ export const WatchFeed = () => {
       </div>
 
       {/* Player area */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
         <div className="lg:col-span-2">
           {!selected ? (
-            <Card className="p-12 text-center gradient-card">
-              <Tv className="w-16 h-16 mx-auto mb-4 text-primary" />
-              <h3 className="text-2xl font-bold mb-2">Choose a game to watch</h3>
+            <Card className="p-8 md:p-12 text-center gradient-card">
+              <Tv className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-3 md:mb-4 text-primary" />
+              <h3 className="text-xl md:text-2xl font-bold mb-2">Choose a game to watch</h3>
             </Card>
           ) : (
             <Card className="overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2 border-b">
-                <div className="font-semibold">{selected.title}</div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground"><Users className="h-4 w-4" />{viewerCount}</div>
+              <div className="flex items-center justify-between px-3 md:px-4 py-2 border-b">
+                <div className="font-semibold text-sm md:text-base">{selected.title}</div>
+                <div className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm text-muted-foreground"><Users className="h-3 w-3 md:h-4 md:w-4" />{viewerCount}</div>
               </div>
               <div className="bg-white dark:bg-black flex items-center justify-center">
                 <div className="relative nineBySixteen w-full md:vh-9-16">
@@ -201,7 +201,7 @@ export const WatchFeed = () => {
                     <iframe title={selected.title} srcDoc={fullGameData.game_code} className="absolute inset-0 w-full h-full border-0" sandbox="allow-scripts allow-same-origin" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                      <div className="animate-spin rounded-full h-8 w-8 md:h-12 md:w-12 border-b-2 border-primary"></div>
                     </div>
                   )}
                 </div>
@@ -212,27 +212,27 @@ export const WatchFeed = () => {
 
         {/* Live chat */}
         <Card className="flex flex-col overflow-hidden">
-          <div className="px-4 py-2 border-b font-semibold">Live Chat</div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="px-3 md:px-4 py-2 border-b font-semibold text-sm md:text-base">Live Chat</div>
+          <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3">
             {comments.map((c) => (
-              <div key={c.id} className="flex items-start gap-3">
-                <Avatar className="h-8 w-8">
+              <div key={c.id} className="flex items-start gap-2 md:gap-3">
+                <Avatar className="h-7 w-7 md:h-8 md:w-8">
                   <AvatarImage src={c.user?.avatar_url || undefined} />
                   <AvatarFallback>{c.user?.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <div className="text-sm font-medium">{c.user?.username || 'User'}</div>
-                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">{c.content}</div>
+                  <div className="text-xs md:text-sm font-medium">{c.user?.username || 'User'}</div>
+                  <div className="text-xs md:text-sm text-muted-foreground whitespace-pre-wrap">{c.content}</div>
                 </div>
               </div>
             ))}
             {comments.length === 0 && (
-              <div className="text-sm text-muted-foreground">Be the first to chat.</div>
+              <div className="text-xs md:text-sm text-muted-foreground">Be the first to chat.</div>
             )}
           </div>
-          <div className="p-3 flex gap-2 border-t">
-            <Input placeholder="Say something..." value={text} onChange={(e) => setText(e.target.value)} />
-            <Button onClick={send} disabled={!text.trim()}>Send</Button>
+          <div className="p-2 md:p-3 flex gap-2 border-t">
+            <Input placeholder="Say something..." value={text} onChange={(e) => setText(e.target.value)} className="text-sm md:text-base" />
+            <Button onClick={send} disabled={!text.trim()} size="sm" className="text-xs md:text-sm">Send</Button>
           </div>
         </Card>
       </div>
@@ -240,13 +240,13 @@ export const WatchFeed = () => {
       {/* Non-live games row: show Play button to redirect */}
       {nonLiveGames.length > 0 && (
         <div>
-          <div className="font-semibold mb-2">Not live right now</div>
-          <div className="flex gap-3 overflow-x-auto no-scrollbar">
+          <div className="font-semibold mb-2 text-sm md:text-base">Not live right now</div>
+          <div className="flex gap-2 md:gap-3 overflow-x-auto no-scrollbar">
             {nonLiveGames.map((g) => (
-              <Card key={g.id} className="min-w-[200px] p-3">
-                <div className="font-semibold line-clamp-1 mb-2">{g.title}</div>
-                <Button size="sm" className="gap-2" onClick={() => navigate(`/feed?game=${g.id}`)}>
-                  <Play className="h-4 w-4" />
+              <Card key={g.id} className="min-w-[160px] md:min-w-[200px] p-2 md:p-3">
+                <div className="font-semibold line-clamp-1 mb-2 text-xs md:text-sm">{g.title}</div>
+                <Button size="sm" className="gap-1.5 md:gap-2 text-xs md:text-sm" onClick={() => navigate(`/feed?game=${g.id}`)}>
+                  <Play className="h-3 w-3 md:h-4 md:w-4" />
                   Play
                 </Button>
               </Card>

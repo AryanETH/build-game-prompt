@@ -1,6 +1,6 @@
 import { TikTokSidebar } from "./TikTokSidebar";
-import { Navigation } from "./Navigation";
 import { MobileSidebar } from "./MobileSidebar";
+import { MobileBottomNav } from "./MobileBottomNav";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -13,20 +13,18 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       <div className="hidden md:block">
         <TikTokSidebar />
       </div>
-      
+
       {/* Mobile Sidebar Drawer */}
       <div className="md:hidden">
         <MobileSidebar />
       </div>
       
-      <div className="flex-1 md:ml-[240px] lg:ml-[260px]">
+      <div className="flex-1 pb-16 md:pb-0 md:ml-[240px] lg:ml-[260px]">
         {children}
       </div>
-      
-      {/* Mobile bottom navigation */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40">
-        <Navigation hideBrand />
-      </div>
+
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav />
     </div>
   );
 };

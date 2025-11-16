@@ -379,98 +379,110 @@ export const GameFeed = () => {
   return (
     <>
     {/* Snap scrolling feed - TikTok style with sidebar */}
-    <div className="relative h-screen w-full overflow-hidden bg-white dark:bg-black">
-      <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar" style={{ scrollSnapType: 'y mandatory', scrollBehavior: 'smooth' }}>
+    <div className="relative h-screen w-full overflow-hidden bg-white dark:bg-black pb-16 md:pb-0">
+      <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar" style={{ scrollSnapType: 'y mandatory', scrollBehavior: 'smooth', scrollPaddingTop: '0px', scrollPaddingBottom: '0px' }}>
         {hydratedGames?.map((game) => (
-          <div key={game.id} className="h-full w-full snap-start snap-always flex items-center justify-center px-4 md:px-8">
-            {/* Desktop: Centered card with 5% border-radius (more rectangular), Mobile: Full rectangle */}
-            <div className="relative w-full max-w-[420px] h-[80vh] md:h-[85vh] flex items-center justify-center">
-              <Card className="absolute inset-0 overflow-hidden rounded-none md:rounded-[5%] border border-border/60 bg-white dark:bg-[#111111] shadow-2xl">
+          <div key={game.id} className="h-screen w-full snap-start snap-always flex items-center justify-center" style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
+            {/* Desktop: Centered card with 5% border-radius, Mobile: Full screen fit */}
+            <div className="relative w-full max-w-[420px] h-[calc(100vh-80px)] md:h-[90vh] flex items-center justify-center">
+              <Card className="absolute inset-0 overflow-hidden rounded-none md:rounded-[5%] border-0 md:border md:border-border/60 bg-black shadow-2xl">
                 <img
                   src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
                   alt={game.title}
                   className="absolute inset-0 w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent dark:from-black/90 dark:via-black/30" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent dark:from-black/95 dark:via-black/20" />
 
                 {/* Remix button - top right */}
                 <div className="absolute top-4 right-4 z-10">
                   <button
-                    className="px-4 py-2 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white backdrop-blur-md text-sm font-medium flex items-center gap-2 shadow-lg hover:shadow-purple-500/50 hover:scale-105 active:scale-95 transition-all duration-200"
+                    className="px-3 py-1.5 md:px-4 md:py-2 rounded-full gradient-primary text-white backdrop-blur-md text-xs md:text-sm font-medium flex items-center gap-1.5 md:gap-2 shadow-lg hover:shadow-primary/50 hover:scale-105 active:scale-95 transition-all duration-200"
                     onClick={() => setRemixFor(game)}
                   >
-                    <Sparkles className="w-4 h-4" strokeWidth={1.5} />
+                    <Sparkles className="w-3 h-3 md:w-4 md:h-4" strokeWidth={1.5} />
                     Remix
                   </button>
                 </div>
 
-                {/* Game info - bottom left */}
-                <div className="absolute left-0 right-[80px] bottom-20 p-5 md:p-6 text-white z-10">
-                  <div className="flex items-center gap-2 mb-2">
+                {/* Game info - bottom left - moved lower like TikTok */}
+                <div className="absolute left-0 right-[70px] md:right-[80px] bottom-24 md:bottom-16 p-4 md:p-5 text-white z-10">
+                  <div className="flex items-center gap-2 mb-3">
                     <button 
                       className="flex items-center gap-2 hover:opacity-80 transition-opacity group"
                       onClick={() => game.creator?.username && navigate(`/u/${game.creator.username}`)}
                     >
-                      <Avatar className="w-10 h-10 border-2 border-white/40 group-hover:border-purple-400 transition-colors">
-                        <AvatarImage src={game.creator?.avatar_url || undefined} />
-                        <AvatarFallback className="bg-purple-500 text-white text-sm">
-                          {game.creator?.username?.[0]?.toUpperCase() || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm font-semibold drop-shadow-lg">@{game.creator?.username || 'creator'}</span>
+                      <div className="relative">
+                        <Avatar className="w-12 h-12 border-2 border-white/50 group-hover:border-white transition-colors">
+                          <AvatarImage src={game.creator?.avatar_url || undefined} />
+                          <AvatarFallback className="gradient-primary text-white text-sm font-semibold">
+                            {game.creator?.username?.[0]?.toUpperCase() || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        {/* Plus icon for follow - with gradient */}
+                        <button
+                          className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full gradient-primary flex items-center justify-center text-white shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 border-2 border-white"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toast.success("Follow feature coming soon!");
+                          }}
+                        >
+                          <span className="text-sm font-bold leading-none">+</span>
+                        </button>
+                      </div>
+                      <span className="text-base font-bold drop-shadow-lg">@{game.creator?.username || 'creator'}</span>
                     </button>
                   </div>
-                  <div className="text-xl md:text-2xl font-bold leading-tight mb-1 drop-shadow-lg line-clamp-2">{game.title}</div>
-                  <div className="text-sm text-white/90 line-clamp-2 drop-shadow-md">{game.description || ''}</div>
+                  <div className="text-base md:text-lg font-semibold leading-snug mb-2 drop-shadow-lg line-clamp-2">{game.title}</div>
+                  <div className="text-sm text-white/95 line-clamp-3 drop-shadow-md leading-relaxed">{game.description || ''}</div>
                 </div>
               </Card>
               
               {/* Right action bar - Floating outside container on desktop, inside on mobile */}
-              <div className="absolute right-4 md:-right-20 bottom-20 flex flex-col gap-6 items-center text-white z-20">
-                {/* Play button - Purple accent */}
+              <div className="absolute right-3 md:-right-20 bottom-24 md:bottom-16 flex flex-col gap-4 items-center text-white z-20">
+                {/* Play button - Gradient - 20% smaller */}
                 <button
                   aria-label="Play"
-                  className="h-14 w-14 rounded-full flex items-center justify-center bg-gradient-to-br from-purple-600 to-purple-500 text-white hover:from-purple-500 hover:to-purple-400 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg shadow-purple-500/50 hover:shadow-purple-500/70"
+                  className="h-12 w-12 rounded-full flex items-center justify-center gradient-primary text-white hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg glow-primary"
                   onClick={() => handlePlay(game)}
                 >
-                  <Play className="h-6 w-6 fill-current" strokeWidth={2} />
+                  <Play className="h-5 w-5 fill-current" strokeWidth={2} />
                 </button>
                 
-                {/* Like button */}
+                {/* Like button - 20% smaller */}
                 <div className="flex flex-col items-center gap-1">
                   <button
                     aria-label="Like"
-                    className={`h-14 w-14 rounded-full flex items-center justify-center backdrop-blur-md hover:scale-110 active:scale-95 transition-all duration-200 shadow-xl ${
+                    className={`h-12 w-12 rounded-full flex items-center justify-center backdrop-blur-md hover:scale-110 active:scale-95 transition-all duration-200 shadow-xl ${
                       likedGames.has(game.id) 
                         ? 'bg-red-500/90 text-white hover:bg-red-500 hover:shadow-red-500/50' 
-                        : 'bg-black/40 dark:bg-black/60 text-white hover:bg-black/60 dark:hover:bg-black/80 hover:shadow-purple-500/30'
+                        : 'bg-black/40 dark:bg-black/60 text-white hover:bg-black/60 dark:hover:bg-black/80'
                     }`}
                     onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
                   >
-                    <Heart className={`h-6 w-6 ${likedGames.has(game.id) ? 'fill-current' : ''}`} strokeWidth={2} />
+                    <Heart className={`h-5 w-5 ${likedGames.has(game.id) ? 'fill-current' : ''}`} strokeWidth={2} />
                   </button>
-                  <span className="text-xs font-semibold text-white drop-shadow-lg">{game.likes_count ?? 0}</span>
+                  <span className="text-xs font-bold text-white drop-shadow-lg">{game.likes_count ?? 0}</span>
                 </div>
                 
-                {/* Comments button */}
+                {/* Comments button - 20% smaller */}
                 <div className="flex flex-col items-center gap-1">
                   <button
                     aria-label="Comments"
-                    className="h-14 w-14 rounded-full flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-md text-white hover:bg-black/60 dark:hover:bg-black/80 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg hover:shadow-purple-500/30"
+                    className="h-12 w-12 rounded-full flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-md text-white hover:bg-black/60 dark:hover:bg-black/80 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
                     onClick={() => setCommentsOpenFor(game)}
                   >
-                    <MessageCircle className="h-6 w-6" strokeWidth={2} />
+                    <MessageCircle className="h-5 w-5" strokeWidth={2} />
                   </button>
-                  <span className="text-xs font-semibold text-white drop-shadow-lg">0</span>
+                  <span className="text-xs font-bold text-white drop-shadow-lg">0</span>
                 </div>
                 
-                {/* Share button */}
+                {/* Share button - 20% smaller */}
                 <button
                   aria-label="Share"
-                  className="h-14 w-14 rounded-full flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-md text-white hover:bg-black/60 dark:hover:bg-black/80 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg hover:shadow-purple-500/30"
+                  className="h-12 w-12 rounded-full flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-md text-white hover:bg-black/60 dark:hover:bg-black/80 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
                   onClick={() => handleShare(game)}
                 >
-                  <Share2 className="h-6 w-6" strokeWidth={2} />
+                  <Share2 className="h-5 w-5" strokeWidth={2} />
                 </button>
               </div>
             </div>

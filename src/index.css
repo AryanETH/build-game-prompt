@@ -38,7 +38,7 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Light mode - Purple accent theme */
+    /* Light mode - Purple to Blue gradient theme */
     --background: 0 0% 100%;
     --foreground: 0 0% 0%;
 
@@ -48,17 +48,17 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 0%;
 
-    --primary: 270 91% 65%; /* #a855f7 */
+    --primary: 262 83% 58%; /* #6D28D9 - Purple */
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 270 91% 75%;
+    --primary-glow: 262 83% 68%;
 
-    --secondary: 271 81% 56%; /* #7b2ff7 */
+    --secondary: 221 83% 53%; /* #2563EB - Blue */
     --secondary-foreground: 0 0% 100%;
 
     --muted: 0 0% 95%;
     --muted-foreground: 0 0% 45%;
 
-    --accent: 271 81% 56%; /* #7b2ff7 */
+    --accent: 262 83% 58%; /* Purple accent */
     --accent-foreground: 0 0% 100%;
 
     --success: 142 76% 36%;
@@ -69,25 +69,25 @@ All colors MUST be HSL.
 
     --border: 0 0% 90%;
     --input: 0 0% 90%;
-    --ring: 270 91% 65%;
+    --ring: 262 83% 58%;
 
     --radius: 0.75rem;
 
-    /* Purple gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(271 81% 56%) 0%, hsl(270 91% 65%) 100%);
+    /* Purple to Blue gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(262 83% 58%) 0%, hsl(221 83% 53%) 100%);
     --gradient-card: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(0 0% 98%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(0 0% 95%) 50%, hsl(270 20% 95%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(0 0% 95%) 50%, hsl(262 20% 95%) 100%);
     
-    /* Purple glow effects */
-    --glow-primary: 0 0 50px hsl(270 91% 65% / 0.4);
-    --glow-secondary: 0 0 50px hsl(271 81% 56% / 0.4);
+    /* Purple-Blue glow effects */
+    --glow-primary: 0 0 50px hsl(262 83% 58% / 0.4);
+    --glow-secondary: 0 0 50px hsl(221 83% 53% / 0.4);
     
     /* Transitions */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
-    /* Dark mode - Purple accent theme */
+    /* Dark mode - Purple to Blue gradient theme */
     --background: 0 0% 0%;
     --foreground: 0 0% 100%;
 
@@ -97,17 +97,17 @@ All colors MUST be HSL.
     --popover: 0 0% 7%;
     --popover-foreground: 0 0% 100%;
 
-    --primary: 270 91% 65%; /* #a855f7 */
+    --primary: 262 83% 58%; /* #6D28D9 - Purple */
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 270 91% 75%;
+    --primary-glow: 262 83% 68%;
 
-    --secondary: 271 81% 56%; /* #7b2ff7 */
+    --secondary: 221 83% 53%; /* #2563EB - Blue */
     --secondary-foreground: 0 0% 100%;
 
     --muted: 0 0% 9%; /* #181818 */
     --muted-foreground: 0 0% 65%;
 
-    --accent: 271 81% 56%; /* #7b2ff7 */
+    --accent: 262 83% 58%; /* Purple accent */
     --accent-foreground: 0 0% 100%;
 
     --success: 142 76% 45%;
@@ -118,16 +118,16 @@ All colors MUST be HSL.
 
     --border: 0 0% 18%;
     --input: 0 0% 18%;
-    --ring: 270 91% 65%;
+    --ring: 262 83% 58%;
 
-    /* Purple gradients - Dark */
-    --gradient-primary: linear-gradient(135deg, hsl(271 81% 56%) 0%, hsl(270 91% 65%) 100%);
+    /* Purple to Blue gradients - Dark */
+    --gradient-primary: linear-gradient(135deg, hsl(262 83% 58%) 0%, hsl(221 83% 53%) 100%);
     --gradient-card: linear-gradient(135deg, hsl(0 0% 7%) 0%, hsl(0 0% 9%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(0 0% 0%) 0%, hsl(0 0% 7%) 50%, hsl(270 20% 9%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(0 0% 0%) 0%, hsl(0 0% 7%) 50%, hsl(262 20% 9%) 100%);
     
-    /* Purple neon glow effects */
-    --glow-primary: 0 0 60px hsl(270 91% 65% / 0.6);
-    --glow-secondary: 0 0 60px hsl(271 81% 56% / 0.6);
+    /* Purple-Blue neon glow effects */
+    --glow-primary: 0 0 60px hsl(262 83% 58% / 0.6);
+    --glow-secondary: 0 0 60px hsl(221 83% 53% / 0.6);
   }
 }
 
@@ -136,9 +136,18 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     background: hsl(var(--background));
+    min-width: 320px;
+    overflow-x: hidden;
   }
   
   /* Hide native cursor when rocket cursor is active on pointer devices */
