@@ -85,6 +85,13 @@ export default {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
+      scale: {
+        '107': '1.07',
+        '112': '1.12',
+      },
+      transitionDuration: {
+        '250': '250ms',
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

@@ -2,14 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Premium Animations - Apple-level quality */
+
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-20px); }
 }
 
+@keyframes float-subtle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
 @keyframes gradient {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
+}
+
+@keyframes gradient-shimmer {
+  0% { background-position: 0% 50%; opacity: 0.8; }
+  50% { background-position: 100% 50%; opacity: 1; }
+  100% { background-position: 0% 50%; opacity: 0.8; }
 }
 
 @keyframes fade-in {
@@ -18,7 +31,7 @@
 }
 
 @keyframes slide-in-from-bottom {
-  from { transform: translateY(20px); opacity: 0; }
+  from { transform: translateY(30px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
 
@@ -30,6 +43,41 @@
 @keyframes zoom-in {
   from { transform: scale(0.9); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes scale-in {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes bounce-smooth {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(8px); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { filter: drop-shadow(0 0 20px rgba(147, 51, 234, 0.4)); }
+  50% { filter: drop-shadow(0 0 40px rgba(147, 51, 234, 0.6)); }
+}
+
+@keyframes glow-rotate {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+@keyframes ken-burns {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.06); }
+}
+
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes stat-highlight {
+  0%, 100% { box-shadow: 0 0 0 rgba(147, 51, 234, 0); }
+  50% { box-shadow: 0 0 20px rgba(147, 51, 234, 0.6); }
 }
 
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
@@ -247,49 +295,120 @@ All colors MUST be HSL.
     }
   }
 
-  /* Animation utilities */
-  .animate-in {
-    animation: fade-in 0.5s ease-out;
+  /* Premium Animation Utilities */
+  .animate-fade-in {
+    animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  .fade-in {
-    animation: fade-in 0.5s ease-out;
+  .animate-slide-up {
+    animation: slide-in-from-bottom 0.7s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  .slide-in-from-bottom-4 {
-    animation: slide-in-from-bottom 0.5s ease-out;
+  .animate-slide-down {
+    animation: slide-in-from-top 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  .slide-in-from-top-4 {
-    animation: slide-in-from-top 0.5s ease-out;
+  .animate-scale-in {
+    animation: scale-in 0.9s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  .zoom-in {
-    animation: zoom-in 0.5s ease-out;
+  .animate-zoom-in {
+    animation: zoom-in 0.5s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
+  .animate-bounce-smooth {
+    animation: bounce-smooth 1.5s ease-in-out infinite;
+  }
+
+  .animate-glow-pulse {
+    animation: glow-pulse 4s ease-in-out infinite;
+  }
+
+  .animate-glow-rotate {
+    animation: glow-rotate 20s linear infinite;
+  }
+
+  .animate-float-subtle {
+    animation: float-subtle 6s ease-in-out infinite;
+  }
+
+  .animate-gradient-shimmer {
+    animation: gradient-shimmer 6s ease-in-out infinite;
+    background-size: 200% 200%;
+  }
+
+  .animate-ken-burns {
+    animation: ken-burns 10s ease-out forwards;
+  }
+
+  .animate-count-up {
+    animation: count-up 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-stat-highlight {
+    animation: stat-highlight 0.6s ease-out;
+  }
+
+  /* Animation Delays */
   .delay-100 {
     animation-delay: 100ms;
+    transition-delay: 100ms;
   }
 
   .delay-200 {
     animation-delay: 200ms;
+    transition-delay: 200ms;
   }
 
   .delay-300 {
     animation-delay: 300ms;
+    transition-delay: 300ms;
+  }
+
+  .delay-400 {
+    animation-delay: 400ms;
+    transition-delay: 400ms;
   }
 
   .delay-500 {
     animation-delay: 500ms;
+    transition-delay: 500ms;
+  }
+
+  .delay-600 {
+    animation-delay: 600ms;
+    transition-delay: 600ms;
+  }
+
+  .delay-700 {
+    animation-delay: 700ms;
+    transition-delay: 700ms;
   }
 
   .delay-1000 {
     animation-delay: 1000ms;
+    transition-delay: 1000ms;
   }
-}
 
-/* Custom rocket cursor - hide native cursor only on desktop devices with fine pointer (mouse) */
-@media (pointer: fine) and (hover: hover) {
-  html, body, * { cursor: none !important; }
+  /* Reduced Motion Support */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* GPU Acceleration */
+  .gpu-accelerated {
+    transform: translateZ(0);
+    will-change: transform, opacity;
+  }
+
+  /* Custom rocket cursor - hide native cursor only on desktop devices with fine pointer (mouse) */
+  @media (pointer: fine) and (hover: hover) {
+    html, body, * { cursor: none !important; }
+  }
 }

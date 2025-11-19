@@ -146,11 +146,11 @@ export default function AuthPage() {
         <div className="w-full max-w-md">
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-white mb-2">
-              {isSignUp ? "Sign Up Account" : "Log In"}
+              {isSignUp ? "Sign Up" : "Log In"}
             </h2>
             <p className="text-white/60">
               {isSignUp 
-                ? "Enter your personal data to create your account."
+                ? "Sign Up"
                 : "Enter your credentials to access your account."}
             </p>
           </div>
