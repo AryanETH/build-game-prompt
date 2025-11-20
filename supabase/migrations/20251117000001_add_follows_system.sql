@@ -77,7 +77,11 @@ CREATE TRIGGER update_follow_counts_trigger
 -- Enable RLS
 ALTER TABLE public.follows ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
+-- RLS Policies (drop existing first to avoid conflicts)
+DROP POLICY IF EXISTS "Users can view all follows" ON public.follows;
+DROP POLICY IF EXISTS "Users can follow others" ON public.follows;
+DROP POLICY IF EXISTS "Users can unfollow" ON public.follows;
+
 CREATE POLICY "Users can view all follows" ON public.follows FOR SELECT USING (true);
 CREATE POLICY "Users can follow others" ON public.follows FOR INSERT WITH CHECK (auth.uid() = follower_id);
 CREATE POLICY "Users can unfollow" ON public.follows FOR DELETE USING (auth.uid() = follower_id);
