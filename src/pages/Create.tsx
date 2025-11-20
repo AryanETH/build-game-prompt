@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -363,10 +363,11 @@ export default function Create() {
     (async () => {
       const { data, error } = await supabase.from('games').select('*').eq('id', remixId).single();
       if (error || !data) return;
-      setGeneratedCode(data.game_code || '');
-      setThumbnailUrl(data.thumbnail_url || '');
-      setCoverUrl(data.cover_url || data.thumbnail_url || '');
-      setTitle(prefillTitle || `Remix: ${data.title}`);
+      const gameData = data as any;
+      setGeneratedCode(gameData.game_code || '');
+      setThumbnailUrl(gameData.thumbnail_url || '');
+      setCoverUrl(gameData.cover_url || gameData.thumbnail_url || '');
+      setTitle(prefillTitle || `Remix: ${gameData.title}`);
       if (prefillPrompt) setPrompt(prefillPrompt);
       setInitializedFromRemix(true);
       toast.success('Loaded remix base. You can edit and publish.');
@@ -395,38 +396,7 @@ export default function Create() {
     }
   };
   
-  // Upload thumbnail to Supabase Storage
-  const uploadThumbnail = async (base64: string): Promise<string | null> => {
-    try {
-      const fileName = `thumbnail-${Date.now()}.png`;
-      const file = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-      
-      const { data: uploadData, error } = await supabase.storage
-        .from("thumbnails")
-        .upload(fileName, file, { contentType: "image/png" });
-
-      if (error) {
-        console.error("Upload error:", error);
-        throw error;
-      }
-
-      if (!uploadData?.path) {
-        throw new Error("Upload succeeded but no path returned");
-      }
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from("thumbnails")
-        .getPublicUrl(uploadData.path);
-
-      return publicUrl || null;
-    } catch (error: any) {
-      console.error("Error uploading thumbnail:", error);
-      throw error;
-    }
-  };
-
-  // Generate thumbnail using new Supabase Edge Function with ComfyUI
+  // Generate thumbnail using NEW Supabase Edge Function
   const generateThumbnail = async () => {
     if (!prompt.trim()) {
       toast.error("Please enter a prompt first");
@@ -440,60 +410,115 @@ export default function Create() {
     try {
       toast.info("Generating thumbnail...");
 
-      // Get auth token and API key for the Edge Function
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      console.log("Calling generate-thumbnail with:", { description: prompt });
 
-      // Call the Supabase Edge Function
+      // Get auth session for the request
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Use direct fetch with proper headers
       const response = await fetch(
-        "https://zyozjzfkmmtuxvjgryhk.supabase.co/functions/v1/generate-thumbnail",
+        'https://zyozjzfkmmtuxvjgryhk.supabase.co/functions/v1/generate-thumbnail',
         {
-          method: "POST",
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
-            "apikey": apiKey || "",
-            ...(token && { Authorization: `Bearer ${token}` }),
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token || ''}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || ''
           },
           body: JSON.stringify({
-            prompt: prompt,
-          }),
+            description: prompt
+          })
         }
       );
 
+      console.log("Response status:", response.status);
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error("❌ Edge Function Error:", errorText);
+        console.error("❌ Status Code:", response.status);
+        
+        // Parse error details
+        let errorDetails = errorText;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorDetails = errorJson.error || errorText;
+        } catch (e) {
+          // errorText is not JSON, use as-is
+        }
+        
+        throw new Error(`Edge Function returned ${response.status}: ${errorDetails}`);
       }
 
       const data = await response.json();
+      console.log("✅ Response data:", data);
 
-      // Check if response has images array with base64
-      if (!data.images || !Array.isArray(data.images) || data.images.length === 0) {
-        throw new Error("No images in response");
+      // NEW function returns thumbnailUrl directly
+      if (!data || !data.thumbnailUrl) {
+        console.error("❌ Invalid response data:", data);
+        throw new Error("No thumbnail URL in response");
       }
 
-      const base64String = data.images[0];
-      
-      // Convert base64 to data URL for preview
-      const dataUrl = `data:image/png;base64,${base64String}`;
-      setThumbnailPreview(dataUrl);
+      console.log("✅ Thumbnail URL received:", data.thumbnailUrl);
 
-      // Upload to Supabase Storage
-      toast.info("Uploading thumbnail...");
-      const publicUrl = await uploadThumbnail(base64String);
+      setThumbnailUrl(data.thumbnailUrl);
+      setCoverUrl(data.thumbnailUrl);
+      setThumbnailPreview(data.thumbnailUrl);
 
-      if (publicUrl) {
-        setThumbnailUrl(publicUrl);
-        setCoverUrl(publicUrl);
-        toast.success("Thumbnail generated and uploaded!");
-        playSuccess();
-      } else {
-        throw new Error("Failed to get public URL after upload");
-      }
+      toast.success("Thumbnail generated successfully!");
+      playSuccess();
     } catch (error: any) {
-      console.error("Thumbnail generation error:", error);
-      toast.error(error.message || "Failed to generate thumbnail. Please try again.");
+      console.error("❌ Thumbnail generation error:", error);
+      console.error("❌ Full error object:", JSON.stringify(error, null, 2));
+      
+      // Provide specific error messages based on the actual error
+      let errorMessage = "Failed to generate thumbnail";
+      let shouldUsePlaceholder = true;
+      
+      // Check for CORS/Network errors (function not deployed)
+      if (error.message?.includes("Failed to fetch") || error.name === "TypeError") {
+        errorMessage = "🚫 Edge Function not deployed or CORS error";
+        toast.error(errorMessage);
+        toast.error("Run: supabase functions deploy generate-thumbnail");
+        toast.info("Or check if Supabase CLI is installed and you're logged in");
+      } else if (error.message?.includes("RAPIDAPI_KEY") || error.message?.includes("environment variable not set")) {
+        errorMessage = "⚠️ RapidAPI key not configured in Supabase Edge Function";
+        toast.error(errorMessage);
+        toast.info("Go to Supabase Dashboard → Edge Functions → Secrets → Add RAPIDAPI_KEY");
+      } else if (error.message?.includes("401")) {
+        errorMessage = "🔑 Authentication failed - ANON KEY issue";
+        toast.error(errorMessage);
+        toast.info("Check that VITE_SUPABASE_ANON_KEY is set in .env");
+      } else if (error.message?.includes("403")) {
+        errorMessage = "🚫 Permission denied - check storage bucket permissions";
+        toast.error(errorMessage);
+      } else if (error.message?.includes("thumbnails") || error.message?.includes("bucket")) {
+        errorMessage = "📦 Thumbnails storage bucket not found or not public";
+        toast.error(errorMessage);
+        toast.info("Create 'thumbnails' bucket in Supabase Storage (make it public)");
+      } else if (error.message?.includes("500")) {
+        errorMessage = "🔥 Server error - check Edge Function logs in Supabase";
+        toast.error(errorMessage);
+      } else if (error.message?.includes("RapidAPI failed")) {
+        errorMessage = "🎨 Image generation API failed - check RapidAPI quota";
+        toast.error(errorMessage);
+      } else {
+        errorMessage = `❌ ${error.message || "Unknown error"}`;
+        toast.error(errorMessage);
+      }
+      
+      // Only use placeholder as last resort
+      if (shouldUsePlaceholder) {
+        const gameTitle = title || prompt.slice(0, 30) || 'Game';
+        const placeholderUrl = `https://placehold.co/1080x1920/6D28D9/FFFFFF/png?text=${encodeURIComponent(gameTitle)}&font=roboto`;
+        
+        setThumbnailUrl(placeholderUrl);
+        setCoverUrl(placeholderUrl);
+        setThumbnailPreview(placeholderUrl);
+        
+        toast.warning("Using placeholder thumbnail - fix the error above to get AI-generated thumbnails");
+      }
+      
       playError();
     } finally {
       setIsGeneratingThumbnail(false);
@@ -538,6 +563,7 @@ export default function Create() {
       // Generate game code (fallback to local template if AI gateway unavailable)
       let producedCode = "";
       try {
+        console.log("🎮 Calling generate-game with prompt:", finalPrompt);
         const { data, error } = await supabase.functions.invoke('generate-game', {
           body: { 
             prompt: finalPrompt,
@@ -552,52 +578,47 @@ export default function Create() {
             autoInsert: false
           },
         });
-        if (error) throw error;
+        
+        if (error) {
+          console.error("❌ generate-game error:", error);
+          throw error;
+        }
+        
         producedCode = data?.gameCode || "";
-      } catch (_e) {
+        
+        if (!producedCode) {
+          console.error("❌ No game code returned from generate-game");
+          throw new Error("No game code returned");
+        }
+        
+        console.log("✅ Game code generated, length:", producedCode.length);
+      } catch (error: any) {
+        console.error("❌ Game generation failed:", error);
+        
+        // Check for specific error types
+        if (error.message?.includes("402") || error.context?.status === 402) {
+          toast.error("💳 OpenRouter account needs credits");
+          toast.info("Add credits at https://openrouter.ai/credits");
+          toast.warning("Using fallback template for now");
+        } else if (error.message?.includes("OPENROUTER_API_KEY")) {
+          toast.error("⚠️ OPENROUTER_API_KEY not configured in Supabase");
+          toast.info("Add OPENROUTER_API_KEY in Edge Function Secrets to generate unique games");
+        } else if (error.message?.includes("401") || error.context?.status === 401) {
+          toast.error("🔑 OpenRouter API key is invalid");
+          toast.info("Check your API key at https://openrouter.ai/keys");
+        } else if (error.message?.includes("429") || error.context?.status === 429) {
+          toast.error("⏱️ Rate limit exceeded");
+          toast.info("Wait a moment and try again");
+        } else {
+          toast.warning("AI game generation unavailable, using template");
+          console.log("Error details:", error.context || error);
+        }
+        
         producedCode = buildFallbackGameCode(title || 'Arcade');
-        toast.info("Using fallback game template");
       }
 
       setGeneratedCode(producedCode);
 
-      // Generate AI thumbnail automatically with new system
-      try {
-        toast.info("Generating thumbnail...");
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-        const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-        const thumbnailResponse = await fetch(
-          "https://zyozjzfkmmtuxvjgryhk.supabase.co/functions/v1/generate-thumbnail",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "apikey": apiKey || "",
-              ...(token && { Authorization: `Bearer ${token}` }),
-            },
-            body: JSON.stringify({ prompt }),
-          }
-        );
-
-        if (thumbnailResponse.ok) {
-          const thumbnailData = await thumbnailResponse.json();
-          if (thumbnailData.images && thumbnailData.images.length > 0) {
-            const base64String = thumbnailData.images[0];
-            const publicUrl = await uploadThumbnail(base64String);
-            if (publicUrl) {
-              setThumbnailUrl(publicUrl);
-              setCoverUrl(publicUrl);
-            }
-          }
-        }
-      } catch (err) {
-        console.log("Thumbnail generation failed, using placeholder");
-        setThumbnailUrl("/placeholder.svg");
-        setCoverUrl("/placeholder.svg");
-      }
-      
       // Auto-generate title and description if not provided
       if (!title) {
         setTitle(prompt.slice(0, 50));
@@ -647,6 +668,7 @@ export default function Create() {
     // Find an available username to avoid unique constraint violations
     // Limit attempts to a reasonable number to avoid infinite loops
     while (attempt < 50) {
+      // @ts-ignore - Supabase type instantiation too deep
       const { data: usernameRow, error: usernameCheckError } = await supabase
         .from('profiles')
         .select('id')
@@ -757,41 +779,6 @@ export default function Create() {
       // Generate interface configuration and persist to game
       try {
         await supabase.functions.invoke('generate-interface', { body: { game_id: insertedGame.id, base: { palette: graphicsQuality === 'realistic' ? 'neon-dark' : 'bright' } } });
-      } catch { /* fail-soft */ }
-
-      // Regenerate thumbnail tied to game and persist cover/thumbnail URLs
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-        const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-        const thumbnailResponse = await fetch(
-          "https://zyozjzfkmmtuxvjgryhk.supabase.co/functions/v1/generate-thumbnail",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "apikey": apiKey || "",
-              ...(token && { Authorization: `Bearer ${token}` }),
-            },
-            body: JSON.stringify({ prompt: title.trim() }),
-          }
-        );
-
-        if (thumbnailResponse.ok) {
-          const thumbnailData = await thumbnailResponse.json();
-          if (thumbnailData.images && thumbnailData.images.length > 0) {
-            const base64String = thumbnailData.images[0];
-            const publicUrl = await uploadThumbnail(base64String);
-            if (publicUrl) {
-              // Update the game with the new thumbnail URL
-              await supabase
-                .from('games')
-                .update({ thumbnail_url: publicUrl, cover_url: publicUrl })
-                .eq('id', insertedGame.id);
-            }
-          }
-        }
       } catch { /* fail-soft */ }
 
       // Log activity: game published

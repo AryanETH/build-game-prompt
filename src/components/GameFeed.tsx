@@ -530,14 +530,17 @@ export const GameFeed = () => {
   // TikTok-style vertical snap scroll with centered layout
   return (
     <>
-    {/* Snap scrolling feed - TikTok style with sidebar - using dvh for mobile browser stability */}
-    <div className="relative w-full overflow-hidden bg-white dark:bg-black" style={{ height: '100dvh' }}>
+    {/* Snap scrolling feed - TikTok style on mobile, centered on desktop */}
+    <div className="relative w-full overflow-hidden bg-white dark:bg-black md:bg-gray-50 md:dark:bg-gray-900" style={{ height: '100dvh' }}>
       <div className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar pb-16 md:pb-0" style={{ scrollSnapType: 'y mandatory', scrollBehavior: 'smooth' }}>
         {hydratedGames?.map((game) => (
-          <div key={game.id} className="w-full snap-start snap-always flex items-center justify-center md:h-screen" style={{ height: 'calc(100dvh - 120px)', minHeight: 'calc(100dvh - 120px)', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
-            {/* Desktop: Centered card with proper sizing, Mobile: Full bleed fit */}
-            <div className="relative w-full h-full md:w-[min(450px,90vw)] md:h-[95vh]">
-              <Card className="absolute inset-0 overflow-hidden rounded-none md:rounded-3xl border-0 md:border-2 md:border-border/20 md:shadow-2xl bg-black dark:bg-black md:bg-background md:dark:bg-background">
+          <div key={game.id} className="w-full snap-start snap-always flex items-center justify-center" style={{ height: 'calc(100dvh - 120px)', minHeight: 'calc(100dvh - 120px)', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
+            <div className="md:h-screen md:w-full md:flex md:items-center md:justify-center md:py-8 w-full h-full">
+            {/* Mobile: Full bleed, Desktop: Centered with fixed width + space for buttons */}
+            <div className="relative w-full h-full md:w-[480px] md:h-auto md:max-h-[calc(100vh-4rem)]">
+              {/* Mobile: Full height card, Desktop: Aspect ratio card with max height */}
+              <div className="relative h-full md:aspect-[9/16] md:w-[400px] md:max-h-full">
+              <Card className="absolute inset-0 overflow-hidden rounded-none md:rounded-3xl border-0 md:border-0 md:shadow-2xl bg-black">
                 <img
                   src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
                   alt={game.title}
@@ -545,13 +548,13 @@ export const GameFeed = () => {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent dark:from-black/95 dark:via-black/20" />
 
-                {/* Remix button - top right */}
+                {/* Remix button - top right (purple like reference) */}
                 <div className="absolute top-4 right-4 z-10">
                   <button
-                    className="px-3 py-1.5 md:px-4 md:py-2 rounded-full gradient-primary text-white backdrop-blur-md text-xs md:text-sm font-medium flex items-center gap-1.5 md:gap-2 shadow-lg hover:shadow-primary/50 hover:scale-105 active:scale-95 transition-all duration-200"
+                    className="px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all duration-200"
                     onClick={() => setRemixFor(game)}
                   >
-                    <Sparkles className="w-3 h-3 md:w-4 md:h-4" strokeWidth={1.5} />
+                    <Sparkles className="w-4 h-4" strokeWidth={2} />
                     Remix
                   </button>
                 </div>
@@ -589,58 +592,60 @@ export const GameFeed = () => {
                   <div className="text-sm md:text-lg font-semibold leading-tight mb-1 drop-shadow-lg line-clamp-2">{game.title}</div>
                   <div className="text-xs md:text-sm text-white/95 line-clamp-2 drop-shadow-md leading-snug">{game.description || ''}</div>
                 </div>
-              </Card>
-              
-              {/* Right action bar - Inside on mobile, floating right on desktop */}
-              <div className="absolute right-3 bottom-20 flex flex-col gap-3 items-center text-white z-20 md:right-6 md:bottom-24 md:gap-5">
-                {/* Play button - Gradient - 48px touch target, larger on desktop */}
+
+                {/* Right action bar - Inside card on mobile, outside on desktop (like reference image) */}
+                <div className="absolute right-3 bottom-20 md:right-[-65px] md:top-1/2 md:-translate-y-1/2 md:bottom-auto flex flex-col gap-3 md:gap-3 items-center text-white z-20">
+                {/* Play button - Gradient */}
                 <button
                   aria-label="Play game"
-                  className="h-12 w-12 md:h-14 md:w-14 rounded-full flex items-center justify-center gradient-primary text-white hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg glow-primary"
+                  className="h-12 w-12 md:h-12 md:w-12 rounded-full flex items-center justify-center gradient-primary text-white hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
                   onClick={() => handlePlay(game)}
                 >
-                  <Play className="h-5 w-5 md:h-6 md:w-6 fill-current" strokeWidth={2} />
+                  <Play className="h-5 w-5 fill-current" strokeWidth={2} />
                 </button>
                 
-                {/* Like button - 48px touch target, larger on desktop */}
-                <div className="flex flex-col items-center gap-0.5 md:gap-1">
+                {/* Like button */}
+                <div className="flex flex-col items-center gap-0.5">
                   <button
                     aria-label={likedGames.has(game.id) ? 'Unlike game' : 'Like game'}
-                    className={`h-12 w-12 md:h-14 md:w-14 rounded-full flex items-center justify-center backdrop-blur-md hover:scale-110 active:scale-95 transition-all duration-200 shadow-xl ${
+                    className={`h-12 w-12 md:h-12 md:w-12 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg ${
                       likedGames.has(game.id) 
-                        ? 'bg-red-500/90 text-white hover:bg-red-500 hover:shadow-red-500/50' 
-                        : 'bg-black/40 dark:bg-black/60 text-white hover:bg-black/60 dark:hover:bg-black/80'
+                        ? 'bg-red-500 text-white' 
+                        : 'bg-gray-600/80 text-white hover:bg-gray-500'
                     }`}
                     onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
                   >
-                    <Heart className={`h-5 w-5 md:h-6 md:w-6 ${likedGames.has(game.id) ? 'fill-current' : ''}`} strokeWidth={2} />
+                    <Heart className={`h-5 w-5 ${likedGames.has(game.id) ? 'fill-current' : ''}`} strokeWidth={2} />
                   </button>
-                  <span className="text-[10px] md:text-sm font-bold text-white drop-shadow-lg">{game.likes_count ?? 0}</span>
+                  <span className="text-[10px] md:hidden font-bold text-white drop-shadow-lg">{game.likes_count ?? 0}</span>
                 </div>
                 
-                {/* Comments button - 48px touch target, larger on desktop */}
-                <div className="flex flex-col items-center gap-0.5 md:gap-1">
+                {/* Comments button */}
+                <div className="flex flex-col items-center gap-0.5">
                   <button
                     aria-label="View comments"
-                    className="h-12 w-12 md:h-14 md:w-14 rounded-full flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-md text-white hover:bg-black/60 dark:hover:bg-black/80 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
+                    className="h-12 w-12 md:h-12 md:w-12 rounded-full flex items-center justify-center bg-gray-600/80 text-white hover:bg-gray-500 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
                     onClick={() => setCommentsOpenFor(game)}
                   >
-                    <MessageCircle className="h-5 w-5 md:h-6 md:w-6" strokeWidth={2} />
+                    <MessageCircle className="h-5 w-5" strokeWidth={2} />
                   </button>
-                  <span className="text-[10px] md:text-sm font-bold text-white drop-shadow-lg">
+                  <span className="text-[10px] md:hidden font-bold text-white drop-shadow-lg">
                     {commentsOpenFor?.id === game.id ? comments.length : (game.comments_count || 0)}
                   </span>
                 </div>
                 
-                {/* Share button - 48px touch target, larger on desktop */}
+                {/* Share button */}
                 <button
                   aria-label="Share game"
-                  className="h-12 w-12 md:h-14 md:w-14 rounded-full flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-md text-white hover:bg-black/60 dark:hover:bg-black/80 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
+                  className="h-12 w-12 md:h-12 md:w-12 rounded-full flex items-center justify-center bg-gray-600/80 text-white hover:bg-gray-500 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
                   onClick={() => handleShare(game)}
                 >
-                  <Share2 className="h-5 w-5 md:h-6 md:w-6" strokeWidth={2} />
+                  <Share2 className="h-5 w-5" strokeWidth={2} />
                 </button>
               </div>
+              </Card>
+              </div>
+            </div>
             </div>
           </div>
         ))}
