@@ -149,11 +149,11 @@ const Index = () => {
             The infinite game engine. Turn text into playable worlds, interactive stories, and viral mini-games instantly.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center relative z-20">
             <Button 
               onClick={() => navigate('/auth')}
               size="lg"
-              className="bg-white text-black hover:bg-white/90 px-8 py-6 text-lg rounded-full font-semibold"
+              className="bg-white text-black hover:bg-white/90 px-8 py-6 text-lg rounded-full font-semibold shadow-2xl hover:shadow-white/50 transition-all hover:scale-105"
             >
               <Sparkles className="mr-2 h-5 w-5" />
               Start Creating
@@ -161,7 +161,7 @@ const Index = () => {
             <Button 
               onClick={() => navigate('/feed')}
               size="lg"
-              className="bg-white text-black hover:bg-white/90 px-8 py-6 text-lg rounded-full font-semibold"
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-6 text-lg rounded-full font-semibold shadow-2xl hover:shadow-purple-500/50 transition-all hover:scale-105"
             >
               <Play className="mr-2 h-5 w-5" />
               Watch Demo
@@ -210,7 +210,7 @@ const Index = () => {
             <Button 
               onClick={() => navigate('/auth')}
               size="lg"
-              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-6 text-lg rounded-full"
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-6 text-lg rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all hover:scale-105 relative z-20"
             >
               <Sparkles className="mr-2 h-5 w-5" />
               Start Creating

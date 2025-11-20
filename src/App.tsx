@@ -20,6 +20,9 @@ import PublicProfile from "./pages/PublicProfile";
 import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 import Onboarding from "./pages/Onboarding";
+import Blog from "./pages/Blog";
+import Docs from "./pages/Docs";
+import About from "./pages/About";
 
 import { LocationProvider } from "./context/LocationContext";
 import RocketCursor from "@/components/RocketCursor";
@@ -152,6 +155,13 @@ const App = () => {
                 />
 
                 <Route path="/u/:username" element={<PublicProfile />} />
+
+                {/* Public content pages */}
+                <Route path="/blog" element={<AppLayout><Blog /></AppLayout>} />
+                <Route path="/blog/:slug" element={<AppLayout><Blog /></AppLayout>} />
+                <Route path="/docs" element={<AppLayout><Docs /></AppLayout>} />
+                <Route path="/docs/:slug" element={<AppLayout><Docs /></AppLayout>} />
+                <Route path="/about" element={<AppLayout><About /></AppLayout>} />
 
                 {/* 404 Fallback */}
                 <Route path="*" element={<NotFound />} />
