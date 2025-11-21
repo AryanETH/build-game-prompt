@@ -407,8 +407,4 @@ All colors MUST be HSL.
     will-change: transform, opacity;
   }
 
-  /* Custom rocket cursor - hide native cursor only on desktop devices with fine pointer (mouse) */
-  @media (pointer: fine) and (hover: hover) {
-    html, body, * { cursor: none !important; }
-  }
 }
