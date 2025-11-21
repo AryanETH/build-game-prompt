@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { setupRealtimeSubscriptions } from "@/lib/realtime";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import Index from "./pages/Index";
 import AuthPage from "./pages/Auth";
@@ -73,11 +74,7 @@ const App = () => {
   }, []);
 
   if (isSessionLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div>Loading...</div>
-      </div>
-    );
+    return <LoadingSpinner fullScreen />;
   }
 
   return (

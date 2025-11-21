@@ -11,15 +11,15 @@ interface SEOProps {
 }
 
 export const SEO = ({
-  title = "Feep - Create & Play AI-Generated Games Instantly",
-  description = "Discover, play, and create AI-generated games in seconds. Swipe through endless gaming experiences, remix favorites, and share with millions.",
-  image = "https://feep.app/og-image.png",
-  url = "https://feep.app",
+  title = "Oplus – AI Game Engine",
+  description = "The infinite game engine. Turn text into playable worlds, interactive stories, and viral mini-games instantly with Oplus AI.",
+  image = "https://oplus.app/og-image.png",
+  url = "https://oplus.app",
   type = "website",
-  keywords = "AI games, create games, play games online, AI game generator",
+  keywords = "AI game engine, create games, AI games, game generator, instant games, Oplus",
   noindex = false,
 }: SEOProps) => {
-  const fullTitle = title.includes("Feep") ? title : `${title} | Feep`;
+  const fullTitle = title.includes("Oplus") ? title : `${title} | Oplus`;
 
   return (
     <Helmet>

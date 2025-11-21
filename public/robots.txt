@@ -1,4 +1,4 @@
-# Feep - AI Game Platform
+# Oplus - AI Game Engine
 # Allow all search engines to crawl
 
 User-agent: *
@@ -8,7 +8,7 @@ Disallow: /admin/
 Disallow: /*.json$
 
 # Sitemap location
-Sitemap: https://feep.app/sitemap.xml
+Sitemap: https://oplus.app/sitemap.xml
 
 # Crawl delay (be nice to servers)
 Crawl-delay: 1

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tv, Users, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { LoadingSpinner } from "./LoadingSpinner";
 
 interface Game {
   id: string;
@@ -171,7 +172,7 @@ export const WatchFeed = () => {
                     <iframe title={g.title} srcDoc={fullGameData.game_code} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                      <LoadingSpinner />
                     </div>
                   )}
                 </div>
@@ -201,7 +202,7 @@ export const WatchFeed = () => {
                     <iframe title={selected.title} srcDoc={fullGameData.game_code} className="absolute inset-0 w-full h-full border-0" sandbox="allow-scripts allow-same-origin" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 md:h-12 md:w-12 border-b-2 border-primary"></div>
+                      <LoadingSpinner />
                     </div>
                   )}
                 </div>

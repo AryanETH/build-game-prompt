@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Play, Heart, MessageCircle, Share2 } from "lucide-react";
+import { Sparkles, Play, Heart, MessageCircle, Share2, Sun, Moon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { Logo } from "@/components/Logo";
+import { GameCreationFlow } from "@/components/GameCreationFlow";
 
 const MOCK_GAMES = [
   { id: 1, title: "Space Adventure", username: "cosmic_dev", description: "Explore the galaxy in this epic space shooter 🚀", likes: 12340, comments: 856, thumbnail: "https://images.unsplash.com/photo-1614732414444-096e5f1122d5?w=400&h=800&fit=crop" },
@@ -25,6 +27,12 @@ const Index = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [batteryLevel, setBatteryLevel] = useState(100);
   const [isCharging, setIsCharging] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
+
+  // Toggle theme
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+  };
 
   // Update time every minute
   useEffect(() => {
@@ -108,23 +116,56 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 text-white overflow-hidden">
+    <div className={`min-h-screen overflow-hidden transition-colors duration-300 ${
+      isDarkMode 
+        ? 'bg-black text-white' 
+        : 'bg-white text-black'
+    }`}>
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-black/20 backdrop-blur-lg border-b border-white/10">
+      <header className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-lg border-b transition-colors duration-300 ${
+        isDarkMode 
+          ? 'bg-black/20 border-white/10' 
+          : 'bg-white/80 border-black/10'
+      }`}>
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="text-2xl font-black bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-            FEEP
-          </div>
+          <Logo variant="horizontal" size="md" forceWhite={isDarkMode} />
           <nav className="hidden md:flex items-center gap-8">
-            <button className="text-white/80 hover:text-white transition-colors">Discover</button>
-            <button className="text-white/80 hover:text-white transition-colors">Create</button>
-            <button className="text-white/80 hover:text-white transition-colors">Community</button>
+            <button className={`transition-colors ${
+              isDarkMode ? 'text-white/80 hover:text-white' : 'text-black/80 hover:text-black'
+            }`}>Discover</button>
+            <button className={`transition-colors ${
+              isDarkMode ? 'text-white/80 hover:text-white' : 'text-black/80 hover:text-black'
+            }`}>Create</button>
+            <button className={`transition-colors ${
+              isDarkMode ? 'text-white/80 hover:text-white' : 'text-black/80 hover:text-black'
+            }`}>Community</button>
           </nav>
           <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate('/auth')} className="text-white">
+            {/* Theme Toggle */}
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={toggleTheme}
+              className={`rounded-full ${
+                isDarkMode ? 'text-white hover:bg-white/10' : 'text-black hover:bg-black/10'
+              }`}
+            >
+              {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/auth')} 
+              className={isDarkMode ? 'text-white' : 'text-black'}
+            >
               Log In
             </Button>
-            <Button onClick={() => navigate('/auth')} className="bg-white text-black hover:bg-white/90">
+            <Button 
+              onClick={() => navigate('/auth')} 
+              className={isDarkMode 
+                ? 'bg-white text-black hover:bg-white/90' 
+                : 'bg-black text-white hover:bg-black/90'
+              }
+            >
               Sign Up
             </Button>
           </div>
@@ -133,19 +174,33 @@ const Index = () => {
 
       {/* Top Hero Section */}
       <div className="min-h-screen flex items-center justify-center relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-transparent to-blue-900/20" />
+        <div className={`absolute inset-0 bg-gradient-to-br transition-colors duration-300 ${
+          isDarkMode 
+            ? 'from-white/5 via-transparent to-white/5' 
+            : 'from-black/5 via-transparent to-black/5'
+        }`} />
         <div className="container mx-auto px-6 text-center relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-purple-500/40 bg-purple-500/10 text-purple-300 text-xs uppercase tracking-widest mb-8">
-            <Sparkles className="h-4 w-4" /> AI GAME ENGINE V1.0
+          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-xs uppercase tracking-widest mb-8 transition-colors duration-300 ${
+            isDarkMode 
+              ? 'border-white/20 bg-white/5 text-white/80' 
+              : 'border-black/20 bg-black/5 text-black/80'
+          }`}>
+            <Sparkles className="h-4 w-4" /> AI GAME ENGINE
           </div>
           
-          <h1 className="text-8xl md:text-9xl font-black mb-6 tracking-tight">
-            <span className="block bg-gradient-to-r from-white via-purple-200 to-white bg-clip-text text-transparent">
-              FEEP
-            </span>
-          </h1>
+          <div className="mb-8">
+            <img 
+              src="/Oplus full horizonatal.png" 
+              alt="Oplus" 
+              className={`h-20 md:h-24 w-auto mx-auto transition-all duration-300 ${
+                isDarkMode ? 'invert' : ''
+              }`}
+            />
+          </div>
           
-          <p className="text-2xl md:text-3xl text-white/80 mb-12 max-w-3xl mx-auto">
+          <p className={`text-2xl md:text-3xl mb-12 max-w-3xl mx-auto transition-colors duration-300 ${
+            isDarkMode ? 'text-white/80' : 'text-black/80'
+          }`}>
             The infinite game engine. Turn text into playable worlds, interactive stories, and viral mini-games instantly.
           </p>
           
@@ -153,29 +208,35 @@ const Index = () => {
             <Button 
               onClick={() => navigate('/auth')}
               size="lg"
-              className="bg-white text-black hover:bg-white/90 px-8 py-6 text-lg rounded-full font-semibold shadow-2xl hover:shadow-white/50 transition-all hover:scale-105"
+              className={`px-8 py-6 text-lg rounded-full font-semibold shadow-2xl transition-all hover:scale-105 ${
+                isDarkMode 
+                  ? 'bg-white text-black hover:bg-white/90 hover:shadow-white/30' 
+                  : 'bg-black text-white hover:bg-black/90 hover:shadow-black/30'
+              }`}
             >
               <Sparkles className="mr-2 h-5 w-5" />
               Start Creating
             </Button>
             <Button 
-              onClick={() => navigate('/feed')}
+              onClick={() => {
+                const section = document.getElementById('build-section');
+                section?.scrollIntoView({ behavior: 'smooth' });
+              }}
               size="lg"
-              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-6 text-lg rounded-full font-semibold shadow-2xl hover:shadow-purple-500/50 transition-all hover:scale-105"
+              className={`px-8 py-6 text-lg rounded-full font-semibold shadow-2xl transition-all hover:scale-105 ${
+                isDarkMode 
+                  ? 'bg-white/10 border border-white/20 hover:bg-white/20 text-white hover:shadow-white/20' 
+                  : 'bg-black/10 border border-black/20 hover:bg-black/20 text-black hover:shadow-black/20'
+              }`}
             >
               <Play className="mr-2 h-5 w-5" />
               Watch Demo
             </Button>
           </div>
         </div>
-        
-        {/* Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
-          <div className="w-6 h-10 border-2 border-white/30 rounded-full flex items-start justify-center p-2">
-            <div className="w-1 h-3 bg-white/50 rounded-full" />
-          </div>
-        </div>
       </div>
+
+
 
       {/* Phone Mockup Section */}
       <div className="min-h-screen flex items-center">
@@ -183,7 +244,9 @@ const Index = () => {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left Content */}
           <div className="space-y-8">
-            <h2 className="text-5xl md:text-6xl font-black leading-tight">
+            <h2 className={`text-5xl md:text-6xl font-black leading-tight transition-colors duration-300 ${
+              isDarkMode ? 'text-white' : 'text-black'
+            }`}>
               Where Games
               <br />
               <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
@@ -191,26 +254,40 @@ const Index = () => {
               </span>
             </h2>
             
-            <p className="text-xl text-white/70 max-w-lg">
-              Publish your creations directly to the FEEP Feed. Let the community play, remix, and share your worlds instantly.
+            <p className={`text-xl max-w-lg transition-colors duration-300 ${
+              isDarkMode ? 'text-white/70' : 'text-black/70'
+            }`}>
+              Publish your creations directly to the Oplus Feed. Let the community play, remix, and share your worlds instantly.
             </p>
 
             {/* Stats */}
             <div className="flex gap-12">
               <div>
-                <div className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">{formatNumber(stats?.users || 0)}</div>
-                <div className="text-white/60">Daily Players</div>
+                <div className={`text-4xl font-bold transition-colors duration-300 ${
+                  isDarkMode ? 'text-white' : 'text-black'
+                }`}>{formatNumber(stats?.users || 0)}</div>
+                <div className={`transition-colors duration-300 ${
+                  isDarkMode ? 'text-white/60' : 'text-black/60'
+                }`}>Daily Players</div>
               </div>
               <div>
-                <div className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">{formatNumber(stats?.games || 0)}</div>
-                <div className="text-white/60">Games Created</div>
+                <div className={`text-4xl font-bold transition-colors duration-300 ${
+                  isDarkMode ? 'text-white' : 'text-black'
+                }`}>{formatNumber(stats?.games || 0)}</div>
+                <div className={`transition-colors duration-300 ${
+                  isDarkMode ? 'text-white/60' : 'text-black/60'
+                }`}>Games Created</div>
               </div>
             </div>
 
             <Button 
               onClick={() => navigate('/auth')}
               size="lg"
-              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-6 text-lg rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all hover:scale-105 relative z-20"
+              className={`px-8 py-6 text-lg rounded-full shadow-2xl transition-all hover:scale-105 relative z-20 ${
+                isDarkMode 
+                  ? 'bg-white text-black hover:bg-white/90 hover:shadow-white/30' 
+                  : 'bg-black text-white hover:bg-black/90 hover:shadow-black/30'
+              }`}
             >
               <Sparkles className="mr-2 h-5 w-5" />
               Start Creating
@@ -318,32 +395,20 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Features Section */}
-      <div className="container mx-auto px-6 py-20">
-        <h2 className="text-4xl md:text-5xl font-bold text-center mb-16">
+      {/* Interactive Game Creation Flow */}
+      <div id="build-section" className="container mx-auto px-6 py-20">
+        <h2 className={`text-4xl md:text-5xl font-bold text-center mb-16 transition-colors duration-300 ${
+          isDarkMode ? 'text-white' : 'text-black'
+        }`}>
           Build Anything. Instantly.
         </h2>
-        <p className="text-xl text-white/70 text-center max-w-2xl mx-auto mb-12">
-          Our procedural engine handles the heavy lifting. You bring the vision.
+        <p className={`text-xl text-center max-w-2xl mx-auto mb-12 transition-colors duration-300 ${
+          isDarkMode ? 'text-white/70' : 'text-black/70'
+        }`}>
+          Don't Believe? See it Building <span className="text-red-500 font-bold">Live</span>
         </p>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[
-            { title: "Mini Games", desc: "Instant arcade classics generated from a single prompt." },
-            { title: "Interactive Stories", desc: "Branching narratives that adapt to player choices in real-time." },
-            { title: "Character Worlds", desc: "Populate your universe with AI agents that have their own lives." },
-            { title: "Animated Scenes", desc: "Cinematic cutscenes rendered on the fly for your storytelling." }
-          ].map((feature, i) => (
-            <div 
-              key={i}
-              className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:bg-white/10 hover:scale-105 hover:border-white/20 transition-all"
-            >
-              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 mb-4" />
-              <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
-              <p className="text-white/60">{feature.desc}</p>
-            </div>
-          ))}
-        </div>
+        <GameCreationFlow isDarkMode={isDarkMode} />
       </div>
     </div>
   );

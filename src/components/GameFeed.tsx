@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { logActivity } from "@/lib/activityLogger";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
+import { LoadingSpinner } from "./LoadingSpinner";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -500,11 +501,7 @@ export const GameFeed = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <LoadingSpinner fullScreen />;
   }
 
   if (isError) {

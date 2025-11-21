@@ -13,6 +13,7 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { ThemeToggle } from "./ThemeToggle";
+import { Logo } from "./Logo";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
@@ -109,18 +110,7 @@ export const TikTokSidebar = () => {
       {/* Logo */}
       <div className="px-6 py-4 border-b border-border/50">
         <div className="flex items-center">
-          <img 
-            src="/feep-logo.png" 
-            alt="FEEP" 
-            className="h-10 w-auto"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              if (target.src !== `${window.location.origin}/feep-logo.svg`) {
-                target.src = "/feep-logo.svg";
-                target.classList.add("dark:invert");
-              }
-            }}
-          />
+          <Logo variant="horizontal" size="md" />
         </div>
       </div>
 

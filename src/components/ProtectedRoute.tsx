@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { LoadingSpinner } from "./LoadingSpinner";
 
 // Fetches user profile
 const getProfile = async (userId: string) => {
@@ -66,11 +67,7 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }, [sessionChecked, userId, isLoading, isError, profile, navigate]);
 
   if (isLoading || !sessionChecked) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div>Loading...</div>
-      </div>
-    );
+    return <LoadingSpinner fullScreen />;
   }
 
   if (userId && profile?.username) {

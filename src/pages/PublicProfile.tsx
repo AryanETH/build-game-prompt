@@ -11,6 +11,7 @@ import { Play, Heart, Mail, UserPlus, UserCheck, Loader2, RefreshCw, ArrowLeft }
 import { toast } from "sonner";
 import { GamePlayer } from "@/components/GamePlayer";
 import { sendDirectMessage } from "@/lib/realtime";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 interface ProfileRow {
   id: string;
@@ -175,11 +176,7 @@ export default function PublicProfile() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen pb-16 md:pb-0">
-        <div className="max-w-4xl mx-auto p-6 flex justify-center">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      </div>
+      <LoadingSpinner fullScreen />
     );
   }
 

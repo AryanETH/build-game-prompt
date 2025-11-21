@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ThemeToggle } from "./ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { useLocationContext } from "@/context/LocationContext";
+import { Logo } from "./Logo";
 
 export const Navigation = ({ hideBrand = false }: { hideBrand?: boolean }) => {
   const navigate = useNavigate();
@@ -35,18 +36,7 @@ export const Navigation = ({ hideBrand = false }: { hideBrand?: boolean }) => {
         <div className="flex items-center justify-between h-16">
           {!hideBrand && (
             <div className="hidden md:flex items-center gap-3">
-              <img 
-                src="/feep-logo.png" 
-                alt="FEEP" 
-                className="h-8 w-auto"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  if (target.src !== `${window.location.origin}/feep-logo.svg`) {
-                    target.src = "/feep-logo.svg";
-                    target.classList.add("dark:invert");
-                  }
-                }}
-              />
+              <Logo variant="horizontal" size="md" />
               <div className="flex items-center gap-1 text-sm text-muted-foreground pl-2 border-l border-border/50">
                 <MapPin className="h-4 w-4" />
                 <span>{mode === 'city' && city ? city : mode === 'country' && country ? country : 'Global'}</span>

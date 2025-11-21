@@ -8,6 +8,7 @@ import { Search as SearchIcon, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GamePlayer } from "@/components/GamePlayer";
 import { useNavigate } from "react-router-dom";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 const categories = [
   { id: "action", label: "Action", icon: "💥" },
@@ -310,8 +311,8 @@ export default function Search() {
         )}
 
         {isLoading && (
-          <div className="text-center py-12 md:py-16">
-            <div className="animate-spin h-8 w-8 md:h-10 md:w-10 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+          <div className="text-center py-12 md:py-16 flex justify-center">
+            <LoadingSpinner />
           </div>
         )}
       </main>

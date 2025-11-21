@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { Logo } from "@/components/Logo";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -35,9 +37,7 @@ export default function AuthPage() {
     });
 
     return () => {
-      if (authListener && typeof authListener.unsubscribe === 'function') {
-        authListener.unsubscribe();
-      }
+      authListener?.subscription.unsubscribe();
     };
   }, [navigate]);
 
@@ -75,11 +75,7 @@ export default function AuthPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-      </div>
-    );
+    return <LoadingSpinner fullScreen />;
   }
 
   return (
@@ -89,55 +85,42 @@ export default function AuthPage() {
         <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%239C92AC\" fill-opacity=\"0.1\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')" }}></div>
         
         <div className="relative z-10 flex flex-col justify-between p-12 h-full">
-          <div>
-            <div className="mb-12">
+          {/* Top - Logo */}
+          <div className="flex justify-center items-center py-8">
+            <div className="relative">
               <img 
-                src="/feep-logo.png" 
-                alt="FEEP" 
-                className="h-10 w-auto mb-4" 
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  if (target.src !== `${window.location.origin}/feep-logo.svg`) {
-                    target.src = "/feep-logo.svg";
-                    target.classList.add("dark:invert");
-                  }
+                src="/Oplus full logo.png"
+                alt="Oplus Logo"
+                className="h-[485px] w-auto relative z-10 animate-fade-slow"
+                style={{ 
+                  filter: "invert(1) brightness(2)",
+                  imageRendering: "-webkit-optimize-contrast"
                 }}
               />
+              <div className="absolute inset-0 blur-3xl bg-white/10 animate-fade-slow -z-10"></div>
             </div>
-            
+          </div>
+          
+          <style>{`
+            @keyframes fade-slow {
+              0%, 100% { opacity: 0.6; }
+              50% { opacity: 1; }
+            }
+            .animate-fade-slow {
+              animation: fade-slow 4s ease-in-out infinite;
+            }
+          `}</style>
+
+          
+          {/* Bottom - Text */}
+          <div className="mb-8">
             <h1 className="text-4xl font-bold text-white mb-4">
-              {isSignUp ? "Get Started with Us" : "Welcome Back"}
+              Get Started with Us
             </h1>
-            <p className="text-white/70 text-lg">
-              {isSignUp 
-                ? "Complete these easy steps to register your account."
-                : "Sign in to continue your gaming journey."}
+            <p className="text-purple-200 text-lg">
+              Complete these easy steps to register your account.
             </p>
           </div>
-
-          {/* Steps Indicator */}
-          {isSignUp && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 p-4 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20">
-                <div className="w-8 h-8 rounded-full bg-white text-purple-900 flex items-center justify-center font-bold text-sm">
-                  1
-                </div>
-                <span className="text-white font-medium">Sign up your account</span>
-              </div>
-              <div className="flex items-center gap-3 p-4 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10">
-                <div className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center font-bold text-sm">
-                  2
-                </div>
-                <span className="text-white/70 font-medium">Set up your workspace</span>
-              </div>
-              <div className="flex items-center gap-3 p-4 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10">
-                <div className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center font-bold text-sm">
-                  3
-                </div>
-                <span className="text-white/70 font-medium">Set up your profile</span>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -150,7 +133,7 @@ export default function AuthPage() {
             </h2>
             <p className="text-white/60">
               {isSignUp 
-                ? "Sign Up"
+                ? "Welcome To O➕"
                 : "Enter your credentials to access your account."}
             </p>
           </div>
@@ -162,7 +145,7 @@ export default function AuthPage() {
                 <Input
                   id="username"
                   type="text"
-                  placeholder="eg. johndoe"
+                  placeholder="eg. Valya"
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   required
@@ -176,7 +159,7 @@ export default function AuthPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="eg. johnfrans@gmail.com"
+                placeholder="eg. Valya@gmail.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required

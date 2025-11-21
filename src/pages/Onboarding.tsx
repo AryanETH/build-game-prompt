@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Loader2, Upload } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -173,11 +174,7 @@ const Onboarding = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="w-8 h-8 animate-spin" />
-      </div>
-    );
+    return <LoadingSpinner fullScreen />;
   }
 
   return (

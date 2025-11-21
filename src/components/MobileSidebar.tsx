@@ -18,6 +18,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { ThemeToggle } from "./ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
+import { Logo } from "./Logo";
 import { toast } from "sonner";
 
 export const MobileSidebar = ({ hideButton = false }: { hideButton?: boolean }) => {
@@ -77,18 +78,7 @@ export const MobileSidebar = ({ hideButton = false }: { hideButton?: boolean }) 
           {/* Logo */}
           <div className="px-6 py-4 border-b border-border/50">
             <div className="flex items-center">
-              <img 
-                src="/feep-logo.png" 
-                alt="FEEP" 
-                className="h-10 w-auto"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  if (target.src !== `${window.location.origin}/feep-logo.svg`) {
-                    target.src = "/feep-logo.svg";
-                    target.classList.add("dark:invert");
-                  }
-                }}
-              />
+              <Logo variant="horizontal" size="md" />
             </div>
           </div>
 

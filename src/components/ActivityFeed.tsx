@@ -4,6 +4,7 @@ import { Card } from "./ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { Loader2, Sparkles, Heart, UserPlus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { LoadingSpinner } from "./LoadingSpinner";
 
 interface Activity {
   id: string;
@@ -143,7 +144,7 @@ export const ActivityFeed = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <LoadingSpinner />
       </div>
     );
   }
