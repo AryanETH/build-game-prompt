@@ -296,7 +296,7 @@ const Index = () => {
 
           {/* Right - iPhone 16 Pro Mockup */}
           <div className="relative flex justify-center lg:justify-end">
-            <div className="relative w-[340px] h-[700px]">
+            <div className="relative w-[310px] h-[650px]">
               {/* iPhone 16 Pro Frame */}
               <div className="absolute inset-0 bg-gradient-to-b from-slate-800 to-slate-900 rounded-[3.5rem] shadow-2xl border-[3px] border-slate-600 overflow-hidden">
                 {/* Dynamic Island - Centered */}
