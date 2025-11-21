@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { toast } from "sonner";
@@ -10,28 +10,28 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { setupRealtimeSubscriptions } from "@/lib/realtime";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
-
-import Index from "./pages/Index";
-import AuthPage from "./pages/Auth";
-import Feed from "./pages/Feed";
-import Search from "./pages/Search";
-import Create from "./pages/Create";
-import Profile from "./pages/Profile";
-import PublicProfile from "./pages/PublicProfile";
-import Messages from "./pages/Messages";
-import NotFound from "./pages/NotFound";
-import Onboarding from "./pages/Onboarding";
-import Blog from "./pages/Blog";
-import Docs from "./pages/Docs";
-import About from "./pages/About";
-import Activity from "./pages/Activity";
-import Settings from "./pages/Settings";
-
 import { LocationProvider } from "./context/LocationContext";
 import RocketCursor from "@/components/RocketCursor";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { OnboardingGuard } from "./components/OnboardingGuard";
 import { AppLayout } from "./components/AppLayout";
+
+// Lazy load pages for better performance
+const Index = lazy(() => import("./pages/Index"));
+const AuthPage = lazy(() => import("./pages/Auth"));
+const Feed = lazy(() => import("./pages/Feed"));
+const Search = lazy(() => import("./pages/Search"));
+const Create = lazy(() => import("./pages/Create"));
+const Profile = lazy(() => import("./pages/Profile"));
+const PublicProfile = lazy(() => import("./pages/PublicProfile"));
+const Messages = lazy(() => import("./pages/Messages"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Blog = lazy(() => import("./pages/Blog"));
+const Docs = lazy(() => import("./pages/Docs"));
+const About = lazy(() => import("./pages/About"));
+const Activity = lazy(() => import("./pages/Activity"));
+const Settings = lazy(() => import("./pages/Settings"));
 
 const queryClient = new QueryClient();
 
@@ -93,10 +93,11 @@ const App = () => {
           <LocationProvider>
             <RocketCursor />
             <ErrorBoundary>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<AuthPage />} />
+              <Suspense fallback={<LoadingSpinner fullScreen />}>
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<AuthPage />} />
 
                 {/* Onboarding */}
                 <Route path="/onboarding" element={<Onboarding />} />
@@ -182,9 +183,10 @@ const App = () => {
                 <Route path="/docs/:slug" element={<AppLayout><Docs /></AppLayout>} />
                 <Route path="/about" element={<AppLayout><About /></AppLayout>} />
 
-                {/* 404 Fallback */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+                  {/* 404 Fallback */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
             </ErrorBoundary>
           </LocationProvider>
         </BrowserRouter>
