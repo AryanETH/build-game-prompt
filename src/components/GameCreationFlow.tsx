@@ -20,18 +20,6 @@ export const GameCreationFlow = ({ isDarkMode = true }: GameCreationFlowProps) =
 
   const fullPrompt = "Create a simple Dino Jump game: choose dino color and environment, press space to jump over obstacles, and show a live score as the player survives.";
 
-  const colors = [
-    { name: "Green", value: "#22c55e", bg: "bg-green-500" },
-    { name: "Blue", value: "#3b82f6", bg: "bg-blue-500" },
-    { name: "Red", value: "#ef4444", bg: "bg-red-500" }
-  ];
-
-  const lands = [
-    { name: "Grass", emoji: "🌱", bg: "from-green-600 to-green-800" },
-    { name: "Desert", emoji: "🏜️", bg: "from-yellow-600 to-orange-800" },
-    { name: "Ice", emoji: "❄️", bg: "from-blue-400 to-cyan-600" }
-  ];
-
   const handleImagine = () => {
     setPrompt(fullPrompt);
     setIsTypingComplete(false);
@@ -61,6 +49,8 @@ export const GameCreationFlow = ({ isDarkMode = true }: GameCreationFlowProps) =
       }, 1500);
     }
   };
+
+
 
   const handlePlay = () => {
     setIsPlaying(true);
@@ -110,15 +100,39 @@ export const GameCreationFlow = ({ isDarkMode = true }: GameCreationFlowProps) =
         <Button
           onClick={handleImagine}
           disabled={step > 1}
-          className={`w-full border ${
-            isDarkMode 
-              ? 'bg-white/10 hover:bg-white/20 border-white/20 text-white' 
-              : 'bg-black/10 hover:bg-black/20 border-black/20 text-black'
+          className={`w-full border relative overflow-hidden group ${
+            step > 1 
+              ? (isDarkMode ? 'bg-white/10 border-white/20 text-white' : 'bg-black/10 border-black/20 text-black')
+              : 'bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 border-transparent text-white animate-gradient-flow'
           }`}
+          style={step === 1 ? { backgroundSize: '200% 200%' } : {}}
         >
-          <Sparkles className="mr-2 h-4 w-4" />
+          <Sparkles className={`mr-2 h-4 w-4 ${step === 1 ? 'animate-sparkle' : ''}`} />
           Imagine
         </Button>
+        
+        <style>{`
+          @keyframes gradient-flow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
+          .animate-gradient-flow {
+            animation: gradient-flow 3s ease infinite;
+          }
+          
+          @keyframes sparkle {
+            0%, 100% { 
+              opacity: 1;
+            }
+            50% { 
+              opacity: 0.3;
+            }
+          }
+          .animate-sparkle {
+            animation: sparkle 1.5s ease-in-out infinite;
+          }
+        `}</style>
         {prompt && (
           <div className={`mt-4 p-3 rounded-lg border ${
             isDarkMode 
@@ -151,11 +165,17 @@ export const GameCreationFlow = ({ isDarkMode = true }: GameCreationFlowProps) =
             Choose color and environment
           </p>
           
-          {/* Color Selection */}
+          {/* Dino Color Selection */}
           <div className="mb-4">
-          <p className={`text-xs mb-2 ${isDarkMode ? 'text-white/50' : 'text-black/50'}`}>Dino Color:</p>
+          <p className={`text-xs mb-2 ${isDarkMode ? 'text-white/50' : 'text-black/50'}`}>
+            Dino Color:
+          </p>
           <div className="flex gap-2">
-            {colors.map((color) => (
+            {[
+              { name: "Green", value: "#22c55e", bg: "bg-green-500" },
+              { name: "Blue", value: "#3b82f6", bg: "bg-blue-500" },
+              { name: "Red", value: "#ef4444", bg: "bg-red-500" }
+            ].map((color) => (
               <button
                 key={color.name}
                 onClick={() => setSelectedColor(color.name)}
@@ -168,21 +188,27 @@ export const GameCreationFlow = ({ isDarkMode = true }: GameCreationFlowProps) =
           </div>
         </div>
 
-        {/* Land Selection */}
+        {/* Environment Selection */}
         <div className="mb-4">
-          <p className={`text-xs mb-2 ${isDarkMode ? 'text-white/50' : 'text-black/50'}`}>Environment:</p>
+          <p className={`text-xs mb-2 ${isDarkMode ? 'text-white/50' : 'text-black/50'}`}>
+            Environment:
+          </p>
           <div className="flex gap-2">
-            {lands.map((land) => (
+            {[
+              { name: "Grass", emoji: "🌱", bg: "from-green-600 to-green-800" },
+              { name: "Desert", emoji: "🏜️", bg: "from-yellow-600 to-orange-800" },
+              { name: "Ice", emoji: "❄️", bg: "from-blue-400 to-cyan-600" }
+            ].map((item) => (
               <button
-                key={land.name}
-                onClick={() => setSelectedLand(land.name)}
+                key={item.name}
+                onClick={() => setSelectedLand(item.name)}
                 disabled={step !== 2}
-                className={`flex-1 p-2 rounded-lg bg-gradient-to-br ${land.bg} border-2 ${
-                  selectedLand === land.name ? (isDarkMode ? 'border-white' : 'border-black') : (isDarkMode ? 'border-white/20' : 'border-black/20')
+                className={`flex-1 p-2 rounded-lg bg-gradient-to-br ${item.bg} border-2 ${
+                  selectedLand === item.name ? (isDarkMode ? 'border-white' : 'border-black') : (isDarkMode ? 'border-white/20' : 'border-black/20')
                 } transition-all hover:scale-105 disabled:opacity-50`}
               >
-                <div className="text-2xl">{land.emoji}</div>
-                <div className="text-xs text-white/80">{land.name}</div>
+                <div className="text-2xl">{item.emoji}</div>
+                <div className="text-xs text-white/80">{item.name}</div>
               </button>
             ))}
           </div>
@@ -236,9 +262,7 @@ export const GameCreationFlow = ({ isDarkMode = true }: GameCreationFlowProps) =
                 </div>
               ) : (
                 <div className="text-center">
-                  <div className="text-4xl mb-2" style={{ 
-                    color: colors.find(c => c.name === selectedColor)?.value 
-                  }}>🦖</div>
+                  <div className="text-4xl mb-2">🦖</div>
                   <p className={`text-xs ${isDarkMode ? 'text-white/60' : 'text-black/60'}`}>Game Ready!</p>
                 </div>
               )}
@@ -247,7 +271,7 @@ export const GameCreationFlow = ({ isDarkMode = true }: GameCreationFlowProps) =
               <div className={`text-xs space-y-1 ${isDarkMode ? 'text-white/50' : 'text-black/50'}`}>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-green-400" />
-                  <span>Color: {selectedColor}</span>
+                  <span>Dino: {selectedColor}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-green-400" />
@@ -278,29 +302,24 @@ export const GameCreationFlow = ({ isDarkMode = true }: GameCreationFlowProps) =
           
           {step >= 4 && (
           <div className="space-y-3">
-            <div className={`h-32 rounded-lg bg-gradient-to-br ${
+            <div className={`h-32 rounded-lg border flex items-center justify-center relative overflow-hidden bg-gradient-to-br ${
               selectedLand === 'Grass' ? 'from-green-600 to-green-800' :
               selectedLand === 'Desert' ? 'from-yellow-600 to-orange-800' :
               'from-blue-400 to-cyan-600'
-            } border border-white/10 flex items-center justify-center relative overflow-hidden`}>
+            } border-white/10`}>
               {isPlaying ? (
                 <DinoGame 
-                  color={colors.find(c => c.name === selectedColor)?.value || '#22c55e'}
+                  color={
+                    selectedColor === 'Green' ? '#22c55e' :
+                    selectedColor === 'Blue' ? '#3b82f6' :
+                    '#ef4444'
+                  }
                   landType={selectedLand}
                   onScoreUpdate={setScore}
                   onRetry={handleRetry}
                 />
               ) : (
-                <div className="text-5xl animate-bounce" style={{ 
-                  color: colors.find(c => c.name === selectedColor)?.value 
-                }}>
-                  🦖
-                </div>
-              )}
-              {isPlaying && (
-                <div className="absolute top-2 right-2 bg-black/50 px-2 py-1 rounded text-xs text-white z-10">
-                  {score}
-                </div>
+                <div className="text-5xl animate-bounce">🦖</div>
               )}
             </div>
             
