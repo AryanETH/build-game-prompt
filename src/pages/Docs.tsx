@@ -104,7 +104,7 @@ export default function Docs() {
       <SEO 
         title="Documentation - Learn How to Create & Play AI Games"
         description="Complete guide to using Feep. Learn how to create AI games, discover new games, engage with the community, and master all features."
-        url="https://feep.app/docs"
+        url="https://oplusai.vercel.app/docs"
         keywords="Feep documentation, how to create AI games, game creation guide, AI gaming tutorial, Feep help"
       />
 

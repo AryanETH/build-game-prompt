@@ -15,7 +15,7 @@ import { useNavigate } from "react-router-dom";
 interface Message {
   id: string;
   sender_id: string;
-  receiver_id: string;
+  recipient_id: string;
   content: string;
   is_one_time: boolean;
   viewed_at: string | null;
@@ -61,9 +61,98 @@ export default function Messages() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.getUser();
-      setUserId(data.user?.id || null);
+      const uid = data.user?.id || null;
+      setUserId(uid);
+      if (uid) {
+        loadConversations(uid);
+        
+        // Set up real-time subscription for new messages
+        const channel = supabase
+          .channel('direct_messages_changes')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'direct_messages',
+              filter: `recipient_id=eq.${uid}`,
+            },
+            () => {
+              // Reload conversations when new message arrives
+              loadConversations(uid);
+              // If viewing a conversation, reload messages
+              if (selectedUser) {
+                loadMessages(selectedUser.user_id);
+              }
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'direct_messages',
+              filter: `sender_id=eq.${uid}`,
+            },
+            () => {
+              // Reload conversations when user sends a message
+              loadConversations(uid);
+            }
+          )
+          .subscribe();
+
+        return () => {
+          supabase.removeChannel(channel);
+        };
+      }
     })();
-  }, []);
+  }, [selectedUser]);
+
+  const loadConversations = async (uid: string) => {
+    try {
+      // Get all messages where user is sender or recipient
+      const { data: messagesData, error } = await supabase
+        .from('direct_messages')
+        .select('*, sender:profiles!direct_messages_sender_id_fkey(id, username, avatar_url), recipient:profiles!direct_messages_recipient_id_fkey(id, username, avatar_url)')
+        .or(`sender_id.eq.${uid},recipient_id.eq.${uid}`)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Group messages by conversation partner
+      const conversationsMap = new Map<string, Conversation>();
+
+      messagesData?.forEach((msg: any) => {
+        const isFromMe = msg.sender_id === uid;
+        const partnerId = isFromMe ? msg.recipient_id : msg.sender_id;
+        const partner = isFromMe ? msg.recipient : msg.sender;
+
+        if (!partner) return;
+
+        const existing = conversationsMap.get(partnerId);
+        if (!existing || new Date(msg.created_at) > new Date(existing.last_message_time)) {
+          const unreadCount = !isFromMe && !msg.viewed_at ? 
+            (existing?.unread_count || 0) + 1 : 
+            (existing?.unread_count || 0);
+
+          conversationsMap.set(partnerId, {
+            user_id: partnerId,
+            username: partner.username,
+            avatar_url: partner.avatar_url,
+            last_message: msg.content.startsWith('[GIF]') ? '🎬 GIF' : 
+                         msg.content.startsWith('[IMAGE]') ? '📷 Image' : 
+                         msg.content,
+            last_message_time: msg.created_at,
+            unread_count: unreadCount,
+          });
+        }
+      });
+
+      setConversations(Array.from(conversationsMap.values()));
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+    }
+  };
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedUser || !userId) return;
@@ -73,7 +162,7 @@ export default function Messages() {
         .from('direct_messages')
         .insert({
           sender_id: userId,
-          receiver_id: selectedUser.user_id,
+          recipient_id: selectedUser.user_id,
           content: newMessage.trim(),
           is_one_time: isOneTime,
         });
@@ -84,6 +173,9 @@ export default function Messages() {
       setIsOneTime(false);
       toast.success('Message sent!');
       loadMessages(selectedUser.user_id);
+      if (userId) {
+        loadConversations(userId);
+      }
     } catch (err) {
       console.error('Send message error:', err);
       toast.error('Failed to send message');
@@ -98,7 +190,7 @@ export default function Messages() {
         .from('direct_messages')
         .insert({
           sender_id: userId,
-          receiver_id: selectedUser.user_id,
+          recipient_id: selectedUser.user_id,
           content: `[GIF]${gifUrl}`,
           is_one_time: isOneTime,
         });
@@ -109,6 +201,9 @@ export default function Messages() {
       setIsOneTime(false);
       toast.success('GIF sent!');
       loadMessages(selectedUser.user_id);
+      if (userId) {
+        loadConversations(userId);
+      }
     } catch (err) {
       console.error('Send GIF error:', err);
       toast.error('Failed to send GIF');
@@ -129,7 +224,7 @@ export default function Messages() {
           .from('direct_messages')
           .insert({
             sender_id: userId,
-            receiver_id: selectedUser.user_id,
+            recipient_id: selectedUser.user_id,
             content: `[IMAGE]${base64}`,
             is_one_time: isOneTime,
           });
@@ -139,6 +234,9 @@ export default function Messages() {
         setIsOneTime(false);
         toast.success('Image sent!');
         loadMessages(selectedUser.user_id);
+        if (userId) {
+          loadConversations(userId);
+        }
       };
       reader.readAsDataURL(file);
     } catch (err) {
@@ -153,7 +251,7 @@ export default function Messages() {
     const { data, error } = await supabase
       .from('direct_messages')
       .select('*, sender:profiles!direct_messages_sender_id_fkey(id, username, avatar_url)')
-      .or(`and(sender_id.eq.${userId},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${userId})`)
+      .or(`and(sender_id.eq.${userId},recipient_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},recipient_id.eq.${userId})`)
       .order('created_at', { ascending: true });
 
     if (!error && data) {
@@ -163,18 +261,37 @@ export default function Messages() {
       await supabase
         .from('direct_messages')
         .update({ viewed_at: new Date().toISOString() })
-        .eq('receiver_id', userId)
+        .eq('recipient_id', userId)
         .eq('sender_id', otherUserId)
         .is('viewed_at', null);
+      
+      // Reload conversations to update unread count
+      if (userId) {
+        loadConversations(userId);
+      }
     }
   };
 
   useEffect(() => {
-    if (selectedUser) {
+    if (selectedUser && userId) {
       loadMessages(selectedUser.user_id);
       setShowMobileList(false);
     }
   }, [selectedUser, userId]);
+
+  // Reload conversations when page becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && userId) {
+        loadConversations(userId);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [userId]);
 
   const filteredConversations = conversations.filter(conv =>
     conv.username.toLowerCase().includes(searchQuery.toLowerCase())

@@ -24,6 +24,8 @@ import Onboarding from "./pages/Onboarding";
 import Blog from "./pages/Blog";
 import Docs from "./pages/Docs";
 import About from "./pages/About";
+import Activity from "./pages/Activity";
+import Settings from "./pages/Settings";
 
 import { LocationProvider } from "./context/LocationContext";
 import RocketCursor from "@/components/RocketCursor";
@@ -136,6 +138,26 @@ const App = () => {
                     <ProtectedRoute>
                       <RouteErrorBoundary>
                         <AppLayout><Profile /></AppLayout>
+                      </RouteErrorBoundary>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/activity"
+                  element={
+                    <ProtectedRoute>
+                      <RouteErrorBoundary>
+                        <AppLayout><Activity /></AppLayout>
+                      </RouteErrorBoundary>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <RouteErrorBoundary>
+                        <AppLayout><Settings /></AppLayout>
                       </RouteErrorBoundary>
                     </ProtectedRoute>
                   }

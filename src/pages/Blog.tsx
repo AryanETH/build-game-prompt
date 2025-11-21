@@ -77,7 +77,7 @@ export default function Blog() {
       <SEO 
         title="Blog - AI Gaming Insights, Tutorials & Community Stories"
         description="Read the latest articles about AI gaming, game creation tutorials, creator spotlights, and industry insights from the Feep community."
-        url="https://feep.app/blog"
+        url="https://oplusai.vercel.app/blog"
         keywords="AI gaming blog, game creation tutorials, gaming community, AI game development, creator stories"
       />
 

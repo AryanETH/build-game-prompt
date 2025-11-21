@@ -18,7 +18,8 @@ export const DesktopFeed = ({
 }: FeedProps) => {
   return (
     <div className="w-full min-h-screen bg-[#F8F9FA]">
-      <div className="overflow-y-auto h-screen no-scrollbar flex flex-col items-center gap-8 py-10 px-20">
+     <div className="overflow-y-auto h-screen no-scrollbar flex flex-col gap-8 py-10 px-20 w-full max-w-[1200px] mx-auto">
+
         {games.map((game, index) => (
           <div key={game.id} className="relative flex items-center justify-center gap-4">
             {/* Card */}

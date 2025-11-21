@@ -4,7 +4,7 @@
   
   <!-- Homepage -->
   <url>
-    <loc>https://oplus.app/</loc>
+    <loc>https://oplusai.vercel.app/</loc>
     <lastmod>2024-11-21</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
@@ -12,7 +12,7 @@
   
   <!-- Feed Page -->
   <url>
-    <loc>https://oplus.app/feed</loc>
+    <loc>https://oplusai.vercel.app/feed</loc>
     <lastmod>2024-11-21</lastmod>
     <changefreq>hourly</changefreq>
     <priority>0.9</priority>
@@ -20,7 +20,7 @@
   
   <!-- Create Page -->
   <url>
-    <loc>https://oplus.app/create</loc>
+    <loc>https://oplusai.vercel.app/create</loc>
     <lastmod>2024-11-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -28,7 +28,7 @@
   
   <!-- Search/Explore Page -->
   <url>
-    <loc>https://oplus.app/search</loc>
+    <loc>https://oplusai.vercel.app/search</loc>
     <lastmod>2024-11-21</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
@@ -36,7 +36,7 @@
   
   <!-- Profile Page -->
   <url>
-    <loc>https://oplus.app/profile</loc>
+    <loc>https://oplusai.vercel.app/profile</loc>
     <lastmod>2024-11-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
@@ -44,7 +44,7 @@
   
   <!-- Auth Pages -->
   <url>
-    <loc>https://oplus.app/auth</loc>
+    <loc>https://oplusai.vercel.app/auth</loc>
     <lastmod>2024-11-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
@@ -52,21 +52,21 @@
   
   <!-- Content Pages -->
   <url>
-    <loc>https://oplus.app/blog</loc>
+    <loc>https://oplusai.vercel.app/blog</loc>
     <lastmod>2024-11-21</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   
   <url>
-    <loc>https://oplus.app/docs</loc>
+    <loc>https://oplusai.vercel.app/docs</loc>
     <lastmod>2024-11-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   
   <url>
-    <loc>https://oplus.app/about</loc>
+    <loc>https://oplusai.vercel.app/about</loc>
     <lastmod>2024-11-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

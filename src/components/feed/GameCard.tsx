@@ -37,7 +37,7 @@ export const GameCard = ({
   hideButtons = false
 }: GameCardProps) => {
   return (
-    <Card className={`relative w-full h-full overflow-hidden ${isMobile ? 'rounded-none border-0 bg-black' : 'rounded-3xl border border-gray-200 shadow-lg bg-gray-300'}`}>
+    <Card className={`relative w-full h-full overflow-visible ${isMobile ? 'rounded-none border-0 bg-black' : 'rounded-3xl border border-gray-200 shadow-lg bg-gray-300'}`}>
       <img
         src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
         alt={game.title}

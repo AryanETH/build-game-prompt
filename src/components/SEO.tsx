@@ -13,8 +13,8 @@ interface SEOProps {
 export const SEO = ({
   title = "Oplus – AI Game Engine",
   description = "The infinite game engine. Turn text into playable worlds, interactive stories, and viral mini-games instantly with Oplus AI.",
-  image = "https://oplus.app/og-image.png",
-  url = "https://oplus.app",
+  image = "https://oplusai.vercel.app/og-image.png",
+  url = "https://oplusai.vercel.app",
   type = "website",
   keywords = "AI game engine, create games, AI games, game generator, instant games, Oplus",
   noindex = false,

@@ -65,10 +65,9 @@ export const TikTokSidebar = () => {
     { icon: Play, label: "Play Feed", path: "/feed" },
     { icon: Compass, label: "Explore", path: "/search" },
     { icon: Radio, label: "Live Feed", path: "/feed?tab=watch" },
-    { icon: UserPlus, label: "Following", path: "/feed?tab=following" },
     { icon: Sparkles, label: "Create", path: "/create" },
-    { icon: Bell, label: "Activity", path: "/feed?tab=activity" },
-    { icon: MessageCircle, label: "Messages", path: "/feed?tab=messages" },
+    { icon: Bell, label: "Activity", path: "/activity" },
+    { icon: MessageCircle, label: "Messages", path: "/messages" },
     { icon: User, label: "Profile", path: "/profile" },
     { icon: MoreHorizontal, label: "Settings", path: "/settings" },
   ];
@@ -79,15 +78,6 @@ export const TikTokSidebar = () => {
     }
     if (path === "/feed?tab=watch") {
       return location.pathname === "/feed" && location.search.includes("tab=watch");
-    }
-    if (path === "/feed?tab=following") {
-      return location.pathname === "/feed" && location.search.includes("tab=following");
-    }
-    if (path === "/feed?tab=activity") {
-      return location.pathname === "/feed" && location.search.includes("tab=activity");
-    }
-    if (path === "/feed?tab=messages") {
-      return location.pathname === "/feed" && location.search.includes("tab=messages");
     }
     return location.pathname === path;
   };

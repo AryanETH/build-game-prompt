@@ -579,11 +579,9 @@ export default function Profile() {
         </Dialog>
 
         <Tabs defaultValue="my-games" className="mt-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="my-games">My Games</TabsTrigger>
             <TabsTrigger value="remixes">Remixes</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="my-games">
@@ -659,66 +657,7 @@ export default function Profile() {
             )}
           </TabsContent>
 
-          <TabsContent value="activity">
-            <ActivityFeed />
-          </TabsContent>
 
-          <TabsContent value="settings">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Settings</h3>
-              <div className="space-y-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Theme</p>
-                    <p className="text-sm text-muted-foreground">Switch between light and dark mode</p>
-                  </div>
-                  <ThemeToggle />
-                </div>
-
-                <div className="h-px bg-border" />
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Autoplay in feed</p>
-                    <p className="text-sm text-muted-foreground">Auto-play games on open in Play feed</p>
-                  </div>
-                  <Switch checked={autoplayFeed} onCheckedChange={setAutoplayFeed} />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Enable sound by default</p>
-                    <p className="text-sm text-muted-foreground">Start games with audio on when possible</p>
-                  </div>
-                  <Switch checked={enableSoundByDefault} onCheckedChange={setEnableSoundByDefault} />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">High graphics quality</p>
-                    <p className="text-sm text-muted-foreground">Prefer higher fidelity visuals in the player</p>
-                  </div>
-                  <Switch checked={highGraphicsQuality} onCheckedChange={setHighGraphicsQuality} />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Show remix badges</p>
-                    <p className="text-sm text-muted-foreground">Display Remix markers on remixed games</p>
-                  </div>
-                  <Switch checked={showRemixBadges} onCheckedChange={setShowRemixBadges} />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Compact grid layout</p>
-                    <p className="text-sm text-muted-foreground">Denser thumbnails on desktop feed</p>
-                  </div>
-                  <Switch checked={compactGridLayout} onCheckedChange={setCompactGridLayout} />
-                </div>
-              </div>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
       <FollowersFollowingDialogs

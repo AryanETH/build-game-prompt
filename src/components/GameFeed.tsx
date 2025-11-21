@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { GamePlayer } from "./GamePlayer";
-import { Loader2, Heart, MessageCircle, Share2, Play, Sparkles, Smile, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Heart, MessageCircle, Share2, Play, Sparkles, Smile, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { playClick, playSuccess, playError } from "@/lib/sounds";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/activityLogger";
@@ -272,11 +272,30 @@ export const GameFeed = () => {
     }
   };
 
-  const handleShare = (game: Game) => {
-    const shareUrl = `${window.location.origin}?game=${game.id}`;
-    navigator.clipboard.writeText(shareUrl);
-    toast.success("Game link copied to clipboard!");
-    playSuccess();
+  const handleShare = async (game: Game) => {
+    const shareUrl = `${window.location.origin}/feed?game=${game.id}`;
+    
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Game link copied to clipboard!");
+      playSuccess();
+    } catch (error) {
+      // Fallback for browsers that don't support clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = shareUrl;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        toast.success("Game link copied to clipboard!");
+        playSuccess();
+      } catch (err) {
+        toast.error("Failed to copy link");
+      }
+      document.body.removeChild(textArea);
+    }
   };
 
   // Realtime: refetch feed on any games change
@@ -483,6 +502,33 @@ export const GameFeed = () => {
     toast.success(isLiked ? 'Unliked' : 'Liked!');
   };
 
+  const handleDeleteComment = async (commentId: string) => {
+    if (!userId) {
+      toast.error('Please sign in to delete comments');
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('game_comments')
+        .delete()
+        .eq('id', commentId)
+        .eq('user_id', userId);
+      
+      if (error) {
+        console.error('Delete comment error:', error);
+        toast.error('Failed to delete comment');
+      } else {
+        toast.success('Comment deleted');
+        refetchComments();
+        queryClient.invalidateQueries({ queryKey: ['games'] });
+      }
+    } catch (err) {
+      console.error('Delete comment error:', err);
+      toast.error('Failed to delete comment');
+    }
+  };
+
   // Import formatTimeAgo from hook instead of duplicating
   const formatTimeAgo = (dateString: string) => {
     const now = new Date();
@@ -532,14 +578,14 @@ export const GameFeed = () => {
       {/* Mobile: Snap scroll, Desktop: Normal scroll with centered content */}
       <div className="h-full overflow-y-auto snap-y snap-mandatory md:snap-none no-scrollbar pb-16 md:pb-0" style={{ scrollSnapType: 'y mandatory', scrollBehavior: 'smooth' }}>
         {/* Desktop wrapper: flex column with centered items */}
-        <div className="md:flex md:flex-col md:items-center md:justify-start md:min-h-screen md:py-8 md:gap-8">
+       <div className="md:flex md:flex-col md:items-start md:w-full md:max-w-[900px] md:mx-auto md:justify-start md:min-h-screen md:py-8 md:gap-8">
         {hydratedGames?.map((game, index) => (
           <div key={game.id} className="w-full snap-start snap-always md:snap-align-none flex items-center justify-center" style={{ height: 'calc(100dvh - 120px)', minHeight: 'calc(100dvh - 120px)', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
             {/* Mobile: Full bleed, Desktop: Centered card with action buttons */}
             <div className="relative w-full h-full md:w-auto md:h-auto">
               {/* Card container - Desktop: Fixed size with stacked effect */}
               <div className="relative w-full h-full md:w-[374px] md:h-[660px]">
-              <Card className="relative w-full h-full overflow-hidden rounded-none md:rounded-3xl border-0 md:border md:border-gray-200 md:shadow-lg bg-black md:bg-gray-300">
+              <Card className="relative w-full h-full overflow-visible md:overflow-hidden rounded-none md:rounded-3xl border-0 md:border md:border-gray-200 md:shadow-lg bg-black md:bg-gray-300">
                 <img
                   src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
                   alt={game.title}
@@ -759,6 +805,16 @@ export const GameFeed = () => {
                           {isExpanded ? 'Hide' : 'View'} {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
                         </button>
                       )}
+                      {c.user_id === userId && (
+                        <button
+                          onClick={() => handleDeleteComment(c.id)}
+                          className="flex items-center gap-1 text-xs text-red-500 hover:text-red-600 transition-colors font-medium ml-auto"
+                          title="Delete comment"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          Delete
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -804,6 +860,16 @@ export const GameFeed = () => {
                                 <span className={`text-lg font-bold transition-colors ${likedComments.has(r.id) ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'}`}>+</span>
                                 <span className="text-muted-foreground">{likedComments.has(r.id) ? 1 : 0}</span>
                               </button>
+                              {r.user_id === userId && (
+                                <button
+                                  onClick={() => handleDeleteComment(r.id)}
+                                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-600 transition-colors font-medium ml-auto"
+                                  title="Delete comment"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                  Delete
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>

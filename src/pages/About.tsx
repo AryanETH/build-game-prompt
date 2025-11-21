@@ -39,7 +39,7 @@ export default function About() {
       <SEO 
         title="About Feep - The TikTok for AI-Generated Games"
         description="Learn about Feep's mission to democratize game creation through AI. Discover how we're building the future of social gaming."
-        url="https://feep.app/about"
+        url="https://oplusai.vercel.app/about"
         keywords="about Feep, AI gaming platform, social gaming, game creation platform, Feep mission"
       />
 

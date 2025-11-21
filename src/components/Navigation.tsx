@@ -1,4 +1,4 @@
-import { Home, Sparkles, User, LogOut, Search, MapPin } from "lucide-react";
+import { Home, Sparkles, User, LogOut, Search, MapPin, Activity, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
@@ -27,6 +27,8 @@ export const Navigation = ({ hideBrand = false }: { hideBrand?: boolean }) => {
     { icon: Home, label: "Feed", path: "/feed" },
     { icon: Search, label: "Search", path: "/search" },
     { icon: Sparkles, label: "Create", path: "/create" },
+    { icon: Activity, label: "Activity", path: "/activity" },
+    { icon: Settings, label: "Settings", path: "/settings" },
     { icon: User, label: "Profile", path: "/profile" },
   ];
 

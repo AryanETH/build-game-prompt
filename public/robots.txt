@@ -8,7 +8,7 @@ Disallow: /admin/
 Disallow: /*.json$
 
 # Sitemap location
-Sitemap: https://oplus.app/sitemap.xml
+Sitemap: https://oplusai.vercel.app/sitemap.xml
 
 # Crawl delay (be nice to servers)
 Crawl-delay: 1
