@@ -15,7 +15,6 @@ import RocketCursor from "@/components/RocketCursor";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { OnboardingGuard } from "./components/OnboardingGuard";
 import { AppLayout } from "./components/AppLayout";
-import {Auth } from "./Auth";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -97,7 +96,7 @@ const App = () => {
               <Suspense fallback={<LoadingSpinner fullScreen />}>
                 <Routes>
                   {/* Public routes */}
-                  <Route path="/" element={<Auth />} />
+                  <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<AuthPage />} />
 
                 {/* Onboarding */}
