@@ -29,9 +29,9 @@ serve(async (req) => {
     }
 
     console.log('Generating game from prompt:', prompt);
-    console.log('Using Grok 4.1 Fast with reasoning enabled');
+    console.log('Using DeepSeek Chat (fallback - Grok key invalid)');
 
-    // First API call with reasoning enabled
+    // API call with DeepSeek (more reliable)
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -39,7 +39,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'x-ai/grok-4.1-fast:free',
+        model: 'deepseek/deepseek-chat',
         messages: [
           {
             role: 'system',
@@ -115,10 +115,7 @@ Return ONLY the complete HTML code, nothing else. No explanations, no markdown c
             role: 'user',
             content: `Prompt: ${prompt}\n\nOptions: ${JSON.stringify(options || {})}`
           }
-        ],
-        reasoning: {
-          enabled: true
-        }
+        ]
       }),
     });
 
@@ -144,11 +141,6 @@ Return ONLY the complete HTML code, nothing else. No explanations, no markdown c
     const data = await response.json();
     const assistantMessage = data.choices?.[0]?.message;
     const raw = assistantMessage?.content ?? '';
-    
-    // Log reasoning if available
-    if (assistantMessage?.reasoning_details) {
-      console.log('Grok reasoning tokens:', assistantMessage.reasoning_details);
-    }
 
     // Basic sanitization: strip markdown fences and ensure HTML document
     const sanitizeGameHtml = (input: string): string => {
