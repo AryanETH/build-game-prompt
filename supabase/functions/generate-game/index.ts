@@ -17,7 +17,7 @@ serve(async (req) => {
     // ⚠️ WARNING: Hardcoded API key - NOT RECOMMENDED for production!
     // This key will be visible in GitHub and can be stolen.
     // Better approach: Set it in Supabase Dashboard → Edge Functions → Secrets
-    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY') || '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';
+    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY') || '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';
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
     
@@ -29,9 +29,9 @@ serve(async (req) => {
     }
 
     console.log('Generating game from prompt:', prompt);
-    console.log('Using DeepSeek Chat (fallback - Grok key invalid)');
+    console.log('Using Grok 4.1 Fast with reasoning enabled');
 
-    // API call with DeepSeek (more reliable)
+    // API call with Grok 4.1 Fast (FREE with reasoning)
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -39,7 +39,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'deepseek/deepseek-chat',
+        model: 'x-ai/grok-4.1-fast:free',
         messages: [
           {
             role: 'system',
@@ -115,7 +115,10 @@ Return ONLY the complete HTML code, nothing else. No explanations, no markdown c
             role: 'user',
             content: `Prompt: ${prompt}\n\nOptions: ${JSON.stringify(options || {})}`
           }
-        ]
+        ],
+        reasoning: {
+          enabled: true
+        }
       }),
     });
 
@@ -141,6 +144,11 @@ Return ONLY the complete HTML code, nothing else. No explanations, no markdown c
     const data = await response.json();
     const assistantMessage = data.choices?.[0]?.message;
     const raw = assistantMessage?.content ?? '';
+    
+    // Log reasoning if available
+    if (assistantMessage?.reasoning_details) {
+      console.log('Grok reasoning tokens:', assistantMessage.reasoning_details);
+    }
 
     // Basic sanitization: strip markdown fences and ensure HTML document
     const sanitizeGameHtml = (input: string): string => {
