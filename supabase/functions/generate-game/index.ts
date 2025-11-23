@@ -13,7 +13,11 @@ serve(async (req) => {
 
   try {
     const { prompt, options, title, description, autoInsert = false } = await req.json();
-    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
+    
+    // ⚠️ WARNING: Hardcoded API key - NOT RECOMMENDED for production!
+    // This key will be visible in GitHub and can be stolen.
+    // Better approach: Set it in Supabase Dashboard → Edge Functions → Secrets
+    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY') || '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';
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
     
