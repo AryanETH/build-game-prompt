@@ -171,6 +171,9 @@ Return ONLY the complete HTML code, nothing else. No explanations, no markdown c
     // Optionally insert a new game record on behalf of the authenticated user
     let insertedGame: any | null = null;
     if (autoInsert) {
+      // Initialize Supabase client
+      const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!);
+      
       // Verify Clerk JWT from Authorization header
       const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
       const PUBLIC_KEY = Deno.env.get('CLERK_PUBLIC_KEY') || `-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAohIBo2Co+L66+FL7v0L3\n+otXywXxCjYHBamtG9mDKwYOZoLzV4DyfVRb/MmIWal4SpOVXaPekRG3x0JmFKht\n+3LueC7fXJjPWEvXxQeQNLPCfqypH4foOGkeymIJhPjUk+i1ZGp6uhFcKWnnfhyE\nl61S+8fmhjrL+Dr5aTSnT4VfgGzt/RPREr448IxbjWkX/1d65YrKnv1ZYGS2XFXP\n9OqIrRtMiw4i3a0Ye4H0jNN4GLw2RkL9FNec1uHwzgSVBb2fJOGeLGVyOyHiBa+m\ns9Kehww+eswiR/mCQ4RprePwfY2GPqJ4EssZeeMUbvxh2BePxhvq/5uNEOkq0vOk\ndQIDAQAB\n-----END PUBLIC KEY-----`;
