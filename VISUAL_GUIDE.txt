@@ -1,0 +1,156 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                  INSERT OPENROUTER API KEY - VISUAL GUIDE            ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+YOUR API KEY:
+┌────────────────────────────────────────────────────────────────────┐
+│ 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 │
+└────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════
+
+STEP 1: OPEN SUPABASE DASHBOARD
+┌────────────────────────────────────────────────────────────────────┐
+│  🌐 Go to: https://supabase.com/dashboard                          │
+│  🔐 Login if needed                                                 │
+└────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════
+
+STEP 2: SELECT YOUR PROJECT
+┌────────────────────────────────────────────────────────────────────┐
+│  📁 Click on your project (the one for Oplus game engine)          │
+└────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════
+
+STEP 3: NAVIGATE TO EDGE FUNCTIONS
+┌────────────────────────────────────────────────────────────────────┐
+│  Left Sidebar:                                                      │
+│  ┌──────────────────┐                                              │
+│  │ 🏠 Home          │                                              │
+│  │ 📊 Database      │                                              │
+│  │ 🔐 Auth          │                                              │
+│  │ 📦 Storage       │                                              │
+│  │ ⚡ Edge Functions│ ← CLICK HERE                                │
+│  │ 📈 Analytics     │                                              │
+│  └──────────────────┘                                              │
+└────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════
+
+STEP 4: GO TO SECRETS TAB
+┌────────────────────────────────────────────────────────────────────┐
+│  Top Tabs:                                                          │
+│  ┌──────────┬──────────┬──────────┐                               │
+│  │ Functions│ Secrets  │ Logs     │                               │
+│  └──────────┴──────────┴──────────┘                               │
+│              ↑ CLICK HERE                                          │
+└────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════
+
+STEP 5: ADD/UPDATE THE SECRET
+┌────────────────────────────────────────────────────────────────────┐
+│                                                                     │
+│  IF YOU SEE "OPENROUTER_API_KEY" IN THE LIST:                      │
+│  ┌─────────────────────────────────────────────────────────────┐  │
+│  │ Name: OPENROUTER_API_KEY                                     │  │
+│  │ Value: sk-or-v1-****************************** [Edit] [Del] │  │
+│  └─────────────────────────────────────────────────────────────┘  │
+│  → Click [Edit]                                                    │
+│  → Replace with: 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 │
+│  → Click [Save]                                                    │
+│                                                                     │
+│  IF YOU DON'T SEE IT:                                              │
+│  → Click [+ New Secret] button                                     │
+│  → Name: OPENROUTER_API_KEY                                        │
+│  → Value: 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 │
+│  → Click [Save]                                                    │
+│                                                                     │
+└────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════
+
+STEP 6: REDEPLOY THE FUNCTION
+┌────────────────────────────────────────────────────────────────────┐
+│  1. Go back to "Functions" tab                                      │
+│  2. Find "generate-game" in the list                                │
+│  3. Click the [...] menu (three dots)                               │
+│  4. Click "Redeploy"                                                │
+│  5. Wait ~30 seconds for deployment                                 │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │ generate-game                                    [...]        │ │
+│  │ Last deployed: 2 minutes ago                     ↓            │ │
+│  │                                            ┌──────────────┐   │ │
+│  │                                            │ View Logs    │   │ │
+│  │                                            │ Redeploy     │ ← CLICK │
+│  │                                            │ Delete       │   │ │
+│  │                                            └──────────────┘   │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════
+
+STEP 7: TEST IT!
+┌────────────────────────────────────────────────────────────────────┐
+│  1. Go to: https://oplusai.vercel.app/create                       │
+│  2. Enter prompt: "Create a space shooter game"                    │
+│  3. Click "Generate"                                                │
+│  4. Open browser console (Press F12)                                │
+│  5. Look for: "Using Grok 4.1 Fast with reasoning enabled"         │
+│  6. Game should generate successfully!                              │
+└────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════
+
+✅ SUCCESS INDICATORS:
+┌────────────────────────────────────────────────────────────────────┐
+│  ✓ Secret shows in Supabase: OPENROUTER_API_KEY = sk-or-v1-***    │
+│  ✓ Function redeployed successfully                                │
+│  ✓ Console shows: "Using Grok 4.1 Fast with reasoning enabled"    │
+│  ✓ Game generates in 5-15 seconds                                  │
+│  ✓ No errors in console or logs                                    │
+└────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════
+
+❌ TROUBLESHOOTING:
+┌────────────────────────────────────────────────────────────────────┐
+│  Problem: "OPENROUTER_API_KEY is not configured"                   │
+│  Solution: Key not set correctly. Go back to Step 5.               │
+│                                                                     │
+│  Problem: "Payment required" or "402 error"                        │
+│  Solution: Check OpenRouter dashboard for credits/quota            │
+│                                                                     │
+│  Problem: "Rate limit exceeded"                                    │
+│  Solution: Wait a few minutes and try again                        │
+│                                                                     │
+│  Problem: Function not found                                       │
+│  Solution: Make sure you're in the correct Supabase project        │
+└────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════
+
+📊 WHAT YOU'RE GETTING:
+┌────────────────────────────────────────────────────────────────────┐
+│  Model: Grok 4.1 Fast (xAI)                                        │
+│  Cost: FREE (no API charges)                                       │
+│  Speed: 5-15 seconds per game                                      │
+│  Quality: High (with reasoning enabled)                            │
+│  Features: Chain-of-thought reasoning before coding                │
+└────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════
+
+⏱️ TIME NEEDED: 2-3 minutes
+🎯 DIFFICULTY: Easy
+🎉 RESULT: Free AI game generation!
+
+═══════════════════════════════════════════════════════════════════════
+
+COPY THIS API KEY (select and copy):
+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
+
+═══════════════════════════════════════════════════════════════════════
