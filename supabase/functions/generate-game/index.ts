@@ -14,32 +14,30 @@ serve(async (req) => {
   try {
     const { prompt, options, title, description, autoInsert = false } = await req.json();
     
-    // ⚠️ WARNING: Hardcoded API key - NOT RECOMMENDED for production!
-    // This key will be visible in GitHub and can be stolen.
-    // Better approach: Set it in Supabase Dashboard → Edge Functions → Secrets
-    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY') || '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';
+    // Using Groq API (fast and reliable)
+    const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY') || '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';
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
     
-    if (!OPENROUTER_API_KEY) {
-      throw new Error('OPENROUTER_API_KEY is not configured');
+    if (!GROQ_API_KEY) {
+      throw new Error('GROQ_API_KEY is not configured');
     }
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       throw new Error('Supabase environment (URL or ANON KEY) is not configured');
     }
 
     console.log('Generating game from prompt:', prompt);
-    console.log('Using Grok 4.1 Fast with reasoning enabled');
+    console.log('Using Groq Llama 3.3 70B (FREE, ultra-fast)');
 
-    // API call with Grok 4.1 Fast (FREE with reasoning)
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    // API call with Groq (FREE and FAST)
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'x-ai/grok-4.1-fast:free',
+        model: 'llama-3.3-70b-versatile',
         messages: [
           {
             role: 'system',
@@ -116,9 +114,8 @@ Return ONLY the complete HTML code, nothing else. No explanations, no markdown c
             content: `Prompt: ${prompt}\n\nOptions: ${JSON.stringify(options || {})}`
           }
         ],
-        reasoning: {
-          enabled: true
-        }
+        temperature: 0.7,
+        max_tokens: 8000
       }),
     });
 
@@ -145,10 +142,7 @@ Return ONLY the complete HTML code, nothing else. No explanations, no markdown c
     const assistantMessage = data.choices?.[0]?.message;
     const raw = assistantMessage?.content ?? '';
     
-    // Log reasoning if available
-    if (assistantMessage?.reasoning_details) {
-      console.log('Grok reasoning tokens:', assistantMessage.reasoning_details);
-    }
+    console.log('Groq response received, tokens used:', data.usage?.total_tokens || 'unknown');
 
     // Basic sanitization: strip markdown fences and ensure HTML document
     const sanitizeGameHtml = (input: string): string => {
