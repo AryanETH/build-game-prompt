@@ -18,10 +18,6 @@
           "value": "ALLOWALL"
         },
         {
-          "key": "Content-Security-Policy",
-          "value": "frame-ancestors 'self' https://byaryan.site https://*.byaryan.site https://aryan-s-creative-canvas.vercel.app https://*.vercel.app"
-        },
-        {
           "key": "X-XSS-Protection",
           "value": "1; mode=block"
         }
