@@ -57,6 +57,61 @@ const App = () => {
     }
   }, []);
 
+  // Auto-scroll when embedded in iframe
+  useEffect(() => {
+    const isInIframe = window.self !== window.top;
+    if (!isInIframe) return;
+
+    let scrollPosition = 0;
+    let scrollInterval: NodeJS.Timeout | null = null;
+    let isScrolling = true;
+    
+    const scrollSpeed = 1.5; // Pixels per frame - adjust for faster/slower scroll
+    const scrollDelay = 30; // Milliseconds between frames - adjust for smoothness
+    const pauseAtBottom = 2000; // Pause duration at bottom in milliseconds
+    const pauseAtTop = 1000; // Pause duration at top before restarting
+
+    const startScrolling = () => {
+      if (scrollInterval) clearInterval(scrollInterval);
+      
+      scrollInterval = setInterval(() => {
+        if (!isScrolling) return;
+
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        
+        if (scrollPosition < maxScroll) {
+          scrollPosition += scrollSpeed;
+          window.scrollTo({ top: scrollPosition, behavior: 'auto' });
+        } else {
+          // Reached bottom - pause and reset
+          isScrolling = false;
+          if (scrollInterval) clearInterval(scrollInterval);
+          
+          setTimeout(() => {
+            // Smooth scroll back to top
+            scrollPosition = 0;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // Wait a bit at top, then restart scrolling
+            setTimeout(() => {
+              isScrolling = true;
+              startScrolling();
+            }, pauseAtTop);
+          }, pauseAtBottom);
+        }
+      }, scrollDelay);
+    };
+
+    // Start the auto-scroll
+    startScrolling();
+
+    // Cleanup on unmount
+    return () => {
+      isScrolling = false;
+      if (scrollInterval) clearInterval(scrollInterval);
+    };
+  }, []);
+
   useEffect(() => {
     const checkSession = async () => {
       await supabase.auth.getSession();
