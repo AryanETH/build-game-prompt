@@ -2,7 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    
+    <!-- Conditional viewport: Desktop in iframe, responsive otherwise -->
+    <script>
+      // Check if site is embedded in an iframe
+      if (window.self !== window.top) {
+        // In iframe - force desktop viewport
+        document.write('<meta name="viewport" content="width=1920, initial-scale=0.5, maximum-scale=1.0, user-scalable=yes">');
+      } else {
+        // Normal page - use responsive viewport
+        document.write('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">');
+      }
+    </script>
+    <noscript>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    </noscript>
 
     <!-- Primary Meta Tags -->
     <title>Oplus – AI Game Engine | Create & Play Instantly</title>

@@ -46,6 +46,17 @@ const App = () => {
     });
   };
 
+  // Detect if site is embedded in iframe and force desktop viewport
+  useEffect(() => {
+    const isInIframe = window.self !== window.top;
+    if (isInIframe) {
+      const viewport = document.querySelector('meta[name="viewport"]');
+      if (viewport) {
+        viewport.setAttribute('content', 'width=1920, initial-scale=0.5, maximum-scale=1.0, user-scalable=yes');
+      }
+    }
+  }, []);
+
   useEffect(() => {
     const checkSession = async () => {
       await supabase.auth.getSession();
