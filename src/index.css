@@ -214,22 +214,23 @@ All colors MUST be HSL.
     cursor: none;
   }
   
-  /* Custom scrollbar */
+  /* Custom scrollbar - Hidden by default */
   ::-webkit-scrollbar {
-    width: 8px;
+    width: 0px;
+    height: 0px;
   }
   
   ::-webkit-scrollbar-track {
-    background: hsl(var(--background));
+    background: transparent;
   }
   
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--primary));
+    background: transparent;
     border-radius: 4px;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--accent));
+    background: transparent;
   }
 }
 

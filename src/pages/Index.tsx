@@ -116,7 +116,7 @@ const Index = () => {
   };
 
   return (
-    <div className={`min-h-screen overflow-hidden transition-colors duration-300 ${
+    <div className={`min-h-screen overflow-x-hidden transition-colors duration-300 ${
       isDarkMode 
         ? 'bg-black text-white' 
         : 'bg-white text-black'
@@ -326,7 +326,7 @@ const Index = () => {
                 {/* Scrollable Content */}
                 <div 
                   ref={phoneScrollRef}
-                  className="absolute inset-0 overflow-y-scroll snap-y snap-mandatory no-scrollbar bg-black"
+                  className="absolute inset-0 overflow-y-scroll snap-y snap-mandatory bg-black [&::-webkit-scrollbar]:hidden"
                   style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
                   {MOCK_GAMES.map((game) => (
@@ -342,7 +342,7 @@ const Index = () => {
                       
                       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                       
-                      <div className="absolute bottom-4 left-4 right-20 text-white pb-2">
+                      <div className="absolute bottom-4 left-4 right-16 text-white pb-2">
                         {/* Username with avatar */}
                         <div className="flex items-center gap-2 mb-2">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-xs font-bold border-2 border-white shadow-lg">
@@ -356,31 +356,36 @@ const Index = () => {
                         <p className="text-xs text-white/90 line-clamp-2 drop-shadow-md">{game.description}</p>
                       </div>
                       
-                      <div className="absolute bottom-4 right-3 flex flex-col gap-5 items-center pb-2">
-                        <button className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-xl hover:scale-110 transition-transform">
-                          <Play className="w-7 h-7 text-white fill-white" />
+                      {/* Action Buttons - Inside Phone (Right Side) */}
+                      <div className="absolute bottom-4 right-3 flex flex-col gap-3 items-center pb-2 z-20">
+                        {/* Play button */}
+                        <button className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-xl hover:scale-110 transition-transform">
+                          <Play className="w-5 h-5 text-white fill-white" />
                         </button>
                         
+                        {/* Like button */}
                         <div className="flex flex-col items-center">
-                          <button className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:scale-110 transition-transform">
-                            <Heart className="w-7 h-7 text-white" />
+                          <button className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:scale-110 transition-transform">
+                            <Heart className="w-5 h-5 text-white" />
                           </button>
-                          <span className="text-xs text-white font-bold mt-1 drop-shadow-md">
+                          <span className="text-[10px] text-white font-bold mt-1 drop-shadow-md">
                             {game.likes >= 1000 ? `${(game.likes / 1000).toFixed(1)}K` : game.likes}
                           </span>
                         </div>
                         
+                        {/* Comment button */}
                         <div className="flex flex-col items-center">
-                          <button className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:scale-110 transition-transform">
-                            <MessageCircle className="w-7 h-7 text-white" />
+                          <button className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:scale-110 transition-transform">
+                            <MessageCircle className="w-5 h-5 text-white" />
                           </button>
-                          <span className="text-xs text-white font-bold mt-1 drop-shadow-md">
+                          <span className="text-[10px] text-white font-bold mt-1 drop-shadow-md">
                             {game.comments >= 1000 ? `${(game.comments / 1000).toFixed(1)}K` : game.comments}
                           </span>
                         </div>
                         
-                        <button className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:scale-110 transition-transform">
-                          <Share2 className="w-7 h-7 text-white" />
+                        {/* Share button */}
+                        <button className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:scale-110 transition-transform">
+                          <Share2 className="w-5 h-5 text-white" />
                         </button>
                       </div>
                     </div>
