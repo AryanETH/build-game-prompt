@@ -19,7 +19,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "frame-ancestors 'self' https://aryan-s-creative-canvas.vercel.app https://*.vercel.app"
+          "value": "frame-ancestors 'self' https://byaryan.site https://*.byaryan.site https://aryan-s-creative-canvas.vercel.app https://*.vercel.app"
         },
         {
           "key": "X-XSS-Protection",
