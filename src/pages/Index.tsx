@@ -342,7 +342,7 @@ const Index = () => {
                       
                       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                       
-                      <div className="absolute bottom-4 left-4 right-20 text-white pb-2">
+                      <div className="absolute bottom-4 left-4 right-4 text-white pb-2">
                         {/* Username with avatar */}
                         <div className="flex items-center gap-2 mb-2">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-xs font-bold border-2 border-white shadow-lg">
@@ -354,34 +354,6 @@ const Index = () => {
                         <h3 className="text-lg font-bold mb-1 drop-shadow-lg">{game.title}</h3>
                         {/* Description */}
                         <p className="text-xs text-white/90 line-clamp-2 drop-shadow-md">{game.description}</p>
-                      </div>
-                      
-                      <div className="absolute bottom-4 right-3 flex flex-col gap-5 items-center pb-2">
-                        <button className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-xl hover:scale-110 transition-transform">
-                          <Play className="w-7 h-7 text-white fill-white" />
-                        </button>
-                        
-                        <div className="flex flex-col items-center">
-                          <button className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:scale-110 transition-transform">
-                            <Heart className="w-7 h-7 text-white" />
-                          </button>
-                          <span className="text-xs text-white font-bold mt-1 drop-shadow-md">
-                            {game.likes >= 1000 ? `${(game.likes / 1000).toFixed(1)}K` : game.likes}
-                          </span>
-                        </div>
-                        
-                        <div className="flex flex-col items-center">
-                          <button className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:scale-110 transition-transform">
-                            <MessageCircle className="w-7 h-7 text-white" />
-                          </button>
-                          <span className="text-xs text-white font-bold mt-1 drop-shadow-md">
-                            {game.comments >= 1000 ? `${(game.comments / 1000).toFixed(1)}K` : game.comments}
-                          </span>
-                        </div>
-                        
-                        <button className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center hover:scale-110 transition-transform">
-                          <Share2 className="w-7 h-7 text-white" />
-                        </button>
                       </div>
                     </div>
                   ))}
