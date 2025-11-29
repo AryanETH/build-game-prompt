@@ -10,7 +10,7 @@ export const AnimatedButton = ({ onClick, children, isDarkMode = true }: Animate
   return (
     <button 
       onClick={onClick}
-      className="animated-button relative flex items-center gap-2 px-8 py-4 bg-transparent border-none rounded-full cursor-pointer transition-transform duration-300 hover:scale-110 active:scale-100"
+      className="animated-button relative flex items-center gap-1.5 px-5 py-2.5 bg-transparent border-none rounded-full cursor-pointer transition-transform duration-300 hover:scale-110 active:scale-100"
       style={{
         transformOrigin: 'center',
       }}
@@ -68,7 +68,7 @@ export const AnimatedButton = ({ onClick, children, isDarkMode = true }: Animate
         xmlns="http://www.w3.org/2000/svg" 
         fill="none" 
         viewBox="0 0 24 24" 
-        className="relative z-10 w-7 h-7 sparkle-icon"
+        className="relative z-10 w-4 h-4 sparkle-icon"
       >
         <path 
           className="sparkle-path"
@@ -98,7 +98,7 @@ export const AnimatedButton = ({ onClick, children, isDarkMode = true }: Animate
 
       {/* Button text */}
       <span 
-        className="relative z-10 text-base font-semibold"
+        className="relative z-10 text-xs font-semibold"
         style={{
           backgroundImage: isDarkMode 
             ? 'linear-gradient(90deg, hsla(0 0% 100% / 1) 0%, hsla(0 0% 100% / 1) 120%)'

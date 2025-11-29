@@ -217,14 +217,14 @@ const Index = () => {
                 const section = document.getElementById('build-section');
                 section?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className={`flex items-center gap-2 px-8 py-4 rounded-full font-semibold shadow-2xl transition-all hover:scale-105 border-2 ${
+              className={`flex items-center gap-1.5 px-5 py-2.5 rounded-full font-semibold shadow-2xl transition-all hover:scale-105 border-2 ${
                 isDarkMode 
                   ? 'bg-white/10 border-white/20 hover:bg-white/20 text-white hover:shadow-white/20' 
                   : 'bg-black/10 border-black/20 hover:bg-black/20 text-black hover:shadow-black/20'
               }`}
             >
-              <Play className="h-5 w-5" />
-              <span className="text-base">Watch Demo</span>
+              <Play className="h-3.5 w-3.5" />
+              <span className="text-xs">Watch Demo</span>
             </button>
           </div>
         </div>
