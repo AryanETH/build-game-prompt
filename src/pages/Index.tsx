@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Logo } from "@/components/Logo";
 import { GameCreationFlow } from "@/components/GameCreationFlow";
+import { AnimatedButton } from "@/components/AnimatedButton";
 
 const MOCK_GAMES = [
   { id: 1, title: "Space Adventure", username: "cosmic_dev", description: "Explore the galaxy in this epic space shooter 🚀", likes: 12340, comments: 856, thumbnail: "https://images.unsplash.com/photo-1614732414444-096e5f1122d5?w=400&h=800&fit=crop" },
@@ -205,18 +206,12 @@ const Index = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center relative z-20">
-            <Button 
+            <AnimatedButton 
               onClick={() => navigate('/auth')}
-              size="lg"
-              className={`px-8 py-6 text-lg rounded-full font-semibold shadow-2xl transition-all hover:scale-105 ${
-                isDarkMode 
-                  ? 'bg-white text-black hover:bg-white/90 hover:shadow-white/30' 
-                  : 'bg-black text-white hover:bg-black/90 hover:shadow-black/30'
-              }`}
+              isDarkMode={isDarkMode}
             >
-              <Sparkles className="mr-2 h-5 w-5" />
               Start Creating
-            </Button>
+            </AnimatedButton>
             <Button 
               onClick={() => {
                 const section = document.getElementById('build-section');
@@ -280,18 +275,12 @@ const Index = () => {
               </div>
             </div>
 
-            <Button 
+            <AnimatedButton 
               onClick={() => navigate('/auth')}
-              size="lg"
-              className={`px-8 py-6 text-lg rounded-full shadow-2xl transition-all hover:scale-105 relative z-20 ${
-                isDarkMode 
-                  ? 'bg-white text-black hover:bg-white/90 hover:shadow-white/30' 
-                  : 'bg-black text-white hover:bg-black/90 hover:shadow-black/30'
-              }`}
+              isDarkMode={isDarkMode}
             >
-              <Sparkles className="mr-2 h-5 w-5" />
               Start Creating
-            </Button>
+            </AnimatedButton>
           </div>
 
           {/* Right - iPhone 16 Pro Mockup */}
