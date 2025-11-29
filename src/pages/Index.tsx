@@ -205,28 +205,27 @@ const Index = () => {
             The infinite game engine. Turn text into playable worlds, interactive stories, and viral mini-games instantly.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center relative z-20">
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center relative z-20">
             <AnimatedButton 
               onClick={() => navigate('/auth')}
               isDarkMode={isDarkMode}
             >
               Start Creating
             </AnimatedButton>
-            <Button 
+            <button
               onClick={() => {
                 const section = document.getElementById('build-section');
                 section?.scrollIntoView({ behavior: 'smooth' });
               }}
-              size="lg"
-              className={`px-8 py-6 text-lg rounded-full font-semibold shadow-2xl transition-all hover:scale-105 ${
+              className={`flex items-center gap-2 px-8 py-4 rounded-full font-semibold shadow-2xl transition-all hover:scale-105 border-2 ${
                 isDarkMode 
-                  ? 'bg-white/10 border border-white/20 hover:bg-white/20 text-white hover:shadow-white/20' 
-                  : 'bg-black/10 border border-black/20 hover:bg-black/20 text-black hover:shadow-black/20'
+                  ? 'bg-white/10 border-white/20 hover:bg-white/20 text-white hover:shadow-white/20' 
+                  : 'bg-black/10 border-black/20 hover:bg-black/20 text-black hover:shadow-black/20'
               }`}
             >
-              <Play className="mr-2 h-5 w-5" />
-              Watch Demo
-            </Button>
+              <Play className="h-5 w-5" />
+              <span className="text-base">Watch Demo</span>
+            </button>
           </div>
         </div>
       </div>
