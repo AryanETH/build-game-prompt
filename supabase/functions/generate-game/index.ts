@@ -14,15 +14,15 @@ serve(async (req) => {
   try {
     const { prompt, options, title, description, autoInsert = false, imagineOnly = false } = await req.json();
     
-    // Using Groq API (fast and reliable)
+    // Using Google Gemini API (powerful and reliable)
     // SECURITY: API key MUST be stored in Supabase Edge Function Secrets
     // Never hardcode API keys in source code
-    const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
     
-    if (!GROQ_API_KEY) {
-      throw new Error('GROQ_API_KEY is not configured. Please set it in Supabase Edge Function Secrets.');
+    if (!GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY is not configured. Please set it in Supabase Edge Function Secrets.');
     }
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       throw new Error('Supabase environment (URL or ANON KEY) is not configured');
@@ -31,20 +31,17 @@ serve(async (req) => {
     // If imagineOnly mode, generate game description instead of game code
     if (imagineOnly) {
       console.log('Imagining game concept from prompt:', prompt);
-      console.log('Using Groq Llama 3.3 70B for game design');
+      console.log('Using Google Gemini 2.0 Flash for game design');
       
-      const imagineResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const imagineResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${GROQ_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            {
-              role: 'system',
-              content: `You are a professional game designer who expands short game ideas into complete, detailed game design documents.
+          contents: [{
+            parts: [{
+              text: `You are a professional game designer who expands short game ideas into complete, detailed game design documents.
 
 Your task: Take a short game idea and expand it into a comprehensive game description.
 
@@ -62,29 +59,31 @@ Include:
 
 Be specific and detailed. Make it ready for implementation. Focus on creating a polished, complete game experience.
 
-OUTPUT: Write a well-structured, detailed game description in clear paragraphs.`
-            },
-            {
-              role: 'user',
-              content: `Short game idea: ${prompt}
+OUTPUT: Write a well-structured, detailed game description in clear paragraphs.
+
+Short game idea: ${prompt}
 
 Graphics Style: ${options?.graphicsQuality || 'stylized 2D'}
 Multiplayer: ${options?.isMultiplayer ? 'Yes - ' + (options?.multiplayerType || 'co-op') : 'Single player'}
 
 Expand this into a complete, detailed game design description.`
-            }
-          ],
-          temperature: 0.9,
-          max_tokens: 4000
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.9,
+            maxOutputTokens: 4000,
+          }
         }),
       });
 
       if (!imagineResponse.ok) {
+        const errorText = await imagineResponse.text();
+        console.error('Gemini API error:', errorText);
         throw new Error('Failed to generate game description');
       }
 
       const imagineData = await imagineResponse.json();
-      const gameDescription = imagineData.choices?.[0]?.message?.content;
+      const gameDescription = imagineData.candidates?.[0]?.content?.parts?.[0]?.text;
 
       if (!gameDescription) {
         throw new Error('No game description generated');
@@ -105,21 +104,18 @@ Expand this into a complete, detailed game design description.`
     }
 
     console.log('Generating game from prompt:', prompt);
-    console.log('Using Groq Llama 3.3 70B (FREE, ultra-fast)');
+    console.log('Using Google Gemini 2.0 Flash');
 
-    // API call with Groq (FREE and FAST)
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    // API call with Gemini
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          {
-            role: 'system',
-            content: `You are an elite HTML5 game developer specializing in creating polished, modern 2D games with professional graphics and smooth gameplay. You create games that look and feel like commercial indie games, not basic prototypes.
+        contents: [{
+          parts: [{
+            text: `You are an elite HTML5 game developer specializing in creating polished, modern 2D games with professional graphics and smooth gameplay. You create games that look and feel like commercial indie games, not basic prototypes.
 
 🎮 GAME QUALITY REQUIREMENTS:
 
@@ -278,11 +274,9 @@ CRITICAL RULES:
 OUTPUT FORMAT:
 Return ONLY the complete HTML code. No explanations, no markdown blocks, just pure HTML with inline CSS and JavaScript.
 
-The game should feel like a polished indie game, not a basic prototype. Focus on smooth animations, visual effects, and satisfying gameplay feedback.`
-          },
-          {
-            role: 'user',
-            content: `Create a polished 2D game based on this concept:
+The game should feel like a polished indie game, not a basic prototype. Focus on smooth animations, visual effects, and satisfying gameplay feedback.
+
+Create a polished 2D game based on this concept:
 
 ${prompt}
 
@@ -307,10 +301,12 @@ Graphics Style: ${options?.graphicsQuality || 'stylized 2D with smooth animation
 Multiplayer: ${options?.isMultiplayer ? 'Yes - ' + (options?.multiplayerType || 'co-op') : 'Single player'}
 
 Make this game feel polished and professional, like a commercial indie game. Focus on smooth animations, satisfying feedback, and engaging gameplay.`
-          }
-        ],
-        temperature: 0.8,
-        max_tokens: 16000
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.8,
+          maxOutputTokens: 8000,
+        }
       }),
     });
 
@@ -334,10 +330,9 @@ Make this game feel polished and professional, like a commercial indie game. Foc
     }
 
     const data = await response.json();
-    const assistantMessage = data.choices?.[0]?.message;
-    const raw = assistantMessage?.content ?? '';
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
     
-    console.log('Groq response received, tokens used:', data.usage?.total_tokens || 'unknown');
+    console.log('Gemini response received, tokens used:', data.usageMetadata?.totalTokenCount || 'unknown');
 
     // Basic sanitization: strip markdown fences and ensure HTML document
     const sanitizeGameHtml = (input: string): string => {
