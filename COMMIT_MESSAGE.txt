@@ -1,0 +1,10 @@
+Security: Remove hardcoded API keys and improve security
+
+- Remove hardcoded Groq API key from generate-game Edge Function
+- Update .gitignore to prevent future API key leaks
+- Add comprehensive security documentation
+- Enforce environment variable usage for all API keys
+
+BREAKING CHANGE: GROQ_API_KEY must now be set in Supabase Edge Function Secrets
+
+See SECURE_API_KEY_SETUP.md for setup instructions.

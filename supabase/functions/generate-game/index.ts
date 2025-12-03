@@ -15,12 +15,14 @@ serve(async (req) => {
     const { prompt, options, title, description, autoInsert = false } = await req.json();
     
     // Using Groq API (fast and reliable)
-    const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY') || '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';
+    // SECURITY: API key MUST be stored in Supabase Edge Function Secrets
+    // Never hardcode API keys in source code
+    const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
     
     if (!GROQ_API_KEY) {
-      throw new Error('GROQ_API_KEY is not configured');
+      throw new Error('GROQ_API_KEY is not configured. Please set it in Supabase Edge Function Secrets.');
     }
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       throw new Error('Supabase environment (URL or ANON KEY) is not configured');
