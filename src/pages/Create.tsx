@@ -574,7 +574,16 @@ export default function Create() {
       }
     } catch (error: any) {
       console.error('Imagine error:', error);
-      toast.error("Failed to imagine game. Try again or write your own description.");
+      
+      // Check if it's a deployment issue
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('404')) {
+        toast.error("⚠️ Imagine function not deployed yet!");
+        toast.info("Deploy 'imagine-game' Edge Function in Supabase Dashboard");
+        toast.warning("For now, write your own description in the Description field");
+      } else {
+        toast.error("Failed to imagine game. Write your own description below.");
+      }
+      
       playError();
     } finally {
       setIsImagining(false);
@@ -584,11 +593,14 @@ export default function Create() {
   const handleGenerate = async () => {
     playClick();
     
-    // Check if description is available (from Imagine button)
-    if (!description.trim()) {
-      toast.error("Please click 'Imagine Game Concept' first to generate a detailed description");
+    // Check if description is available (from Imagine button or manual entry)
+    if (!description.trim() && !prompt.trim()) {
+      toast.error("Please enter a game idea or description");
       return;
     }
+    
+    // If no description but has prompt, use prompt as description
+    const gameDescription = description.trim() || prompt.trim();
     
     if (useImagePrompt && !generatedInterfaceImage) {
       toast.error("Please generate an interface image first");
@@ -601,8 +613,8 @@ export default function Create() {
     await logActivity({ type: 'game_creating' });
     
     try {
-      // Use the detailed description from the Imagine step
-      let finalPrompt = description;
+      // Use the detailed description from the Imagine step or manual entry
+      let finalPrompt = gameDescription;
       
       // If using image prompt, analyze the image and create prompt (fail-soft)
       if (useImagePrompt) {
@@ -1025,7 +1037,7 @@ export default function Create() {
                   <Button
                     onClick={handleGenerate}
                     className="w-full gradient-primary glow-primary text-sm md:text-base"
-                    disabled={isGenerating || !description.trim()}
+                    disabled={isGenerating || (!description.trim() && !prompt.trim())}
                   >
                     {isGenerating ? (
                       <>
