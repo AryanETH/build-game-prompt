@@ -565,11 +565,21 @@ export default function Create() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Imagine error:', response.status, errorText);
-        throw new Error(`Failed to imagine game: ${response.status}`);
+        console.error('❌ Imagine error:', response.status, errorText);
+        
+        // Log full error details
+        console.error('Full error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        
+        throw new Error(`API returned ${response.status}: ${errorText}`);
       }
 
       const data = await response.json();
+      
+      console.log('✅ Imagine response:', data);
       
       if (data.gameDescription) {
         setDescription(data.gameDescription);
@@ -579,11 +589,18 @@ export default function Create() {
         toast.success("Game concept imagined! Review the description and click Generate Game.");
         playSuccess();
       } else {
+        console.error('❌ No gameDescription in response:', data);
         throw new Error("No game description returned");
       }
     } catch (error: any) {
-      console.error('Imagine error:', error);
-      toast.error("Failed to imagine game. Try again or write your own description.");
+      console.error('❌ Imagine error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack
+      });
+      
+      toast.error(`Failed to imagine: ${error.message}`);
+      toast.info("Check browser console (F12) for details");
       playError();
     } finally {
       setIsImagining(false);
