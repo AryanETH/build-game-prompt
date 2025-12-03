@@ -539,10 +539,11 @@ export default function Create() {
     try {
       toast.info("AI is imagining your game...");
 
+      // Call the same generate-game Edge Function but with a special flag to only generate description
       const { data: { session } } = await supabase.auth.getSession();
       
       const response = await fetch(
-        'https://zyozjzfkmmtuxvjgryhk.supabase.co/functions/v1/imagine-game',
+        'https://zyozjzfkmmtuxvjgryhk.supabase.co/functions/v1/generate-game',
         {
           method: 'POST',
           headers: {
@@ -551,12 +552,20 @@ export default function Create() {
             'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || ''
           },
           body: JSON.stringify({
-            shortIdea: prompt
+            prompt: prompt,
+            imagineOnly: true, // Special flag to only generate description
+            options: {
+              graphicsQuality,
+              isMultiplayer,
+              multiplayerType
+            }
           })
         }
       );
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Imagine error:', response.status, errorText);
         throw new Error(`Failed to imagine game: ${response.status}`);
       }
 
@@ -574,16 +583,7 @@ export default function Create() {
       }
     } catch (error: any) {
       console.error('Imagine error:', error);
-      
-      // Check if it's a deployment issue
-      if (error.message?.includes('Failed to fetch') || error.message?.includes('404')) {
-        toast.error("⚠️ Imagine function not deployed yet!");
-        toast.info("Deploy 'imagine-game' Edge Function in Supabase Dashboard");
-        toast.warning("For now, write your own description in the Description field");
-      } else {
-        toast.error("Failed to imagine game. Write your own description below.");
-      }
-      
+      toast.error("Failed to imagine game. Try again or write your own description.");
       playError();
     } finally {
       setIsImagining(false);

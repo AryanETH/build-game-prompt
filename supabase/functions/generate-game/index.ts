@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, options, title, description, autoInsert = false } = await req.json();
+    const { prompt, options, title, description, autoInsert = false, imagineOnly = false } = await req.json();
     
     // Using Groq API (fast and reliable)
     // SECURITY: API key MUST be stored in Supabase Edge Function Secrets
@@ -26,6 +26,82 @@ serve(async (req) => {
     }
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       throw new Error('Supabase environment (URL or ANON KEY) is not configured');
+    }
+
+    // If imagineOnly mode, generate game description instead of game code
+    if (imagineOnly) {
+      console.log('Imagining game concept from prompt:', prompt);
+      console.log('Using Groq Llama 3.3 70B for game design');
+      
+      const imagineResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${GROQ_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a professional game designer who expands short game ideas into complete, detailed game design documents.
+
+Your task: Take a short game idea and expand it into a comprehensive game description.
+
+Include:
+1. Game Genre & Core Concept
+2. Player Mechanics & Controls (mobile touch + desktop keyboard/mouse)
+3. Environment & World Design (setting, theme, atmosphere)
+4. Enemies, Obstacles & Challenges (behaviors, difficulty)
+5. Level Structure (single/multiple/endless, progression, win/lose)
+6. Art Style & Visual Direction (pixel/cartoon/stylized, colors, animations)
+7. Audio & VFX (music style, sound effects, particles)
+8. UI Screens (start, pause, game over, HUD)
+9. Extra Features (power-ups, scoring, upgrades)
+10. Game Summary (2-3 lines)
+
+Be specific and detailed. Make it ready for implementation. Focus on creating a polished, complete game experience.
+
+OUTPUT: Write a well-structured, detailed game description in clear paragraphs.`
+            },
+            {
+              role: 'user',
+              content: `Short game idea: ${prompt}
+
+Graphics Style: ${options?.graphicsQuality || 'stylized 2D'}
+Multiplayer: ${options?.isMultiplayer ? 'Yes - ' + (options?.multiplayerType || 'co-op') : 'Single player'}
+
+Expand this into a complete, detailed game design description.`
+            }
+          ],
+          temperature: 0.9,
+          max_tokens: 4000
+        }),
+      });
+
+      if (!imagineResponse.ok) {
+        throw new Error('Failed to generate game description');
+      }
+
+      const imagineData = await imagineResponse.json();
+      const gameDescription = imagineData.choices?.[0]?.message?.content;
+
+      if (!gameDescription) {
+        throw new Error('No game description generated');
+      }
+
+      const suggestedTitle = prompt.split('.')[0].trim().slice(0, 50);
+
+      console.log('Game description generated successfully');
+
+      return new Response(
+        JSON.stringify({ 
+          gameDescription,
+          suggestedTitle,
+          success: true 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log('Generating game from prompt:', prompt);
