@@ -1,8 +1,12 @@
-import { X, Timer, Mic, MicOff, Users, Volume2, VolumeX, Keyboard, MousePointer } from "lucide-react";
+import { X, Timer, Mic, MicOff, Users, Volume2, VolumeX, Keyboard, MousePointer, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 import { useVoiceChat } from "@/hooks/use-voice-chat";
 import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface GamePlayerProps {
   game: {
@@ -20,6 +24,66 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
   const [soundOn, setSoundOn] = useState(true);
   const [showControlsOverlay, setShowControlsOverlay] = useState(false);
   const bgAudioRef = useRef<HTMLAudioElement | null>(null);
+  
+  // Tip dialog state
+  const [tipDialogOpen, setTipDialogOpen] = useState(false);
+  const [tipAmount, setTipAmount] = useState("");
+  const [tipCurrency, setTipCurrency] = useState<"INR" | "USD">("INR");
+  const [exchangeRate, setExchangeRate] = useState<number>(83); // Default fallback
+  const [isLoadingRate, setIsLoadingRate] = useState(false);
+  const [rateLastUpdated, setRateLastUpdated] = useState<string>("");
+  
+  // UPI details
+  const UPI_ID = "6260976807@axl";
+  const UPI_NAME = "ANIL";
+  
+  // Fetch live exchange rate when dialog opens
+  useEffect(() => {
+    if (!tipDialogOpen) return;
+    
+    const fetchExchangeRate = async () => {
+      setIsLoadingRate(true);
+      try {
+        // Using exchangerate-api.com (free, no API key required)
+        const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+        const data = await response.json();
+        
+        if (data && data.rates && data.rates.INR) {
+          setExchangeRate(data.rates.INR);
+          setRateLastUpdated(new Date().toLocaleTimeString());
+          console.log('✅ Live exchange rate fetched:', data.rates.INR);
+        }
+      } catch (error) {
+        console.error('Failed to fetch exchange rate, using fallback:', error);
+        // Keep using fallback rate of 83
+      } finally {
+        setIsLoadingRate(false);
+      }
+    };
+    
+    fetchExchangeRate();
+  }, [tipDialogOpen]);
+  
+  const handleTip = () => {
+    const amount = parseFloat(tipAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid amount");
+      return;
+    }
+    
+    // Convert to INR if USD selected (using live exchange rate)
+    const amountInINR = tipCurrency === "USD" ? Math.round(amount * exchangeRate) : amount;
+    
+    // Build UPI link
+    const upiLink = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_NAME)}&mc=0000&mode=02&purpose=00&tn=${encodeURIComponent("Tip via Oplus AI")}&am=${amountInINR}&cu=INR`;
+    
+    // Open UPI app
+    window.location.href = upiLink;
+    
+    // Close dialog
+    setTipDialogOpen(false);
+    setTipAmount("");
+  };
 
   const AudioStream = ({ stream }: { stream: MediaStream }) => {
     const ref = useRef<HTMLAudioElement | null>(null);
@@ -113,6 +177,15 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
               {isMicOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
             </Button>
             <Button
+              variant="secondary"
+              size="icon"
+              onClick={() => setTipDialogOpen(true)}
+              title="Tip the creator"
+              className="bg-yellow-500 hover:bg-yellow-600 text-white"
+            >
+              <DollarSign className="h-5 w-5" />
+            </Button>
+            <Button
               variant="ghost"
               size="icon"
               onClick={onClose}
@@ -155,6 +228,106 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
           <div className="p-2 text-center text-xs text-destructive">{error}</div>
         )}
       </div>
+      
+      {/* Tip Dialog */}
+      <Dialog open={tipDialogOpen} onOpenChange={setTipDialogOpen}>
+        <DialogContent className="sm:max-w-md z-[200]">
+          <DialogHeader>
+            <DialogTitle>Tip the Creator 💰</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="currency">Currency</Label>
+              <Select value={tipCurrency} onValueChange={(v) => setTipCurrency(v as "INR" | "USD")}>
+                <SelectTrigger id="currency" className="w-full">
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent className="z-[250]">
+                  <SelectItem value="INR">₹ INR (Indian Rupee)</SelectItem>
+                  <SelectItem value="USD">$ USD (US Dollar)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="amount">Amount</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">
+                  {tipCurrency === "INR" ? "₹" : "$"}
+                </span>
+                <Input
+                  id="amount"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={tipAmount}
+                  onChange={(e) => setTipAmount(e.target.value)}
+                  placeholder={tipCurrency === "INR" ? "Enter amount" : "Enter amount"}
+                  className="pl-8 pr-20"
+                />
+                {tipAmount && !isNaN(parseFloat(tipAmount)) && parseFloat(tipAmount) > 0 && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-green-600 dark:text-green-400">
+                    {tipCurrency === "USD" 
+                      ? `≈ ₹${Math.round(parseFloat(tipAmount) * exchangeRate)}`
+                      : `≈ $${(parseFloat(tipAmount) / exchangeRate).toFixed(2)}`
+                    }
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  {tipCurrency === "INR" ? "Indian Rupee" : "US Dollar"}
+                  {isLoadingRate && <span className="animate-pulse">⟳</span>}
+                </span>
+                {tipAmount && !isNaN(parseFloat(tipAmount)) && parseFloat(tipAmount) > 0 && (
+                  <span className="font-medium">
+                    Final: ₹{tipCurrency === "USD" ? Math.round(parseFloat(tipAmount) * exchangeRate) : parseFloat(tipAmount)} INR
+                  </span>
+                )}
+              </div>
+              {rateLastUpdated && (
+                <p className="text-[10px] text-muted-foreground">
+                  Live rate: $1 = ₹{exchangeRate.toFixed(2)} • Updated: {rateLastUpdated}
+                </p>
+              )}
+            </div>
+            
+            <div className="rounded-lg bg-muted p-3 text-sm">
+              <p className="font-medium mb-1">Quick Tips:</p>
+              <div className="flex gap-2 flex-wrap">
+                {tipCurrency === "INR" ? (
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => setTipAmount("10")}>₹10</Button>
+                    <Button size="sm" variant="outline" onClick={() => setTipAmount("50")}>₹50</Button>
+                    <Button size="sm" variant="outline" onClick={() => setTipAmount("100")}>₹100</Button>
+                    <Button size="sm" variant="outline" onClick={() => setTipAmount("500")}>₹500</Button>
+                  </>
+                ) : (
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => setTipAmount("1")}>$1</Button>
+                    <Button size="sm" variant="outline" onClick={() => setTipAmount("5")}>$5</Button>
+                    <Button size="sm" variant="outline" onClick={() => setTipAmount("10")}>$10</Button>
+                    <Button size="sm" variant="outline" onClick={() => setTipAmount("20")}>$20</Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTipDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleTip}
+              disabled={!tipAmount || isNaN(parseFloat(tipAmount)) || parseFloat(tipAmount) <= 0}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white"
+            >
+              <DollarSign className="h-4 w-4 mr-2" />
+              Send Tip via UPI
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
