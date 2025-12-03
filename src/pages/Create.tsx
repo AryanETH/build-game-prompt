@@ -350,6 +350,7 @@ export default function Create() {
   const [generatedInterfaceImage, setGeneratedInterfaceImage] = useState<string>("");
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
   const [thumbnailPreview, setThumbnailPreview] = useState<string>("");
+  const [isImagining, setIsImagining] = useState(false);
 
   // Sound URL input removed per product direction; audio may be auto-generated
   // If arriving via Remix, load base game code for editing
@@ -525,10 +526,67 @@ export default function Create() {
     }
   };
 
+  // Imagine function: AI analyzes short prompt and generates detailed game description
+  const handleImagine = async () => {
+    if (!prompt.trim()) {
+      toast.error("Please enter a game idea first");
+      return;
+    }
+
+    setIsImagining(true);
+    playClick();
+
+    try {
+      toast.info("AI is imagining your game...");
+
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch(
+        'https://zyozjzfkmmtuxvjgryhk.supabase.co/functions/v1/imagine-game',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token || ''}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+          },
+          body: JSON.stringify({
+            shortIdea: prompt
+          })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to imagine game: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.gameDescription) {
+        setDescription(data.gameDescription);
+        if (data.suggestedTitle) {
+          setTitle(data.suggestedTitle);
+        }
+        toast.success("Game concept imagined! Review the description and click Generate Game.");
+        playSuccess();
+      } else {
+        throw new Error("No game description returned");
+      }
+    } catch (error: any) {
+      console.error('Imagine error:', error);
+      toast.error("Failed to imagine game. Try again or write your own description.");
+      playError();
+    } finally {
+      setIsImagining(false);
+    }
+  };
+
   const handleGenerate = async () => {
     playClick();
-    if (!useImagePrompt && !prompt.trim()) {
-      toast.error("Please enter a game prompt");
+    
+    // Check if description is available (from Imagine button)
+    if (!description.trim()) {
+      toast.error("Please click 'Imagine Game Concept' first to generate a detailed description");
       return;
     }
     
@@ -543,7 +601,8 @@ export default function Create() {
     await logActivity({ type: 'game_creating' });
     
     try {
-      let finalPrompt = prompt;
+      // Use the detailed description from the Imagine step
+      let finalPrompt = description;
       
       // If using image prompt, analyze the image and create prompt (fail-soft)
       if (useImagePrompt) {
@@ -943,23 +1002,44 @@ export default function Create() {
 
                 {/* Sound URL input removed */}
 
-                <Button
-                  onClick={handleGenerate}
-                  className="w-full gradient-primary glow-primary text-sm md:text-base"
-                  disabled={isGenerating}
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="mr-2 h-3 w-3 md:h-4 md:w-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-3 w-3 md:h-4 md:w-4" />
-                      Generate Game
-                    </>
-                  )}
-                </Button>
+                {/* Two-step process: Imagine → Generate */}
+                <div className="space-y-2">
+                  <Button
+                    onClick={handleImagine}
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm md:text-base"
+                    disabled={isImagining || !prompt.trim()}
+                  >
+                    {isImagining ? (
+                      <>
+                        <Loader2 className="mr-2 h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                        Imagining...
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                        ✨ Imagine Game Concept
+                      </>
+                    )}
+                  </Button>
+                  
+                  <Button
+                    onClick={handleGenerate}
+                    className="w-full gradient-primary glow-primary text-sm md:text-base"
+                    disabled={isGenerating || !description.trim()}
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="mr-2 h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                        Generate Game
+                      </>
+                    )}
+                  </Button>
+                </div>
                 
                 <Button 
                   onClick={generateThumbnail} 
