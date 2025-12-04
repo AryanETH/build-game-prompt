@@ -582,7 +582,7 @@ export const GameFeed = () => {
         {hydratedGames?.map((game, index) => (
           <div key={game.id} className="w-full snap-start snap-always md:snap-align-none flex items-center justify-center" style={{ height: 'calc(100dvh - 120px)', minHeight: 'calc(100dvh - 120px)', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
             {/* Mobile: Full bleed, Desktop: Centered card with action buttons */}
-            <div className="relative w-full h-full md:w-auto md:h-auto">
+            <div className="relative w-full h-full md:w-auto md:h-auto md:flex md:items-center md:gap-6">
               {/* Card container - Desktop: Fixed size with stacked effect */}
               <div className="relative w-full h-full md:w-[374px] md:h-[660px]">
               <Card className="relative w-full h-full overflow-visible md:overflow-hidden rounded-none md:rounded-3xl border-0 md:border md:border-gray-200 md:shadow-lg bg-black md:bg-gray-300">
@@ -645,8 +645,8 @@ export const GameFeed = () => {
                   <div className="text-xs md:text-sm text-white/95 line-clamp-2 drop-shadow-md leading-snug">{game.description || ''}</div>
                 </div>
 
-                {/* Right action bar - Inside card on mobile, outside on desktop (like reference image) */}
-                <div className="absolute right-3 bottom-20 md:absolute md:-right-[70px] md:bottom-[96px] md:top-auto flex flex-col gap-3 md:gap-5 items-center text-white z-30">
+                {/* Right action bar - Mobile only (desktop buttons are on right outside card) */}
+                <div className="md:hidden absolute right-3 bottom-20 flex flex-col gap-3 items-center text-white z-30">
                 {/* Play button - Purple gradient on desktop, primary on mobile */}
                 <button
                   aria-label="Play game"
@@ -712,6 +712,60 @@ export const GameFeed = () => {
                 </div>
               )}
               </div>
+
+              {/* Desktop: Action buttons on RIGHT */}
+              <div className="hidden md:flex flex-col gap-4 items-center">
+                {/* Play button */}
+                <button
+                  aria-label="Play game"
+                  className="h-14 w-14 rounded-full flex items-center justify-center bg-gradient-to-br from-purple-600 to-blue-600 text-white hover:scale-110 active:scale-95 transition-all duration-200 shadow-xl hover:shadow-2xl"
+                  onClick={() => handlePlay(game)}
+                >
+                  <Play className="h-6 w-6 fill-white ml-0.5" strokeWidth={0} />
+                </button>
+                
+                {/* Like button */}
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    aria-label={likedGames.has(game.id) ? 'Unlike game' : 'Like game'}
+                    className={`h-14 w-14 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-xl hover:shadow-2xl ${
+                      likedGames.has(game.id) 
+                        ? 'bg-gradient-to-br from-red-500 to-pink-500 text-white' 
+                        : 'bg-white border-2 border-gray-300 text-gray-700 hover:border-red-400'
+                    }`}
+                    onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
+                  >
+                    <Heart className={`h-6 w-6 ${likedGames.has(game.id) ? 'fill-white' : ''}`} strokeWidth={2} />
+                  </button>
+                  <span className="text-sm font-bold text-gray-700">{game.likes_count ?? 0}</span>
+                </div>
+                
+                {/* Comments button */}
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    aria-label="View comments"
+                    className="h-14 w-14 rounded-full flex items-center justify-center bg-white border-2 border-gray-300 text-gray-700 hover:border-blue-400 hover:scale-110 active:scale-95 transition-all duration-200 shadow-xl hover:shadow-2xl"
+                    onClick={() => setCommentsOpenFor(game)}
+                  >
+                    <MessageCircle className="h-6 w-6" strokeWidth={2} />
+                  </button>
+                  <span className="text-sm font-bold text-gray-700">
+                    {commentsOpenFor?.id === game.id ? comments.length : (game.comments_count || 0)}
+                  </span>
+                </div>
+                
+                {/* Share button */}
+                <div className="flex flex-col items-center">
+                  <button
+                    aria-label="Share game"
+                    className="h-14 w-14 rounded-full flex items-center justify-center bg-white border-2 border-gray-300 text-gray-700 hover:border-green-400 hover:scale-110 active:scale-95 transition-all duration-200 shadow-xl hover:shadow-2xl"
+                    onClick={() => handleShare(game)}
+                  >
+                    <Share2 className="h-6 w-6" strokeWidth={2} />
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
         ))}
