@@ -6,6 +6,226 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Get engine description for prompts
+function getEngineDescription(engine: string): string {
+  switch (engine) {
+    case 'phaser':
+      return '(Phaser.js - Best for 2D: Shooting, Platformers, Racing, Battles)';
+    case 'threejs':
+      return '(Three.js - 3D games with WebGL)';
+    case 'babylonjs':
+      return '(Babylon.js - AAA-level 3D graphics)';
+    case 'playcanvas':
+      return '(PlayCanvas - Professional engine used by King, Zynga, Facebook)';
+    default:
+      return '(Vanilla HTML5 Canvas - Fast and lightweight)';
+  }
+}
+
+// Engine-specific instructions for game generation
+function getEngineInstructions(engine: string): string {
+  switch (engine) {
+    case 'phaser':
+      return `🎮 PHASER.JS GAME ENGINE
+
+You are creating a game using Phaser 3 framework. Phaser is perfect for 2D games like:
+- Shooting games (top-down, side-scrolling)
+- Platformers (Mario-style, Metroidvania)
+- Racing games (arcade racing, endless runners)
+- Battle games (fighting, arena combat)
+
+PHASER 3 SETUP:
+- Include Phaser 3 CDN: <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+- Use Phaser.Game configuration with scenes
+- Implement preload(), create(), and update() methods
+- Use Phaser's built-in physics (Arcade Physics)
+- Leverage Phaser's sprite system and animations
+- Use Phaser's input handling for keyboard and touch
+- Implement Phaser's camera system for smooth following
+- Use Phaser's particle emitters for effects
+- Leverage Phaser's audio system
+
+PHASER BEST PRACTICES:
+- Create separate Scene classes for Menu, Game, and GameOver
+- Use Phaser.Physics.Arcade for collision detection
+- Implement sprite groups for enemies and collectibles
+- Use tweens for smooth animations
+- Implement proper asset loading in preload()
+- Use Phaser's built-in camera shake and flash effects
+- Leverage Phaser's tilemap system for levels
+- Use Phaser's input pointer for touch controls
+
+EXAMPLE STRUCTURE:
+\`\`\`javascript
+const config = {
+  type: Phaser.AUTO,
+  width: 360,
+  height: 640,
+  physics: { default: 'arcade', arcade: { gravity: { y: 300 }, debug: false } },
+  scene: [MenuScene, GameScene, GameOverScene]
+};
+const game = new Phaser.Game(config);
+\`\`\``;
+
+    case 'threejs':
+      return `🌐 THREE.JS 3D GAME ENGINE
+
+You are creating a 3D game using Three.js. Three.js is perfect for:
+- 3D browser games with WebGL
+- First-person shooters
+- 3D racing games
+- Space simulators
+- 3D puzzle games
+
+THREE.JS SETUP:
+- Include Three.js CDN: <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+- Create Scene, Camera, and Renderer
+- Use THREE.WebGLRenderer for rendering
+- Implement PerspectiveCamera for 3D view
+- Use THREE.Mesh with geometries and materials
+- Implement lighting (AmbientLight, DirectionalLight, PointLight)
+- Use THREE.Clock for delta time
+- Implement raycasting for object interaction
+- Use THREE.Group for organizing objects
+
+THREE.JS BEST PRACTICES:
+- Use requestAnimationFrame for render loop
+- Implement proper camera controls (OrbitControls or custom)
+- Use THREE.BoxGeometry, SphereGeometry, etc. for shapes
+- Implement MeshStandardMaterial or MeshPhongMaterial for realistic lighting
+- Use THREE.TextureLoader for textures
+- Implement fog for depth perception
+- Use THREE.Vector3 for 3D math
+- Optimize with frustum culling and LOD
+- Implement shadows with renderer.shadowMap
+
+EXAMPLE STRUCTURE:
+\`\`\`javascript
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+function animate() {
+  requestAnimationFrame(animate);
+  // Update game logic
+  renderer.render(scene, camera);
+}
+animate();
+\`\`\``;
+
+    case 'babylonjs':
+      return `🎯 BABYLON.JS AAA-LEVEL 3D ENGINE
+
+You are creating a high-quality 3D game using Babylon.js. Babylon.js is perfect for:
+- AAA-level graphics in HTML5
+- Advanced 3D games with realistic physics
+- VR/AR experiences
+- Complex 3D simulations
+- Professional game development
+
+BABYLON.JS SETUP:
+- Include Babylon.js CDN: <script src="https://cdn.babylonjs.com/babylon.js"></script>
+- Create Engine, Scene, and Camera
+- Use BABYLON.Engine for rendering
+- Implement ArcRotateCamera or FreeCamera
+- Use BABYLON.MeshBuilder for creating meshes
+- Implement advanced lighting (HemisphericLight, DirectionalLight, SpotLight)
+- Use BABYLON.PhysicsImpostor for realistic physics
+- Implement particle systems with BABYLON.ParticleSystem
+- Use BABYLON.ActionManager for interactions
+
+BABYLON.JS BEST PRACTICES:
+- Use scene.registerBeforeRender() for game loop
+- Implement PBR materials for realistic rendering
+- Use BABYLON.GUI for 2D UI overlay
+- Implement shadows with ShadowGenerator
+- Use BABYLON.Animation for smooth animations
+- Leverage built-in collision detection
+- Implement post-processing effects
+- Use BABYLON.SceneLoader for loading 3D models
+- Optimize with scene.freezeActiveMeshes()
+
+EXAMPLE STRUCTURE:
+\`\`\`javascript
+const canvas = document.getElementById('renderCanvas');
+const engine = new BABYLON.Engine(canvas, true);
+const scene = new BABYLON.Scene(engine);
+const camera = new BABYLON.ArcRotateCamera('camera', 0, 0, 10, BABYLON.Vector3.Zero(), scene);
+camera.attachControl(canvas, true);
+
+const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0, 1, 0), scene);
+
+engine.runRenderLoop(() => {
+  scene.render();
+});
+\`\`\``;
+
+    case 'playcanvas':
+      return `🏆 PLAYCANVAS PROFESSIONAL ENGINE
+
+You are creating a professional game using PlayCanvas. PlayCanvas is used by:
+- King (Candy Crush developers)
+- Zynga (FarmVille, Words With Friends)
+- Facebook Instant Games
+- Professional game studios
+
+PLAYCANVAS SETUP:
+- Include PlayCanvas Engine: <script src="https://code.playcanvas.com/playcanvas-stable.min.js"></script>
+- Create pc.Application
+- Use pc.Entity for game objects
+- Implement pc.CameraComponent for rendering
+- Use pc.RigidBodyComponent for physics
+- Implement pc.ScriptComponent for game logic
+- Use pc.LightComponent for lighting
+- Leverage pc.SoundComponent for audio
+
+PLAYCANVAS BEST PRACTICES:
+- Use Entity-Component-System architecture
+- Implement custom scripts with pc.createScript()
+- Use pc.Vec3 for 3D math
+- Implement input handling with app.keyboard and app.mouse
+- Use pc.Asset for resource management
+- Leverage built-in physics engine
+- Implement particle effects with pc.ParticleSystemComponent
+- Use pc.GraphNode hierarchy for scene organization
+- Optimize with frustum culling and batching
+
+EXAMPLE STRUCTURE:
+\`\`\`javascript
+const canvas = document.getElementById('application');
+const app = new pc.Application(canvas, {
+  mouse: new pc.Mouse(canvas),
+  keyboard: new pc.Keyboard(window)
+});
+
+app.start();
+app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
+app.setCanvasResolution(pc.RESOLUTION_AUTO);
+
+// Create camera
+const camera = new pc.Entity('camera');
+camera.addComponent('camera', { clearColor: new pc.Color(0.1, 0.1, 0.1) });
+app.root.addChild(camera);
+
+// Game loop
+app.on('update', (dt) => {
+  // Update game logic
+});
+\`\`\``;
+
+    default: // vanilla
+      return `🎮 VANILLA HTML5 CANVAS GAME ENGINE
+
+You are creating a game using pure HTML5 Canvas API. This is perfect for:
+- Fast, lightweight games
+- Learning game development fundamentals
+- Games that need maximum compatibility
+- Prototypes and simple games`;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -68,10 +288,11 @@ OUTPUT: Write a well-structured, detailed game description in clear paragraphs.`
               role: 'user',
               content: `Short game idea: ${prompt}
 
+Game Engine: ${options?.gameEngine || 'vanilla'} ${getEngineDescription(options?.gameEngine || 'vanilla')}
 Graphics Style: ${options?.graphicsQuality || 'stylized 2D'}
 Multiplayer: ${options?.isMultiplayer ? 'Yes - ' + (options?.multiplayerType || 'co-op') : 'Single player'}
 
-Expand this into a complete, detailed game design description.`
+Expand this into a complete, detailed game design description. Consider the capabilities of the ${options?.gameEngine || 'vanilla'} engine when designing the game mechanics and features.`
             }
           ],
           temperature: 0.9,
@@ -108,6 +329,10 @@ Expand this into a complete, detailed game design description.`
 
     console.log('Generating game from prompt:', prompt);
     console.log('Using Groq Llama 3.3 70B');
+    console.log('Game Engine:', options?.gameEngine || 'vanilla');
+
+    // Determine engine-specific instructions
+    const engineInstructions = getEngineInstructions(options?.gameEngine || 'vanilla');
 
     // API call with Groq
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -121,7 +346,9 @@ Expand this into a complete, detailed game design description.`
         messages: [
           {
             role: 'system',
-            content: `You are an elite HTML5 game developer specializing in creating polished, modern 2D games with professional graphics and smooth gameplay. You create games that look and feel like commercial indie games, not basic prototypes.
+            content: `You are an elite HTML5 game developer specializing in creating polished, modern games with professional graphics and smooth gameplay. You create games that look and feel like commercial indie games, not basic prototypes.
+
+${engineInstructions}
 
 🎮 GAME QUALITY REQUIREMENTS:
 
@@ -303,20 +530,23 @@ Game Requirements:
 - Game states: Start Menu, Playing, Paused, Game Over
 - Visual feedback for all interactions
 
+Game Engine: ${options?.gameEngine || 'vanilla'} ${getEngineDescription(options?.gameEngine || 'vanilla')}
 Graphics Style: ${options?.graphicsQuality || 'stylized 2D with smooth animations'}
 Multiplayer: ${options?.isMultiplayer ? 'Yes - ' + (options?.multiplayerType || 'co-op') : 'Single player'}
 
-Make this game feel polished and professional, like a commercial indie game. Focus on smooth animations, satisfying feedback, and engaging gameplay.`
+Make this game feel polished and professional, like a commercial indie game. Focus on smooth animations, satisfying feedback, and engaging gameplay.
+
+IMPORTANT: Use the ${options?.gameEngine || 'vanilla'} engine as specified. Include all necessary CDN links and follow the engine's best practices.`
           },
           {
             role: 'user',
-            content: `Create a polished 2D game based on this concept:
+            content: `Create a polished game based on this concept:
 
 ${prompt}
 
 Game Requirements:
-- Professional 2D graphics with smooth animations (60 FPS)
-- Parallax scrolling backgrounds (minimum 3 layers for depth)
+- Professional graphics with smooth animations (60 FPS)
+- Parallax scrolling backgrounds (if 2D) or 3D depth (if 3D)
 - Particle effects for all player actions and collisions
 - Mobile touch controls + Desktop keyboard/mouse controls
 - Multiple levels OR endless procedurally generated gameplay
@@ -331,10 +561,13 @@ Game Requirements:
 - Game states: Start Menu, Playing, Paused, Game Over
 - Visual feedback for all interactions
 
-Graphics Style: ${options?.graphicsQuality || 'stylized 2D with smooth animations'}
+Game Engine: ${options?.gameEngine || 'vanilla'} ${getEngineDescription(options?.gameEngine || 'vanilla')}
+Graphics Style: ${options?.graphicsQuality || 'stylized with smooth animations'}
 Multiplayer: ${options?.isMultiplayer ? 'Yes - ' + (options?.multiplayerType || 'co-op') : 'Single player'}
 
-Make this game feel polished and professional, like a commercial indie game. Focus on smooth animations, satisfying feedback, and engaging gameplay.`
+Make this game feel polished and professional, like a commercial indie game. Focus on smooth animations, satisfying feedback, and engaging gameplay.
+
+CRITICAL: Use the ${options?.gameEngine || 'vanilla'} engine. Include all necessary CDN links in the HTML. Follow the engine's architecture and best practices.`
           }
         ],
         temperature: 0.8,

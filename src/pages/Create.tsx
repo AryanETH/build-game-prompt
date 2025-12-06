@@ -340,6 +340,7 @@ export default function Create() {
   const [isMultiplayer, setIsMultiplayer] = useState(false);
   const [multiplayerType, setMultiplayerType] = useState<string>("co-op");
   const [graphicsQuality, setGraphicsQuality] = useState<string>("realistic");
+  const [gameEngine, setGameEngine] = useState<string>("vanilla");
   const [isPublic, setIsPublic] = useState<boolean>(true);
   const [previewOpen, setPreviewOpen] = useState<boolean>(false);
   const promptRef = useRef<HTMLTextAreaElement | null>(null);
@@ -557,6 +558,7 @@ export default function Create() {
             imagineOnly: true, // Special flag to only generate description
             options: {
               graphicsQuality,
+              gameEngine,
               isMultiplayer,
               multiplayerType
             }
@@ -637,6 +639,8 @@ export default function Create() {
           body: { 
             prompt: finalPrompt,
             options: {
+              gameEngine,
+              graphicsQuality,
               isMultiplayer,
               multiplayerType
             },
@@ -1117,6 +1121,30 @@ export default function Create() {
                     </div>
                   </div>
                   <Switch id="isPublic" checked={isPublic} onCheckedChange={setIsPublic} />
+                </div>
+
+                {/* Game Engine Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="gameEngine" className="text-sm md:text-base">Game Engine</Label>
+                  <Select value={gameEngine} onValueChange={setGameEngine}>
+                    <SelectTrigger id="gameEngine" className="w-full">
+                      <SelectValue placeholder="Select game engine" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="vanilla">Vanilla HTML5 Canvas</SelectItem>
+                      <SelectItem value="phaser">Phaser.js - 2D Games</SelectItem>
+                      <SelectItem value="threejs">Three.js - 3D Graphics</SelectItem>
+                      <SelectItem value="babylonjs">Babylon.js - AAA 3D</SelectItem>
+                      <SelectItem value="playcanvas">PlayCanvas - Professional</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] md:text-xs text-muted-foreground">
+                    {gameEngine === "vanilla" && "Pure HTML5 Canvas - Fast and lightweight"}
+                    {gameEngine === "phaser" && "Best for 2D: Shooting, Platformers, Racing, Battles"}
+                    {gameEngine === "threejs" && "3D games inside browsers with WebGL"}
+                    {gameEngine === "babylonjs" && "AAA-level graphics inside HTML5"}
+                    {gameEngine === "playcanvas" && "Used by King, Zynga, Facebook Instant Games"}
+                  </p>
                 </div>
 
                 {/* Multiplayer Toggle */}
