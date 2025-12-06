@@ -156,17 +156,15 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
             <div className="text-xs text-muted-foreground hidden md:flex items-center gap-1 mr-2">
               <Users className="h-4 w-4" /> {participants.length}
             </div>
-            {game.sound_url && (
-              <Button
-                variant={soundOn ? "default" : "secondary"}
-                size="icon"
-                onClick={() => setSoundOn((v) => !v)}
-                title={soundOn ? "Sound off" : "Sound on"}
-                className={soundOn ? "gradient-primary" : ""}
-              >
-                {soundOn ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
-              </Button>
-            )}
+            <Button
+              variant={soundOn ? "default" : "secondary"}
+              size="icon"
+              onClick={() => setSoundOn((v) => !v)}
+              title={soundOn ? "Sound off" : "Sound on"}
+              className={soundOn ? "gradient-primary" : ""}
+            >
+              {soundOn ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+            </Button>
             <Button
               variant={isMicOn ? "default" : "secondary"}
               size="icon"
