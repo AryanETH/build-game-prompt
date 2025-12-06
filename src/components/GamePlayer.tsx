@@ -1,4 +1,4 @@
-import { X, Timer, Mic, MicOff, Users, Volume2, VolumeX, Keyboard, MousePointer, DollarSign } from "lucide-react";
+import { X, Timer, Mic, MicOff, Users, Volume2, VolumeX, Keyboard, MousePointer, DollarSign, Gamepad2, QrCode, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 import { useVoiceChat } from "@/hooks/use-voice-chat";
@@ -7,6 +7,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMatchmaking } from "@/hooks/useMatchmaking";
+import { LookingForPlayer } from "./LookingForPlayer";
+import { TurnBasedGame } from "./TurnBasedGame";
+import QRCode from "qrcode";
 
 interface GamePlayerProps {
   game: {
@@ -28,15 +32,48 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
   // Tip dialog state
   const [tipDialogOpen, setTipDialogOpen] = useState(false);
   const [tipAmount, setTipAmount] = useState("");
+  
+  // Matchmaking state
+  const {
+    isInQueue,
+    matchSession,
+    isMatching,
+    queueCount,
+    userId,
+    joinQueue,
+    leaveQueue,
+    switchTurn,
+    updateScore,
+    endMatch,
+    isMyTurn,
+  } = useMatchmaking(game.id);
+  
+  const [player1Data, setPlayer1Data] = useState<any>(null);
+  const [player2Data, setPlayer2Data] = useState<any>(null);
   const [tipCurrency, setTipCurrency] = useState<"INR" | "USD">("INR");
   const [exchangeRate, setExchangeRate] = useState<number>(83); // Default fallback
   const [isLoadingRate, setIsLoadingRate] = useState(false);
   const [rateLastUpdated, setRateLastUpdated] = useState<string>("");
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
+  const [showQrCode, setShowQrCode] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
   
   // UPI details
   const UPI_ID = "6260976807@axl";
   const UPI_NAME = "ANIL";
   
+  // Detect if desktop
+  useEffect(() => {
+    const checkIfDesktop = () => {
+      setIsDesktop(window.innerWidth > 768);
+    };
+    
+    checkIfDesktop();
+    window.addEventListener('resize', checkIfDesktop);
+    
+    return () => window.removeEventListener('resize', checkIfDesktop);
+  }, []);
+
   // Fetch live exchange rate when dialog opens
   useEffect(() => {
     if (!tipDialogOpen) return;
@@ -64,7 +101,7 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
     fetchExchangeRate();
   }, [tipDialogOpen]);
   
-  const handleTip = () => {
+  const handleTip = async () => {
     const amount = parseFloat(tipAmount);
     if (isNaN(amount) || amount <= 0) {
       alert("Please enter a valid amount");
@@ -77,12 +114,29 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
     // Build UPI link
     const upiLink = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_NAME)}&mc=0000&mode=02&purpose=00&tn=${encodeURIComponent("Tip via Oplus AI")}&am=${amountInINR}&cu=INR`;
     
-    // Open UPI app
-    window.location.href = upiLink;
-    
-    // Close dialog
-    setTipDialogOpen(false);
-    setTipAmount("");
+    // Desktop: Show QR Code
+    if (isDesktop) {
+      try {
+        const qrDataUrl = await QRCode.toDataURL(upiLink, {
+          width: 300,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          }
+        });
+        setQrCodeUrl(qrDataUrl);
+        setShowQrCode(true);
+      } catch (error) {
+        console.error('Failed to generate QR code:', error);
+        alert("Failed to generate QR code");
+      }
+    } else {
+      // Mobile: Open UPI app directly
+      window.location.href = upiLink;
+      setTipDialogOpen(false);
+      setTipAmount("");
+    }
   };
 
   const AudioStream = ({ stream }: { stream: MediaStream }) => {
@@ -139,6 +193,49 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
     if (!bgAudioRef.current) return;
     bgAudioRef.current.muted = !soundOn;
   }, [soundOn, game.sound_url]);
+  
+  // Fetch player data when matched
+  useEffect(() => {
+    if (!matchSession) return;
+    
+    const fetchPlayers = async () => {
+      const { data: p1 } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .eq('id', matchSession.player1_id)
+        .single();
+      
+      const { data: p2 } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .eq('id', matchSession.player2_id)
+        .single();
+      
+      setPlayer1Data({ ...p1, score: matchSession.player1_score });
+      setPlayer2Data({ ...p2, score: matchSession.player2_score });
+    };
+    
+    fetchPlayers();
+  }, [matchSession]);
+
+  // Show turn-based game when matched
+  if (matchSession?.status === 'playing' && player1Data && player2Data) {
+    return (
+      <TurnBasedGame
+        matchId={matchSession.id}
+        gameCode={game.game_code}
+        player1={player1Data}
+        player2={player2Data}
+        currentTurn={matchSession.current_turn || ''}
+        myId={userId || ''}
+        isMyTurn={isMyTurn}
+        onSwitchTurn={() => switchTurn(matchSession.id)}
+        onUpdateScore={(score) => updateScore(matchSession.id, score)}
+        onEndMatch={(winnerId) => endMatch(matchSession.id, winnerId)}
+        onClose={onClose}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[100] bg-background">
@@ -173,6 +270,16 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
               className={isMicOn ? "gradient-primary" : ""}
             >
               {isMicOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+            </Button>
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={joinQueue}
+              title="Find player for multiplayer"
+              className="bg-purple-500 hover:bg-purple-600 text-white"
+              disabled={isInQueue || !!matchSession}
+            >
+              <Gamepad2 className="h-5 w-5" />
             </Button>
             <Button
               variant="secondary"
@@ -228,11 +335,20 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
       </div>
       
       {/* Tip Dialog */}
-      <Dialog open={tipDialogOpen} onOpenChange={setTipDialogOpen}>
+      <Dialog open={tipDialogOpen} onOpenChange={(open) => {
+        setTipDialogOpen(open);
+        if (!open) {
+          setShowQrCode(false);
+          setTipAmount("");
+        }
+      }}>
         <DialogContent className="sm:max-w-md z-[200]">
           <DialogHeader>
             <DialogTitle>Tip the Creator 💰</DialogTitle>
           </DialogHeader>
+          
+          {!showQrCode ? (
+            <>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="currency">Currency</Label>
@@ -320,12 +436,92 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
               disabled={!tipAmount || isNaN(parseFloat(tipAmount)) || parseFloat(tipAmount) <= 0}
               className="bg-yellow-500 hover:bg-yellow-600 text-white"
             >
-              <DollarSign className="h-4 w-4 mr-2" />
-              Send Tip via UPI
+              {isDesktop ? (
+                <>
+                  <QrCode className="h-4 w-4 mr-2" />
+                  Generate QR Code
+                </>
+              ) : (
+                <>
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Send Tip via UPI
+                </>
+              )}
             </Button>
           </DialogFooter>
+          </>
+          
+          ) : (
+            <>
+              {/* QR Code Display (Desktop Only) */}
+              <div className="space-y-4 py-4">
+                <div className="text-center">
+                  <div className="inline-block p-4 bg-white rounded-lg shadow-lg">
+                    <img src={qrCodeUrl} alt="UPI Payment QR Code" className="w-64 h-64" />
+                  </div>
+                  
+                  <div className="mt-4 space-y-2">
+                    <p className="text-lg font-semibold">
+                      {tipCurrency === "INR" ? "₹" : "$"}{tipAmount}
+                      {tipCurrency === "USD" && ` (≈ ₹${Math.round(parseFloat(tipAmount) * exchangeRate)})`}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Scan this QR code with any UPI app
+                    </p>
+                  </div>
+                  
+                  <div className="mt-4 flex items-center justify-center gap-3 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Smartphone className="h-4 w-4" />
+                      <span>PhonePe</span>
+                    </div>
+                    <span>•</span>
+                    <div className="flex items-center gap-1">
+                      <Smartphone className="h-4 w-4" />
+                      <span>Google Pay</span>
+                    </div>
+                    <span>•</span>
+                    <div className="flex items-center gap-1">
+                      <Smartphone className="h-4 w-4" />
+                      <span>Paytm</span>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+                    <p className="text-xs text-green-800 dark:text-green-200">
+                      ✓ After scanning, complete the payment in your UPI app
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowQrCode(false)}>
+                  Back
+                </Button>
+                <Button
+                  onClick={() => {
+                    setTipDialogOpen(false);
+                    setShowQrCode(false);
+                    setTipAmount("");
+                  }}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                >
+                  Done
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
+      
+      {/* Looking for Player Overlay */}
+      {isInQueue && (
+        <LookingForPlayer
+          queueCount={queueCount}
+          onCancel={leaveQueue}
+        />
+      )}
     </div>
   );
 };
