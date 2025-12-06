@@ -24,6 +24,7 @@ export default function Admin() {
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
   const [editingGameId, setEditingGameId] = useState<string | null>(null);
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
   
   // Games list
   const [games, setGames] = useState<any[]>([]);
@@ -168,6 +169,53 @@ export default function Admin() {
       thumbnail: `https://images.unsplash.com/${selectedImage}?w=400&h=800&fit=crop&q=80`,
       cover: `https://images.unsplash.com/${selectedImage}?w=800&h=1200&fit=crop&q=80`
     };
+  };
+
+  const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    setUploadingThumbnail(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Upload to Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `thumbnails/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('thumbnails')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data } = supabase.storage
+        .from('thumbnails')
+        .getPublicUrl(filePath);
+
+      setThumbnailUrl(data.publicUrl);
+      toast.success('Thumbnail uploaded successfully!');
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error(error.message || 'Failed to upload thumbnail');
+    } finally {
+      setUploadingThumbnail(false);
+    }
   };
 
   const handleUploadGame = async () => {
@@ -666,15 +714,59 @@ export default function Admin() {
                   </div>
 
                   <div>
-                    <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>Thumbnail URL</label>
+                    <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>Thumbnail</label>
+                    
+                    {/* File Upload Button */}
+                    <div className="flex gap-2 mb-2">
+                      <label className="flex-1">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleThumbnailUpload}
+                          className="hidden"
+                          disabled={uploadingThumbnail}
+                        />
+                        <div className={`flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                          isDarkMode 
+                            ? 'border-white/40 hover:border-white/60 bg-white/10 hover:bg-white/20' 
+                            : 'border-gray-300 hover:border-gray-400 bg-gray-50 hover:bg-gray-100'
+                        } ${uploadingThumbnail ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                          {uploadingThumbnail ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span className="text-sm">Uploading...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-4 w-4" />
+                              <span className="text-sm">Upload from Device</span>
+                            </>
+                          )}
+                        </div>
+                      </label>
+                    </div>
+                    
+                    {/* URL Input */}
                     <Input
                       value={thumbnailUrl}
                       onChange={(e) => setThumbnailUrl(e.target.value)}
-                      placeholder="https://images.unsplash.com/... (optional - auto-generated)"
+                      placeholder="Or paste URL (optional - auto-generated)"
                       className={isDarkMode ? 'bg-white/20 border-white/40 text-white placeholder:text-white/50' : ''}
                     />
+                    
+                    {/* Preview */}
+                    {thumbnailUrl && (
+                      <div className="mt-2">
+                        <img 
+                          src={thumbnailUrl} 
+                          alt="Thumbnail preview" 
+                          className="w-32 h-32 object-cover rounded-lg border-2 border-white/20"
+                        />
+                      </div>
+                    )}
+                    
                     <p className={`text-xs mt-1 ${isDarkMode ? 'text-white/60' : 'text-black/60'}`}>
-                      Leave empty to auto-generate a gaming image based on title
+                      Upload image, paste URL, or leave empty to auto-generate
                     </p>
                   </div>
 
