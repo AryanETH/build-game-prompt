@@ -513,6 +513,7 @@ export const GameFeed = () => {
   const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
   const [gifPickerOpen, setGifPickerOpen] = useState(false);
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
 
   const { data: comments = [], refetch: refetchComments } = useQuery({
     queryKey: ['comments', commentsOpenFor?.id],
@@ -808,7 +809,32 @@ export const GameFeed = () => {
                     </button>
                   </div>
                   <div className="text-sm md:text-lg font-semibold leading-tight mb-1 drop-shadow-lg line-clamp-2">{game.title}</div>
-                  <div className="text-xs md:text-sm text-white/95 line-clamp-2 drop-shadow-md leading-snug">{game.description || ''}</div>
+                  {game.description && (
+                    <div>
+                      <div className={`text-xs md:text-sm text-white/95 drop-shadow-md leading-snug ${expandedDescriptions.has(game.id) ? '' : 'line-clamp-2'}`}>
+                        {game.description}
+                      </div>
+                      {game.description.length > 80 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedDescriptions(prev => {
+                              const next = new Set(prev);
+                              if (next.has(game.id)) {
+                                next.delete(game.id);
+                              } else {
+                                next.add(game.id);
+                              }
+                              return next;
+                            });
+                          }}
+                          className="text-xs md:text-sm font-semibold text-white/90 hover:text-white mt-1 drop-shadow-lg"
+                        >
+                          {expandedDescriptions.has(game.id) ? 'Less' : 'More'}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Right action bar - Mobile only (desktop buttons are on right outside card) */}

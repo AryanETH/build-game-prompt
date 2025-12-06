@@ -10,9 +10,11 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Sparkles, Globe, Lock, Eye, Pencil, Image as ImageIcon, Wand2, Gamepad2, Users, Volume2 } from "lucide-react";
+import { Loader2, Sparkles, Globe, Lock, Eye, Pencil, Image as ImageIcon, Wand2, Gamepad2, Users, Volume2, Construction, DollarSign, Heart, QrCode, Smartphone, MessageSquare, X } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { logActivity } from "@/lib/activityLogger";
 import { playClick, playSuccess, playError } from "@/lib/sounds";
+import QRCode from "qrcode";
 
 // Local fallback generator to ensure creation works even if the AI gateway is unavailable
 const buildFallbackGameCode = (title: string) => `<!DOCTYPE html>
@@ -344,13 +346,31 @@ export default function Create() {
   const navigate = useNavigate();
   const [initializedFromRemix, setInitializedFromRemix] = useState(false);
   
-  // Image Prompt feature (upload removed, only AI generation)
-  const [useImagePrompt, setUseImagePrompt] = useState(false);
-  const [imageGenerationPrompt, setImageGenerationPrompt] = useState("");
-  const [generatedInterfaceImage, setGeneratedInterfaceImage] = useState<string>("");
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
   const [thumbnailPreview, setThumbnailPreview] = useState<string>("");
   const [isImagining, setIsImagining] = useState(false);
+  
+  // Support dialog state
+  const [supportDialogOpen, setSupportDialogOpen] = useState(false);
+  const [supportAmount, setSupportAmount] = useState("");
+  const [supportCurrency, setSupportCurrency] = useState<"INR" | "USD">("INR");
+  const [exchangeRate, setExchangeRate] = useState<number>(83);
+  const [isLoadingRate, setIsLoadingRate] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
+  const [showQrCode, setShowQrCode] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+  
+  // UPI details
+  const UPI_ID = "6260976807@axl";
+  const UPI_NAME = "ANIL";
+  
+  // HARDCODED to 2 for now - will increment daily starting tomorrow
+  const [supporterCount, setSupporterCount] = useState(2);
+  const GOAL = 1000;
+  
+  // Feedback popup state
+  const [showFeedbackPopup, setShowFeedbackPopup] = useState(false);
+  const FEEDBACK_URL = "https://docs.google.com/forms/d/e/1FAIpQLSd1PCiR8rk3j2me_fjNHfbr_KyyYlYUxHFUT73Lwc6xiSFHag/viewform?usp=publish-editor";
 
   // Sound URL input removed per product direction; audio may be auto-generated
   // If arriving via Remix, load base game code for editing
@@ -376,26 +396,7 @@ export default function Create() {
   }, [initializedFromRemix]);
 
 
-  const handleGenerateInterfaceImage = async () => {
-    if (!imageGenerationPrompt.trim()) {
-      toast.error("Please enter an image description");
-      return;
-    }
-    
-    try {
-      toast.info("Generating interface image...");
-      const { data, error } = await supabase.functions.invoke('generate-interface-image', {
-        body: { prompt: imageGenerationPrompt }
-      });
-      
-      if (error) throw error;
-      setGeneratedInterfaceImage(data.imageUrl);
-      toast.success("Interface image generated!");
-    } catch (error: any) {
-      console.error('Image generation error:', error);
-      toast.error("Failed to generate image");
-    }
-  };
+
   
   // Generate thumbnail using NEW Supabase Edge Function
   const generateThumbnail = async () => {
@@ -618,11 +619,6 @@ export default function Create() {
     
     // If no description but has prompt, use prompt as description
     const gameDescription = description.trim() || prompt.trim();
-    
-    if (useImagePrompt && !generatedInterfaceImage) {
-      toast.error("Please generate an interface image first");
-      return;
-    }
 
     setIsGenerating(true);
     
@@ -633,21 +629,6 @@ export default function Create() {
       // Use the detailed description from the Imagine step or manual entry
       let finalPrompt = gameDescription;
       
-      // If using image prompt, analyze the image and create prompt (fail-soft)
-      if (useImagePrompt) {
-        toast.info("Analyzing interface design...");
-        try {
-          const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-interface', {
-            body: { imageUrl: generatedInterfaceImage }
-          });
-          if (!analysisError && analysisData?.analysis) {
-            finalPrompt = `${prompt}\n\nBased on this UI/UX design: ${analysisData.analysis}`;
-          }
-        } catch (_e) {
-          console.log("Interface analysis unavailable, proceeding without it");
-        }
-      }
-      
       // Generate game code (fallback to local template if AI gateway unavailable)
       let producedCode = "";
       try {
@@ -657,9 +638,7 @@ export default function Create() {
             prompt: finalPrompt,
             options: {
               isMultiplayer,
-              multiplayerType,
-              graphicsQuality,
-              isInterfaceDesign: useImagePrompt
+              multiplayerType
             },
             title: title || prompt.slice(0, 50),
             description,
@@ -841,7 +820,7 @@ export default function Create() {
         creator_id: userId,
         is_multiplayer: isMultiplayer,
         multiplayer_type: isMultiplayer ? multiplayerType : null,
-        graphics_quality: graphicsQuality,
+        is_public: isPublic,
         thumbnail_url: thumbnailUrl || null,
         cover_url: coverUrl || thumbnailUrl || null,
         sound_url: finalSoundUrl || null,
@@ -889,10 +868,217 @@ export default function Create() {
     }
   };
 
-  return (
-    <div className="min-h-[100dvh] overflow-y-auto" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+  // Detect if desktop (screen width > 768px)
+  useEffect(() => {
+    const checkIfDesktop = () => {
+      setIsDesktop(window.innerWidth > 768);
+    };
+    
+    checkIfDesktop();
+    window.addEventListener('resize', checkIfDesktop);
+    
+    return () => window.removeEventListener('resize', checkIfDesktop);
+  }, []);
+  
+  // Update supporter count at midnight - increment by 5 or 6
+  useEffect(() => {
+    const updateAtMidnight = () => {
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
       
-      <div className="container mx-auto px-3 md:px-4 py-4 md:py-8 pb-24 md:pb-8">
+      const msUntilMidnight = tomorrow.getTime() - now.getTime();
+      
+      const timer = setTimeout(() => {
+        setSupporterCount(prev => Math.min(prev + 5, 1000)); // Add 5 each day, cap at 1000
+        updateAtMidnight(); // Schedule next update
+      }, msUntilMidnight);
+      
+      return () => clearTimeout(timer);
+    };
+    
+    return updateAtMidnight();
+  }, []);
+  
+  // Exit intent detection - show feedback popup when user tries to leave
+  useEffect(() => {
+    let hasShownPopup = false;
+    
+    const handleMouseLeave = (e: MouseEvent) => {
+      // Detect when mouse leaves from top of page (trying to close tab/window)
+      if (e.clientY <= 0 && !hasShownPopup) {
+        hasShownPopup = true;
+        setShowFeedbackPopup(true);
+      }
+    };
+    
+    document.addEventListener('mouseleave', handleMouseLeave);
+    
+    return () => {
+      document.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, []);
+
+  // Fetch live exchange rate when support dialog opens
+  useEffect(() => {
+    if (!supportDialogOpen) return;
+    
+    const fetchExchangeRate = async () => {
+      setIsLoadingRate(true);
+      try {
+        const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+        const data = await response.json();
+        
+        if (data && data.rates && data.rates.INR) {
+          setExchangeRate(data.rates.INR);
+        }
+      } catch (error) {
+        console.error('Failed to fetch exchange rate, using fallback:', error);
+      } finally {
+        setIsLoadingRate(false);
+      }
+    };
+    
+    fetchExchangeRate();
+  }, [supportDialogOpen]);
+
+  const handleSupport = async () => {
+    const amount = parseFloat(supportAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+    
+    // Convert to INR if USD selected
+    const amountInINR = supportCurrency === "USD" ? Math.round(amount * exchangeRate) : amount;
+    
+    // Build UPI link
+    const upiLink = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_NAME)}&mc=0000&mode=02&purpose=00&tn=${encodeURIComponent("Support Oplus Development")}&am=${amountInINR}&cu=INR`;
+    
+    // Desktop: Show QR Code
+    if (isDesktop) {
+      try {
+        const qrDataUrl = await QRCode.toDataURL(upiLink, {
+          width: 300,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          }
+        });
+        setQrCodeUrl(qrDataUrl);
+        setShowQrCode(true);
+        playSuccess();
+      } catch (error) {
+        console.error('Failed to generate QR code:', error);
+        toast.error("Failed to generate QR code");
+      }
+    } else {
+      // Mobile: Open UPI app directly
+      window.location.href = upiLink;
+      setSupportDialogOpen(false);
+      setSupportAmount("");
+      toast.success("Thank you for supporting Oplus! 💜");
+      playSuccess();
+    }
+  };
+
+  return (
+    <div className="min-h-[100dvh] overflow-y-auto relative" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      
+      {/* Under Development Overlay - Theme Adaptive */}
+      <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/60 dark:bg-black/40 backdrop-blur-md">
+        <div className="text-center px-6 py-8 max-w-md mx-auto">
+          {/* Construction Icon with Animation */}
+          <div className="mb-6 relative">
+            <Construction className="h-20 w-20 md:h-24 md:w-24 mx-auto text-yellow-500 dark:text-yellow-400 animate-pulse" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-24 w-24 md:h-28 md:w-28 border-4 border-yellow-500/30 dark:border-yellow-400/30 rounded-full animate-ping" />
+            </div>
+          </div>
+          
+          {/* Title */}
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+            Under Development
+          </h2>
+          
+          {/* Description */}
+          <p className="text-sm md:text-base text-gray-700 dark:text-white/80 mb-6 leading-relaxed">
+            We're working hard to bring you an amazing game creation experience. 
+            This feature will be available soon!
+          </p>
+          
+          {/* Supporter Counter */}
+          <div className="mb-6 bg-gray-100/80 dark:bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-gray-300 dark:border-white/20 shadow-lg">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <Heart className="h-5 w-5 text-red-500 fill-current animate-pulse" />
+              <span className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                {supporterCount}
+              </span>
+              <span className="text-sm md:text-base text-gray-700 dark:text-white/80">supporters</span>
+            </div>
+            
+            {/* Progress Bar */}
+            <div className="space-y-2">
+              <div className="relative h-3 bg-gray-300 dark:bg-white/20 rounded-full overflow-hidden">
+                <div 
+                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-green-400 via-green-500 to-emerald-500 rounded-full transition-all duration-1000 ease-out shadow-lg shadow-green-500/50"
+                  style={{ width: `${Math.min((supporterCount / GOAL) * 100, 100)}%` }}
+                >
+                  <div className="absolute inset-0 bg-white/30 animate-pulse" />
+                </div>
+              </div>
+              
+              {/* Milestones */}
+              <div className="flex justify-between text-xs text-gray-600 dark:text-white/60 px-1">
+                <span className={supporterCount >= 1 ? "text-gray-900 dark:text-white font-semibold" : ""}>1</span>
+                <span className={supporterCount >= 250 ? "text-gray-900 dark:text-white font-semibold" : ""}>250</span>
+                <span className={supporterCount >= 500 ? "text-gray-900 dark:text-white font-semibold" : ""}>500</span>
+                <span className={supporterCount >= 750 ? "text-gray-900 dark:text-white font-semibold" : ""}>750</span>
+                <span className={supporterCount >= 1000 ? "text-gray-900 dark:text-white font-semibold" : ""}>1000</span>
+              </div>
+            </div>
+            
+            <p className="text-xs text-gray-600 dark:text-white/60 mt-3">
+              {supporterCount >= GOAL 
+                ? "🎉 Goal reached! Thank you!" 
+                : `${GOAL - supporterCount} more to reach our goal`
+              }
+            </p>
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
+            <Button
+              onClick={() => setSupportDialogOpen(true)}
+              className="gradient-primary glow-primary text-white font-semibold px-6 py-6 text-base md:text-lg hover:scale-105 transition-transform shadow-xl w-full sm:w-auto"
+              size="lg"
+            >
+              <Heart className="h-5 w-5 mr-2 fill-current" />
+              Support This Project
+            </Button>
+            
+            <Button
+              onClick={() => window.open(FEEDBACK_URL, '_blank')}
+              variant="outline"
+              className="border-2 border-gray-400 dark:border-white/30 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-white/10 font-semibold px-6 py-6 text-base md:text-lg hover:scale-105 transition-transform shadow-xl w-full sm:w-auto"
+              size="lg"
+            >
+              <MessageSquare className="h-5 w-5 mr-2" />
+              Give Feedback
+            </Button>
+          </div>
+          
+          {/* Additional Info */}
+          <p className="text-xs md:text-sm text-gray-600 dark:text-white/60 mt-4">
+            Your support helps us build better features faster
+          </p>
+        </div>
+      </div>
+      
+      {/* Blurred Background Content */}
+      <div className="container mx-auto px-3 md:px-4 py-4 md:py-8 pb-24 md:pb-8 pointer-events-none select-none opacity-50">
         <div className="max-w-7xl w-full mx-auto">
           <div className="text-center mb-4 md:mb-8">
             <h1 className="text-2xl md:text-4xl font-bold mb-1 md:mb-2">Create with AI</h1>
@@ -906,55 +1092,13 @@ export default function Create() {
             {/* Input Panel */}
             <Card className="gradient-card border-border/50 p-4 md:p-6 w-full md:flex-1">
               <div className="space-y-3 md:space-y-4">
-                {/* Image Prompt Toggle */}
-                <div className="flex items-center justify-between p-3 md:p-4 rounded-lg bg-accent/10 border border-accent/20">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <ImageIcon className="h-4 w-4 md:h-5 md:w-5 text-accent" />
-                    <div>
-                      <p className="font-medium text-sm md:text-base">Image Prompt</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground">Generate from UI design</p>
-                    </div>
-                  </div>
-                  <Switch checked={useImagePrompt} onCheckedChange={setUseImagePrompt} />
-                </div>
-
-                {useImagePrompt && (
-                  <div className="space-y-3 md:space-y-4 p-3 md:p-4 rounded-lg bg-muted/50">
-                    <div>
-                      <Label htmlFor="imageGenPrompt" className="text-sm md:text-base">Describe Your Game Interface</Label>
-                      <Textarea
-                        id="imageGenPrompt"
-                        value={imageGenerationPrompt}
-                        onChange={(e) => setImageGenerationPrompt(e.target.value)}
-                        placeholder="e.g., 'Modern mobile game UI with colorful buttons and score display in a 9:16 vertical layout'"
-                        className="mt-2 min-h-20 md:min-h-24 text-sm md:text-base"
-                      />
-                      <Button
-                        type="button"
-                        onClick={handleGenerateInterfaceImage}
-                        variant="secondary"
-                        size="sm"
-                        className="mt-3 w-full text-xs md:text-sm"
-                      >
-                        <Sparkles className="h-3 w-3 md:h-4 md:w-4 mr-2" />
-                        Generate Interface Design
-                      </Button>
-                      {generatedInterfaceImage && (
-                        <div className="mt-3 p-2 border border-accent/30 rounded-lg">
-                          <img src={generatedInterfaceImage} alt="Generated" className="w-full rounded-lg max-h-48 md:max-h-64 object-contain" />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 <div>
                   <Label htmlFor="prompt" className="text-sm md:text-base">Game Prompt</Label>
                   <Textarea
                     id="prompt"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder={useImagePrompt ? "Additional instructions (optional)" : "e.g., 'A space shooter where you dodge asteroids and collect stars'"}
+                    placeholder="e.g., 'A space shooter where you dodge asteroids and collect stars'"
                     className="min-h-24 md:min-h-32 mt-2 text-sm md:text-base"
                     disabled={isGenerating}
                     ref={promptRef}
@@ -962,47 +1106,29 @@ export default function Create() {
                 </div>
 
                 {/* Visibility */}
-                <div className="grid grid-cols-2 gap-3 md:gap-4 items-center">
+                <div className="flex items-center justify-between p-3 md:p-4 rounded-lg bg-accent/10 border border-accent/20">
                   <div className="flex items-center gap-2 md:gap-3">
-                    <Switch id="isPublic" checked={isPublic} onCheckedChange={setIsPublic} />
-                    <Label htmlFor="isPublic" className="flex items-center gap-1.5 md:gap-2 text-sm md:text-base">
-                      {isPublic ? (<><Globe className="h-3 w-3 md:h-4 md:w-4" /> Public</>) : (<><Lock className="h-3 w-3 md:h-4 md:w-4" /> Private</>)}
-                    </Label>
+                    {isPublic ? <Globe className="h-4 w-4 md:h-5 md:w-5 text-accent" /> : <Lock className="h-4 w-4 md:h-5 md:w-5 text-accent" />}
+                    <div>
+                      <p className="font-medium text-sm md:text-base">{isPublic ? 'Public' : 'Private'}</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground">
+                        {isPublic ? 'Visible to everyone' : 'Only visible to your followers'}
+                      </p>
+                    </div>
                   </div>
+                  <Switch id="isPublic" checked={isPublic} onCheckedChange={setIsPublic} />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 md:gap-4 items-center">
+                {/* Multiplayer Toggle */}
+                <div className="flex items-center justify-between p-3 md:p-4 rounded-lg bg-accent/10 border border-accent/20">
                   <div className="flex items-center gap-2 md:gap-3">
-                    <Switch id="isMultiplayer" checked={isMultiplayer} onCheckedChange={setIsMultiplayer} />
-                    <Label htmlFor="isMultiplayer" className="text-sm md:text-base">Multiplayer</Label>
+                    <Users className="h-4 w-4 md:h-5 md:w-5 text-accent" />
+                    <div>
+                      <p className="font-medium text-sm md:text-base">Multiplayer</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground">Enable multiplayer features</p>
+                    </div>
                   </div>
-                  <div>
-                    <Label className="mb-2 block text-sm md:text-base">Multiplayer Type</Label>
-                    <Select value={multiplayerType} onValueChange={setMultiplayerType} disabled={!isMultiplayer}>
-                      <SelectTrigger className="w-full text-sm md:text-base"><SelectValue placeholder="Select type" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="co-op">Co-op</SelectItem>
-                        <SelectItem value="versus">Versus</SelectItem>
-                        <SelectItem value="turn-based">Turn-based</SelectItem>
-                        <SelectItem value="real-time">Real-time</SelectItem>
-                        <SelectItem value="party">Party</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="mb-2 block text-sm md:text-base">Graphics Quality</Label>
-                  <Select value={graphicsQuality} onValueChange={setGraphicsQuality}>
-                    <SelectTrigger className="w-full text-sm md:text-base"><SelectValue placeholder="Graphics" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="ultra">Ultra</SelectItem>
-                      <SelectItem value="realistic">Realistic</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Switch id="isMultiplayer" checked={isMultiplayer} onCheckedChange={setIsMultiplayer} />
                 </div>
 
                 {/* Thumbnail and cover URLs are auto-generated; inputs removed per requirements */}
@@ -1182,6 +1308,237 @@ export default function Create() {
               Publish
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Support Dialog */}
+      <Dialog open={supportDialogOpen} onOpenChange={(open) => {
+        setSupportDialogOpen(open);
+        if (!open) {
+          setShowQrCode(false);
+          setSupportAmount("");
+        }
+      }}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Heart className="h-5 w-5 text-red-500 fill-current" />
+              Support Oplus Development
+            </DialogTitle>
+          </DialogHeader>
+          
+          {!showQrCode ? (
+            <>
+              <div className="space-y-4 py-4">
+                <div className="text-sm text-muted-foreground">
+                  Your support helps us build amazing features and keep Oplus running. Thank you! 💜
+                </div>
+                
+                {/* Currency Selection */}
+                <div className="space-y-2">
+                  <Label>Currency</Label>
+                  <RadioGroup value={supportCurrency} onValueChange={(v) => setSupportCurrency(v as "INR" | "USD")}>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="INR" id="inr" />
+                      <Label htmlFor="inr" className="font-normal cursor-pointer">INR (₹)</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="USD" id="usd" />
+                      <Label htmlFor="usd" className="font-normal cursor-pointer">
+                        USD ($) {isLoadingRate ? '...' : `≈ ₹${exchangeRate.toFixed(2)}`}
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {/* Amount Input */}
+                <div className="space-y-2">
+                  <Label htmlFor="support-amount">
+                    Amount ({supportCurrency === "INR" ? "₹" : "$"})
+                  </Label>
+                  <Input
+                    id="support-amount"
+                    type="number"
+                    placeholder={supportCurrency === "INR" ? "100" : "5"}
+                    value={supportAmount}
+                    onChange={(e) => setSupportAmount(e.target.value)}
+                    min="1"
+                  />
+                  {supportCurrency === "USD" && supportAmount && !isNaN(parseFloat(supportAmount)) && (
+                    <p className="text-xs text-muted-foreground">
+                      ≈ ₹{Math.round(parseFloat(supportAmount) * exchangeRate)} INR
+                    </p>
+                  )}
+                </div>
+
+                {/* Quick Amount Buttons */}
+                <div className="space-y-2">
+                  <Label>Quick Select</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {supportCurrency === "INR" ? (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => setSupportAmount("50")}>₹50</Button>
+                        <Button variant="outline" size="sm" onClick={() => setSupportAmount("100")}>₹100</Button>
+                        <Button variant="outline" size="sm" onClick={() => setSupportAmount("500")}>₹500</Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => setSupportAmount("2")}>$2</Button>
+                        <Button variant="outline" size="sm" onClick={() => setSupportAmount("5")}>$5</Button>
+                        <Button variant="outline" size="sm" onClick={() => setSupportAmount("10")}>$10</Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                  <p className="font-semibold mb-1 flex items-center gap-2">
+                    {isDesktop ? <QrCode className="h-4 w-4" /> : <Smartphone className="h-4 w-4" />}
+                    Payment via UPI
+                  </p>
+                  <p>
+                    {isDesktop 
+                      ? "Scan the QR code with your phone's UPI app to complete payment."
+                      : "You'll be redirected to your UPI app (PhonePe, Google Pay, Paytm, etc.) to complete the payment securely."
+                    }
+                  </p>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setSupportDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSupport}
+                  disabled={!supportAmount || parseFloat(supportAmount) <= 0}
+                  className="gradient-primary"
+                >
+                  {isDesktop ? (
+                    <>
+                      <QrCode className="h-4 w-4 mr-2" />
+                      Generate QR Code
+                    </>
+                  ) : (
+                    <>
+                      <DollarSign className="h-4 w-4 mr-2" />
+                      Send via UPI
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              {/* QR Code Display (Desktop Only) */}
+              <div className="space-y-4 py-4">
+                <div className="text-center">
+                  <div className="inline-block p-4 bg-white rounded-lg shadow-lg">
+                    <img src={qrCodeUrl} alt="UPI Payment QR Code" className="w-64 h-64" />
+                  </div>
+                  
+                  <div className="mt-4 space-y-2">
+                    <p className="text-lg font-semibold">
+                      {supportCurrency === "INR" ? "₹" : "$"}{supportAmount}
+                      {supportCurrency === "USD" && ` (≈ ₹${Math.round(parseFloat(supportAmount) * exchangeRate)})`}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Scan this QR code with any UPI app
+                    </p>
+                  </div>
+                  
+                  <div className="mt-4 flex items-center justify-center gap-3 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Smartphone className="h-4 w-4" />
+                      <span>PhonePe</span>
+                    </div>
+                    <span>•</span>
+                    <div className="flex items-center gap-1">
+                      <Smartphone className="h-4 w-4" />
+                      <span>Google Pay</span>
+                    </div>
+                    <span>•</span>
+                    <div className="flex items-center gap-1">
+                      <Smartphone className="h-4 w-4" />
+                      <span>Paytm</span>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+                    <p className="text-xs text-green-800 dark:text-green-200">
+                      ✓ After scanning, complete the payment in your UPI app
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowQrCode(false)}>
+                  Back
+                </Button>
+                <Button
+                  onClick={() => {
+                    setSupportDialogOpen(false);
+                    setShowQrCode(false);
+                    setSupportAmount("");
+                    toast.success("Thank you for supporting Oplus! 💜");
+                  }}
+                  className="gradient-primary"
+                >
+                  Done
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Exit Feedback Popup */}
+      <Dialog open={showFeedbackPopup} onOpenChange={setShowFeedbackPopup}>
+        <DialogContent className="sm:max-w-[500px]">
+          <button
+            onClick={() => setShowFeedbackPopup(false)}
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
+          
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              <MessageSquare className="h-6 w-6 text-primary" />
+              Have you enjoyed our product?
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-6">
+            <p className="text-base text-muted-foreground mb-6">
+              We'd love to hear your thoughts! Your feedback helps us improve and build better features for you.
+            </p>
+            
+            <div className="flex flex-col gap-3">
+              <Button
+                onClick={() => {
+                  window.open(FEEDBACK_URL, '_blank');
+                  setShowFeedbackPopup(false);
+                }}
+                className="gradient-primary text-white font-semibold py-6 text-lg"
+                size="lg"
+              >
+                <MessageSquare className="h-5 w-5 mr-2" />
+                Write Feedback
+              </Button>
+              
+              <Button
+                onClick={() => setShowFeedbackPopup(false)}
+                variant="outline"
+                size="lg"
+                className="py-6"
+              >
+                Maybe Later
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
