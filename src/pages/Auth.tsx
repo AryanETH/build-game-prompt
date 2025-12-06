@@ -24,14 +24,26 @@ export default function AuthPage() {
     supabase.auth.getSession().then(({ data }) => {
       setIsLoading(false);
       if (data.session) {
-        navigate("/feed");
+        // Check if admin
+        const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || "admin@oplus.ai";
+        if (data.session.user.email === adminEmail) {
+          navigate("/admin");
+        } else {
+          navigate("/feed");
+        }
       }
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session) {
         setTimeout(() => {
-          navigate("/feed");
+          // Check if admin
+          const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || "admin@oplus.ai";
+          if (session.user.email === adminEmail) {
+            navigate("/admin");
+          } else {
+            navigate("/feed");
+          }
         }, 300);
       }
     });
@@ -46,6 +58,9 @@ export default function AuthPage() {
     
     if (isSignUp) {
       // Sign up
+      const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || "admin@oplus.ai";
+      const isAdminSignup = formData.email === adminEmail;
+      
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -53,13 +68,18 @@ export default function AuthPage() {
           data: {
             username: formData.username,
           },
+          emailRedirectTo: window.location.origin,
         },
       });
 
       if (error) {
         toast.error(error.message);
       } else if (data.user) {
-        toast.success("Account created! Please check your email to verify.");
+        if (isAdminSignup) {
+          toast.success("Admin account created! You can log in immediately.");
+        } else {
+          toast.success("Account created! Please check your email to verify.");
+        }
       }
     } else {
       // Sign in

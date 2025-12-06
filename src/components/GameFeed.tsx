@@ -272,29 +272,160 @@ export const GameFeed = () => {
     }
   };
 
+  const generateShareImage = (game: Game): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1200;
+      canvas.height = 630;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        reject(new Error('Canvas not supported'));
+        return;
+      }
+
+      // Create gradient background
+      const gradient = ctx.createLinearGradient(0, 0, 1200, 630);
+      gradient.addColorStop(0, '#6366f1');
+      gradient.addColorStop(1, '#8b5cf6');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 1200, 630);
+      
+      // Load and draw Oplus logo
+      const logo = new Image();
+      logo.src = '/Oplus full horizonatal.png';
+      
+      const finishImage = () => {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], `${game.title.replace(/[^a-z0-9]/gi, '_')}-oplus.png`, { 
+              type: 'image/png' 
+            });
+            resolve(file);
+          } else {
+            reject(new Error('Failed to create image'));
+          }
+        }, 'image/png');
+      };
+      
+      logo.onload = () => {
+        // Draw logo at top (centered)
+        const logoHeight = 140;
+        const logoWidth = (logo.width / logo.height) * logoHeight;
+        ctx.drawImage(logo, (1200 - logoWidth) / 2, 40, logoWidth, logoHeight);
+        
+        // Add game title (center)
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 72px Arial';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 10;
+        const title = game.title.length > 30 ? game.title.substring(0, 30) + '...' : game.title;
+        ctx.fillText(title, 600, 350);
+        
+        // Add tagline (bottom)
+        ctx.font = '36px Arial';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText("Let's Play Together!", 600, 520);
+        
+        finishImage();
+      };
+      
+      logo.onerror = () => {
+        // Fallback if logo doesn't load
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 64px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('OPLUS', 600, 100);
+        
+        // Add game title (center)
+        ctx.font = 'bold 72px Arial';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 10;
+        const title = game.title.length > 30 ? game.title.substring(0, 30) + '...' : game.title;
+        ctx.fillText(title, 600, 350);
+        
+        // Add tagline (bottom)
+        ctx.font = '36px Arial';
+        ctx.fillText("Let's Play Together!", 600, 520);
+        
+        finishImage();
+      };
+    });
+  };
+
   const handleShare = async (game: Game) => {
     const shareUrl = `${window.location.origin}/feed?game=${game.id}`;
+    const shareText = `Hey! I'm waiting for you, let's play ${game.title} on Oplus!\n\n${shareUrl}`;
     
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      toast.success("Game link copied to clipboard!");
-      playSuccess();
-    } catch (error) {
-      // Fallback for browsers that don't support clipboard API
-      const textArea = document.createElement('textarea');
-      textArea.value = shareUrl;
-      textArea.style.position = 'fixed';
-      textArea.style.left = '-999999px';
-      document.body.appendChild(textArea);
-      textArea.select();
-      try {
-        document.execCommand('copy');
-        toast.success("Game link copied to clipboard!");
-        playSuccess();
-      } catch (err) {
-        toast.error("Failed to copy link");
+      // Check if Web Share API is available
+      if (navigator.share) {
+        try {
+          // Try to generate and share with image
+          const imageFile = await generateShareImage(game);
+          
+          // Try sharing with image
+          await navigator.share({
+            title: `Play ${game.title} on Oplus`,
+            text: shareText,
+            files: [imageFile],
+          });
+          
+          playSuccess();
+          toast.success("Shared successfully!");
+          return;
+        } catch (imageError: any) {
+          console.log('Share with image failed, trying text only:', imageError);
+          
+          // If image sharing fails, try text only
+          if (imageError.name !== 'AbortError') {
+            await navigator.share({
+              title: `Play ${game.title} on Oplus`,
+              text: shareText,
+            });
+            
+            playSuccess();
+            toast.success("Shared successfully!");
+            return;
+          }
+        }
       }
-      document.body.removeChild(textArea);
+      
+      // Fallback: Copy to clipboard
+      await navigator.clipboard.writeText(shareText);
+      toast.success("Share message copied to clipboard!");
+      playSuccess();
+    } catch (error: any) {
+      console.error('Share error:', error);
+      
+      // User cancelled
+      if (error.name === 'AbortError') {
+        return;
+      }
+      
+      // Try clipboard as last resort
+      try {
+        await navigator.clipboard.writeText(shareText);
+        toast.success("Share message copied to clipboard!");
+        playSuccess();
+      } catch (clipboardError) {
+        // Final fallback
+        const textArea = document.createElement('textarea');
+        textArea.value = shareText;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          toast.success("Share message copied to clipboard!");
+          playSuccess();
+        } catch (err) {
+          toast.error("Failed to share");
+        }
+        document.body.removeChild(textArea);
+      }
     }
   };
 
