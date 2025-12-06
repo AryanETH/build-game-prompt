@@ -358,44 +358,62 @@ export const GameFeed = () => {
     const shareUrl = `${window.location.origin}/feed?game=${game.id}`;
     const shareText = `Hey! I'm waiting for you, let's play ${game.title} on Oplus!\n\n${shareUrl}`;
     
+    toast.info("Preparing to share...");
+    
     try {
-      // Check if Web Share API is available
-      if (navigator.share) {
-        try {
-          // Try to generate and share with image
-          const imageFile = await generateShareImage(game);
-          
-          // Try sharing with image
-          await navigator.share({
-            title: `Play ${game.title} on Oplus`,
-            text: shareText,
-            files: [imageFile],
-          });
-          
-          playSuccess();
-          toast.success("Shared successfully!");
-          return;
-        } catch (imageError: any) {
-          console.log('Share with image failed, trying text only:', imageError);
-          
-          // If image sharing fails, try text only
-          if (imageError.name !== 'AbortError') {
-            await navigator.share({
-              title: `Play ${game.title} on Oplus`,
-              text: shareText,
-            });
-            
+      // Generate the branded image first
+      const imageFile = await generateShareImage(game);
+      
+      // Check if Web Share API with files is supported (Windows 10+ with compatible apps)
+      if (navigator.share && navigator.canShare) {
+        const shareData = {
+          title: `Play ${game.title} on Oplus`,
+          text: shareText,
+          files: [imageFile],
+        };
+        
+        // Check if this specific share data is supported
+        if (navigator.canShare(shareData)) {
+          try {
+            // This will open Windows Share dialog with installed apps
+            await navigator.share(shareData);
             playSuccess();
             toast.success("Shared successfully!");
             return;
+          } catch (shareError: any) {
+            // User cancelled the share dialog
+            if (shareError.name === 'AbortError') {
+              toast.info("Share cancelled");
+              return;
+            }
+            console.log('Share with files failed, trying advanced clipboard:', shareError);
           }
         }
       }
       
-      // Fallback: Copy to clipboard
+      // Fallback: Advanced Clipboard API (writes both image and text)
+      try {
+        const textBlob = new Blob([shareText], { type: 'text/plain' });
+        const clipboardItem = new ClipboardItem({
+          [imageFile.type]: imageFile,
+          'text/plain': textBlob,
+        });
+        
+        await navigator.clipboard.write([clipboardItem]);
+        playSuccess();
+        toast.success("Image & text copied to clipboard!", {
+          description: "Paste into any app to share both!"
+        });
+        return;
+      } catch (clipboardError) {
+        console.log('Advanced clipboard failed, trying text only:', clipboardError);
+      }
+      
+      // Final fallback: Text only to clipboard
       await navigator.clipboard.writeText(shareText);
-      toast.success("Share message copied to clipboard!");
+      toast.success("Link copied to clipboard!");
       playSuccess();
+      
     } catch (error: any) {
       console.error('Share error:', error);
       
@@ -404,27 +422,14 @@ export const GameFeed = () => {
         return;
       }
       
-      // Try clipboard as last resort
+      // Last resort fallback
       try {
         await navigator.clipboard.writeText(shareText);
-        toast.success("Share message copied to clipboard!");
+        toast.success("Link copied to clipboard!");
         playSuccess();
       } catch (clipboardError) {
-        // Final fallback
-        const textArea = document.createElement('textarea');
-        textArea.value = shareText;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.select();
-        try {
-          document.execCommand('copy');
-          toast.success("Share message copied to clipboard!");
-          playSuccess();
-        } catch (err) {
-          toast.error("Failed to share");
-        }
-        document.body.removeChild(textArea);
+        toast.error("Failed to share");
+        playError();
       }
     }
   };
