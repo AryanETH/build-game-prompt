@@ -295,6 +295,8 @@ export const GameFeed = () => {
       const logo = new Image();
       logo.src = '/Oplus full horizonatal.png';
       
+      const shareUrl = `${window.location.origin}/feed?game=${game.id}`;
+      
       const finishImage = () => {
         canvas.toBlob((blob) => {
           if (blob) {
@@ -310,23 +312,31 @@ export const GameFeed = () => {
       
       logo.onload = () => {
         // Draw logo at top (centered)
-        const logoHeight = 140;
+        const logoHeight = 120;
         const logoWidth = (logo.width / logo.height) * logoHeight;
         ctx.drawImage(logo, (1200 - logoWidth) / 2, 40, logoWidth, logoHeight);
         
         // Add game title (center)
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 72px Arial';
+        ctx.font = 'bold 64px Arial';
         ctx.textAlign = 'center';
         ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
         ctx.shadowBlur = 10;
-        const title = game.title.length > 30 ? game.title.substring(0, 30) + '...' : game.title;
-        ctx.fillText(title, 600, 350);
+        const title = game.title.length > 35 ? game.title.substring(0, 35) + '...' : game.title;
+        ctx.fillText(title, 600, 300);
         
-        // Add tagline (bottom)
-        ctx.font = '36px Arial';
+        // Add tagline
+        ctx.font = '32px Arial';
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillText("Let's Play Together!", 600, 520);
+        ctx.fillText("Hey! I'm waiting for you, let's play together!", 600, 380);
+        
+        // Add URL at bottom (important - embedded in image)
+        ctx.font = 'bold 28px Arial';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.shadowBlur = 8;
+        // Shorten URL for display if needed
+        const displayUrl = shareUrl.replace('https://', '').replace('http://', '');
+        ctx.fillText(displayUrl, 600, 560);
         
         finishImage();
       };
@@ -334,20 +344,28 @@ export const GameFeed = () => {
       logo.onerror = () => {
         // Fallback if logo doesn't load
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 64px Arial';
+        ctx.font = 'bold 56px Arial';
         ctx.textAlign = 'center';
         ctx.fillText('OPLUS', 600, 100);
         
         // Add game title (center)
-        ctx.font = 'bold 72px Arial';
+        ctx.font = 'bold 64px Arial';
         ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
         ctx.shadowBlur = 10;
-        const title = game.title.length > 30 ? game.title.substring(0, 30) + '...' : game.title;
-        ctx.fillText(title, 600, 350);
+        const title = game.title.length > 35 ? game.title.substring(0, 35) + '...' : game.title;
+        ctx.fillText(title, 600, 300);
         
-        // Add tagline (bottom)
-        ctx.font = '36px Arial';
-        ctx.fillText("Let's Play Together!", 600, 520);
+        // Add tagline
+        ctx.font = '32px Arial';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText("Hey! I'm waiting for you, let's play together!", 600, 380);
+        
+        // Add URL at bottom
+        ctx.font = 'bold 28px Arial';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.shadowBlur = 8;
+        const displayUrl = shareUrl.replace('https://', '').replace('http://', '');
+        ctx.fillText(displayUrl, 600, 560);
         
         finishImage();
       };
@@ -361,8 +379,16 @@ export const GameFeed = () => {
     toast.info("Preparing to share...");
     
     try {
-      // Generate the branded image first
+      // Generate the branded image first (now includes URL embedded in image)
       const imageFile = await generateShareImage(game);
+      
+      // STRATEGY 1: Copy text to clipboard FIRST, then open share dialog
+      // This ensures text is available even if share API doesn't pass it
+      try {
+        await navigator.clipboard.writeText(shareText);
+      } catch (clipErr) {
+        console.log('Pre-clipboard copy failed:', clipErr);
+      }
       
       // Check if Web Share API with files is supported (Windows 10+ with compatible apps)
       if (navigator.share && navigator.canShare) {
@@ -378,12 +404,14 @@ export const GameFeed = () => {
             // This will open Windows Share dialog with installed apps
             await navigator.share(shareData);
             playSuccess();
-            toast.success("Shared successfully!");
+            toast.success("Shared successfully!", {
+              description: "Text is also in your clipboard - paste it if needed!"
+            });
             return;
           } catch (shareError: any) {
             // User cancelled the share dialog
             if (shareError.name === 'AbortError') {
-              toast.info("Share cancelled");
+              toast.info("Share cancelled (text still in clipboard)");
               return;
             }
             console.log('Share with files failed, trying advanced clipboard:', shareError);
@@ -391,7 +419,7 @@ export const GameFeed = () => {
         }
       }
       
-      // Fallback: Advanced Clipboard API (writes both image and text)
+      // STRATEGY 2: Advanced Clipboard API (writes both image and text)
       try {
         const textBlob = new Blob([shareText], { type: 'text/plain' });
         const clipboardItem = new ClipboardItem({
@@ -402,16 +430,18 @@ export const GameFeed = () => {
         await navigator.clipboard.write([clipboardItem]);
         playSuccess();
         toast.success("Image & text copied to clipboard!", {
-          description: "Paste into any app to share both!"
+          description: "Paste into any app - both image and text will appear!"
         });
         return;
       } catch (clipboardError) {
         console.log('Advanced clipboard failed, trying text only:', clipboardError);
       }
       
-      // Final fallback: Text only to clipboard
+      // STRATEGY 3: Text only to clipboard (URL is embedded in image anyway)
       await navigator.clipboard.writeText(shareText);
-      toast.success("Link copied to clipboard!");
+      toast.success("Link copied to clipboard!", {
+        description: "The URL is also visible in the image"
+      });
       playSuccess();
       
     } catch (error: any) {

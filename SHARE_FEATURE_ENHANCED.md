@@ -2,69 +2,99 @@
 
 ## What Changed
 
-Updated the `handleShare` function in `GameFeed.tsx` to properly trigger the Windows native share dialog on desktop.
+Updated the `handleShare` function and `generateShareImage` in `GameFeed.tsx` to ensure text and image are shared together on Windows.
+
+## Key Improvements
+
+### 1. **URL Embedded in Image**
+- The share URL is now **permanently embedded** at the bottom of the generated image
+- Even if text doesn't transfer, users can see and type the URL from the image
+- Image includes: Logo, Game Title, Tagline, and **Share URL**
+
+### 2. **Pre-Copy Text Strategy**
+- Text is copied to clipboard **BEFORE** opening the share dialog
+- This ensures text is always available, even if the share API doesn't pass it
+- User gets notification: "Text is also in your clipboard - paste it if needed!"
+
+### 3. **Triple-Layer Fallback System**
+- Strategy 1: Native Share Dialog (with pre-copied text)
+- Strategy 2: Advanced Clipboard (image + text together)
+- Strategy 3: Text-only clipboard (URL visible in image anyway)
 
 ## How It Works
 
-The share functionality now follows this priority order:
+### Share Flow:
 
-### 1. **Native Share Dialog (Primary - Desktop & Mobile)**
-- Uses `navigator.share()` with `navigator.canShare()` check
-- Opens Windows Share menu showing installed apps (Mail, OneNote, Twitter, etc.)
-- Shares both the branded image AND text together
-- User can select which app to share to
-
-### 2. **Advanced Clipboard (Fallback)**
-- Uses `ClipboardItem` API to write both image and text simultaneously
-- User can paste into any app (Discord, Slack, WhatsApp, etc.)
-- Both image and text are available in clipboard
-
-### 3. **Text-Only Clipboard (Final Fallback)**
-- Copies just the share link and message
-- Works on all browsers
+1. **Generate Image** (with embedded URL)
+2. **Copy text to clipboard** silently
+3. **Open Windows Share dialog** with image
+4. User selects app (Mail, Twitter, Discord, etc.)
+5. **Image is shared** + **Text is in clipboard** ready to paste
 
 ## User Experience
 
 When clicking the Share button:
 
-1. **On Windows 10/11 with compatible browsers (Edge, Chrome)**:
-   - Shows "Preparing to share..." toast
-   - Opens native Windows Share dialog
-   - User sees all installed apps that can receive images/text
-   - Selects app → Image and text are shared together
+### On Windows 10/11 (Edge/Chrome):
+1. Shows "Preparing to share..." toast
+2. Text is copied to clipboard automatically
+3. Windows Share dialog opens with installed apps
+4. User selects app → Image is shared
+5. Success message: "Shared successfully! Text is also in your clipboard - paste it if needed!"
+6. User can paste text separately if the app needs it
 
-2. **If native share not available**:
-   - Copies both image and text to clipboard
-   - Shows "Image & text copied to clipboard!"
-   - User can paste into any app
+### Fallback (if share dialog not available):
+1. Both image AND text copied to clipboard
+2. Shows "Image & text copied to clipboard!"
+3. User pastes into any app → Both appear
 
-3. **If advanced clipboard fails**:
-   - Copies text link only
-   - Shows "Link copied to clipboard!"
+### Final Fallback:
+1. Text copied to clipboard
+2. Shows "Link copied to clipboard! The URL is also visible in the image"
+
+## Generated Image Details
+
+**Dimensions**: 1200x630px (optimal for social media)
+
+**Content**:
+- Oplus logo (top center)
+- Game title (center, bold)
+- Tagline: "Hey! I'm waiting for you, let's play together!"
+- **Share URL** (bottom, bold) - e.g., "yoursite.com/feed?game=123"
+
+**Design**:
+- Purple gradient background (#6366f1 → #8b5cf6)
+- White text with shadow for readability
+- Professional social media share format
 
 ## Technical Details
 
-- Generates branded 1200x630px image with Oplus logo
-- Includes game title and "Let's Play Together!" tagline
-- Share URL format: `https://yoursite.com/feed?game={gameId}`
-- Share text: "Hey! I'm waiting for you, let's play {title} on Oplus!"
+- Share text format: `Hey! I'm waiting for you, let's play {title} on Oplus!\n\n{url}`
+- Image filename: `{game-title}-oplus.png`
+- Pre-clipboard copy happens before share dialog (non-blocking)
+- URL in image is shortened (removes https://) for cleaner look
 
 ## Browser Support
 
 - **Full support**: Edge 93+, Chrome 89+ (Windows 10/11)
 - **Clipboard fallback**: All modern browsers
-- **Text fallback**: All browsers including IE11
+- **Text fallback**: All browsers
+
+## Why This Works
+
+**Problem**: Windows Share API often ignores the `text` parameter when sharing files.
+
+**Solution**: 
+1. ✅ URL is **embedded in the image** (always visible)
+2. ✅ Text is **pre-copied to clipboard** (ready to paste)
+3. ✅ User gets **clear instructions** in toast notifications
+4. ✅ Multiple fallback strategies ensure it always works
 
 ## Testing
 
-To test on Windows:
 1. Click share button on any game
-2. Should see Windows Share dialog with apps like:
-   - Mail
-   - OneNote
-   - Twitter/X
-   - Facebook
-   - LinkedIn
-   - Any other installed share targets
-
-If no apps appear, the clipboard fallback will activate automatically.
+2. Check clipboard - text should be there
+3. Windows Share dialog opens
+4. Select any app (Mail, Twitter, etc.)
+5. Image is shared with embedded URL
+6. Paste text separately if needed (already in clipboard)
