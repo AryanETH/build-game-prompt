@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Heart, Play, Loader2, Pencil, UserPlus, UserCheck, Star, Trash2, Coins, LogOut, Share2, Settings, Bookmark, Sparkles, Plus, HelpCircle } from "lucide-react";
+import { User, Heart, Play, Loader2, Pencil, UserPlus, UserCheck, Star, Trash2, Coins, LogOut, Share2, Settings, Bookmark, Sparkles, Plus, HelpCircle, Crown } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -598,107 +598,128 @@ export default function Profile() {
       <div className="w-full">
         {/* Profile Header - Redesigned Layout */}
         <div className="px-4 md:px-8 py-6">
-          {/* Top Right: Coins and Logout */}
-          <div className="flex justify-end items-center gap-3 mb-6">
+          {/* Top Right: Coins and Logout - Mobile Responsive */}
+          <div className="flex justify-end items-center gap-2 md:gap-3 mb-4 md:mb-6 flex-wrap">
             <Button
               onClick={() => setCoinPurchaseOpen(true)}
               variant="outline"
               size="sm"
-              className="gap-2"
+              className="gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-4"
             >
-              <Plus className="w-4 h-4" />
-              Buy Coins
+              <Plus className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Buy Coins</span>
+              <span className="sm:hidden">Buy</span>
             </Button>
             <Button
               onClick={() => setClaimCoinsOpen(true)}
               variant="ghost"
               size="sm"
-              className="gap-2 text-blue-500 hover:text-blue-600 hover:bg-blue-500/10"
+              className="gap-1 md:gap-2 text-blue-500 hover:text-blue-600 hover:bg-blue-500/10 text-xs md:text-sm px-2 md:px-4"
               title="Claim missing coins"
             >
-              <HelpCircle className="w-4 h-4" />
-              Claim
+              <HelpCircle className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Claim</span>
             </Button>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-yellow-500/20 to-amber-500/20">
-              <Coins className="w-5 h-5 text-yellow-500" />
-              <span className="font-bold text-yellow-500">{profile?.coins || 0}</span>
+            <div className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-gradient-to-r from-yellow-500/20 to-amber-500/20">
+              <Coins className="w-4 h-4 md:w-5 md:h-5 text-yellow-500" />
+              <span className="font-bold text-yellow-500 text-sm md:text-base">{profile?.coins || 0}</span>
             </div>
             <Button 
               onClick={handleLogout}
               variant="ghost"
               size="icon"
+              className="h-8 w-8 md:h-10 md:w-10"
               title="Logout"
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-4 h-4 md:w-5 md:h-5" />
             </Button>
           </div>
 
-          {/* Profile Info - Left Aligned Layout */}
-          <div className="flex items-start gap-8 mb-6">
-            {/* Avatar - 30% bigger with Plus badge */}
-            <div className="relative">
-              <Avatar className={`w-36 h-36 flex-shrink-0 ${profile?.is_plus_member ? 'ring-4 ring-gradient-to-br from-yellow-400 to-amber-500 ring-offset-2' : ''}`}>
-                <AvatarImage src={profile?.avatar_url || undefined} />
-                <AvatarFallback className="text-4xl bg-primary/20">
-                  {profile?.username?.[0]?.toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              {profile?.is_plus_member && (
-                <div className="absolute -bottom-1 -right-1">
-                  <PlusBadge size="lg" />
+          {/* Profile Info - Mobile Responsive Layout - 30% Bigger on Mobile */}
+          <div className="flex flex-col md:flex-row items-start gap-5 md:gap-8 mb-6">
+            {/* Avatar - 30% bigger on mobile with golden gradient ring for Plus members */}
+            <div className="relative mx-auto md:mx-0">
+{profile?.is_plus_member ? (
+                <div className="relative">
+                  {/* Gold gradient ring */}
+                  <div 
+                    className="w-36 h-36 md:w-40 md:h-40 rounded-full p-[3px]"
+                    style={{
+                      background: 'linear-gradient(135deg, #a47a1e 0%, #d3a84c 14%, #ffec94 28%, #ffd87c 42%, #e6be69 57%, #b58f3e 71%, #956d13 85%, #a47a1e 100%)'
+                    }}
+                  >
+                    <Avatar className="w-full h-full">
+                      <AvatarImage src={profile?.avatar_url || undefined} />
+                      <AvatarFallback className="text-3xl md:text-4xl bg-primary/20">
+                        {profile?.username?.[0]?.toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
                 </div>
+              ) : (
+                <Avatar className="w-32 h-32 md:w-36 md:h-36 flex-shrink-0">
+                  <AvatarImage src={profile?.avatar_url || undefined} />
+                  <AvatarFallback className="text-3xl md:text-4xl bg-primary/20">
+                    {profile?.username?.[0]?.toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
               )}
             </div>
             
-            {/* Username, Buttons, Stats, and Bio */}
-            <div className="flex-1">
-              {/* Username - Larger font */}
-              <h1 className="text-3xl font-bold mb-3">{profile?.username}</h1>
+            {/* Username, Buttons, Stats, and Bio - 30% bigger on mobile */}
+            <div className="flex-1 w-full">
+              {/* Username - 30% bigger on mobile */}
+              <div className="flex items-center gap-2 mb-3 justify-center md:justify-start">
+                <h1 className="text-3xl md:text-3xl font-bold">{profile?.username}</h1>
+                {profile?.is_plus_member && (
+                  <Crown className="w-7 h-7 text-[#ffd87c] drop-shadow-lg" fill="#ffd87c" />
+                )}
+              </div>
               
-              {/* Action Buttons Row - Horizontal */}
-              <div className="flex gap-2 mb-4">
-                <Button onClick={handleOpenEdit} variant="default" size="sm" className="px-6">
+              {/* Action Buttons Row - 30% bigger on mobile */}
+              <div className="flex gap-2 mb-4 justify-center md:justify-start flex-wrap">
+                <Button onClick={handleOpenEdit} variant="default" size="sm" className="px-5 md:px-6 py-2 text-sm md:text-sm h-10 md:h-9">
                   <Pencil className="w-4 h-4 mr-2" />
-                  Edit profile
+                  Edit
                 </Button>
-                <Button onClick={handleShareProfile} variant="outline" size="sm" className="px-6">
+                <Button onClick={handleShareProfile} variant="outline" size="sm" className="px-5 md:px-6 py-2 text-sm md:text-sm h-10 md:h-9">
                   <Share2 className="w-4 h-4 mr-2" />
-                  Share profile
+                  Share
                 </Button>
-                <Button variant="ghost" size="icon" title="Settings">
+                <Button variant="ghost" size="icon" className="h-10 w-10" title="Settings">
                   <Settings className="w-5 h-5" />
                 </Button>
               </div>
               
-              {/* Stats Row - Below buttons */}
-              <div className="flex gap-6 mb-4">
+              {/* Stats Row - 30% bigger on mobile */}
+              <div className="flex gap-6 md:gap-6 mb-4 justify-center md:justify-start">
                 <button
                   type="button"
-                  className="hover:opacity-80 transition-opacity"
+                  className="hover:opacity-80 transition-opacity text-center"
                   onClick={async () => { await loadFollowing(); setFollowingOpen(true); }}
                 >
-                  <span className="font-bold text-xl">{profile?.following_count || 0}</span>
-                  <span className="text-muted-foreground text-base ml-1.5">Following</span>
+                  <span className="font-bold text-2xl md:text-xl block">{profile?.following_count || 0}</span>
+                  <span className="text-muted-foreground text-sm md:text-base">Following</span>
                 </button>
                 <button
                   type="button"
-                  className="hover:opacity-80 transition-opacity"
+                  className="hover:opacity-80 transition-opacity text-center"
                   onClick={async () => { await loadFollowers(); setFollowersOpen(true); }}
                 >
-                  <span className="font-bold text-xl">{profile?.followers_count || 0}</span>
-                  <span className="text-muted-foreground text-base ml-1.5">Followers</span>
+                  <span className="font-bold text-2xl md:text-xl block">{profile?.followers_count || 0}</span>
+                  <span className="text-muted-foreground text-sm md:text-base">Followers</span>
                 </button>
-                <div>
-                  <span className="font-bold text-xl">{totalLikes}</span>
-                  <span className="text-muted-foreground text-base ml-1.5">Likes</span>
+                <div className="text-center">
+                  <span className="font-bold text-2xl md:text-xl block">{totalLikes}</span>
+                  <span className="text-muted-foreground text-sm md:text-base">Likes</span>
                 </div>
               </div>
 
-              {/* Bio - At the end */}
+              {/* Bio - 30% bigger on mobile */}
               {profile?.bio ? (
-                <p className="text-base text-foreground leading-relaxed">{profile.bio}</p>
+                <p className="text-base md:text-base text-foreground leading-relaxed text-center md:text-left">{profile.bio}</p>
               ) : (
-                <p className="text-base text-muted-foreground italic">No bio yet</p>
+                <p className="text-base md:text-base text-muted-foreground italic text-center md:text-left">No bio yet</p>
               )}
             </div>
           </div>

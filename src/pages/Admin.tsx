@@ -489,42 +489,42 @@ export default function Admin() {
       <header className={`border-b sticky top-0 z-50 shadow-sm transition-colors ${
         isDarkMode ? 'bg-black border-white/10' : 'bg-white border-black/10'
       }`}>
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Logo variant="horizontal" size="md" forceWhite={isDarkMode} />
-            <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
+        <div className="container mx-auto px-3 md:px-6 py-3 md:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 md:gap-3">
+            <Logo variant="horizontal" size="sm" forceWhite={isDarkMode} className="md:w-auto" />
+            <span className={`text-[10px] md:text-xs font-semibold px-2 md:px-3 py-0.5 md:py-1 rounded-full ${
               isDarkMode ? 'bg-white/10 text-white' : 'bg-black/10 text-black'
             }`}>
-              Admin Panel
+              Admin
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 md:gap-2">
             <Button 
               onClick={() => setIsDarkMode(!isDarkMode)} 
               variant="outline" 
-              size="sm"
-              className={isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}
+              size="icon"
+              className={`h-8 w-8 md:h-9 md:w-9 ${isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}`}
             >
-              {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {isDarkMode ? <Sun className="h-3 w-3 md:h-4 md:w-4" /> : <Moon className="h-3 w-3 md:h-4 md:w-4" />}
             </Button>
-            <Button onClick={handleLogout} variant="outline" size="sm" className={isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
+            <Button onClick={handleLogout} variant="outline" size="sm" className={`text-xs md:text-sm px-2 md:px-4 ${isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}`}>
+              <LogOut className="h-3 w-3 md:h-4 md:w-4 md:mr-2" />
+              <span className="hidden md:inline">Logout</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-6 py-8 max-w-7xl">
-        {/* Stats Dashboard */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-          <Card className={`p-6 ${isDarkMode ? 'bg-white/10 border-white/30' : 'bg-black/5 border-black/10'}`}>
-            <div className="flex items-center justify-between">
+      <div className="container mx-auto px-3 md:px-6 py-4 md:py-8 max-w-7xl">
+        {/* Stats Dashboard - Mobile Responsive */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-4 mb-4 md:mb-8">
+          <Card className={`p-3 md:p-6 ${isDarkMode ? 'bg-white/10 border-white/30' : 'bg-black/5 border-black/10'}`}>
+            <div className="flex flex-col md:flex-row items-start md:items-center md:justify-between gap-2">
               <div>
-                <p className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-black/60'}`}>Total Games</p>
-                <p className={`text-3xl font-bold mt-1 ${isDarkMode ? 'text-white' : 'text-black'}`}>{stats.totalGames}</p>
+                <p className={`text-xs md:text-sm font-medium ${isDarkMode ? 'text-white' : 'text-black/60'}`}>Games</p>
+                <p className={`text-xl md:text-3xl font-bold mt-0.5 md:mt-1 ${isDarkMode ? 'text-white' : 'text-black'}`}>{stats.totalGames}</p>
               </div>
-              <GamepadIcon className={`h-10 w-10 ${isDarkMode ? 'text-white/40' : 'text-black/20'}`} />
+              <GamepadIcon className={`h-6 w-6 md:h-10 md:w-10 ${isDarkMode ? 'text-white/40' : 'text-black/20'}`} />
             </div>
           </Card>
 
@@ -571,33 +571,42 @@ export default function Admin() {
 
         {/* Tabs */}
         <Tabs defaultValue="games" className="space-y-6">
-          <TabsList className={`grid w-full grid-cols-4 max-w-2xl ${isDarkMode ? 'bg-white/10 border-white/30' : 'bg-black/5 border-black/10'}`}>
-            <TabsTrigger value="games" className={isDarkMode ? 'data-[state=active]:bg-white data-[state=active]:text-black text-white' : ''}>Games</TabsTrigger>
-            <TabsTrigger value="users" className={isDarkMode ? 'data-[state=active]:bg-white data-[state=active]:text-black text-white' : ''}>Users</TabsTrigger>
-            <TabsTrigger value="coins" className={isDarkMode ? 'data-[state=active]:bg-white data-[state=active]:text-black text-white' : ''}>
-              <Coins className="w-4 h-4 mr-2" />
-              Coins
+          <TabsList className={`grid w-full grid-cols-4 max-w-full md:max-w-2xl ${isDarkMode ? 'bg-white/10 border-white/30' : 'bg-black/5 border-black/10'}`}>
+            <TabsTrigger value="games" className={`text-xs md:text-sm ${isDarkMode ? 'data-[state=active]:bg-white data-[state=active]:text-black text-white' : ''}`}>
+              <GamepadIcon className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
+              <span className="hidden md:inline">Games</span>
             </TabsTrigger>
-            <TabsTrigger value="upload" className={isDarkMode ? 'data-[state=active]:bg-white data-[state=active]:text-black text-white' : ''}>Upload</TabsTrigger>
+            <TabsTrigger value="users" className={`text-xs md:text-sm ${isDarkMode ? 'data-[state=active]:bg-white data-[state=active]:text-black text-white' : ''}`}>
+              <Users className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
+              <span className="hidden md:inline">Users</span>
+            </TabsTrigger>
+            <TabsTrigger value="coins" className={`text-xs md:text-sm ${isDarkMode ? 'data-[state=active]:bg-white data-[state=active]:text-black text-white' : ''}`}>
+              <Coins className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
+              <span className="hidden md:inline">Coins</span>
+            </TabsTrigger>
+            <TabsTrigger value="upload" className={`text-xs md:text-sm ${isDarkMode ? 'data-[state=active]:bg-white data-[state=active]:text-black text-white' : ''}`}>
+              <Upload className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
+              <span className="hidden md:inline">Upload</span>
+            </TabsTrigger>
           </TabsList>
 
-          {/* Games Tab */}
+          {/* Games Tab - Mobile Responsive */}
           <TabsContent value="games" className="space-y-4">
-            <Card className={`p-6 ${isDarkMode ? 'bg-white/10 border-white/30' : 'bg-white border-black/10'}`}>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-black'}`}>Manage Games</h2>
+            <Card className={`p-3 md:p-6 ${isDarkMode ? 'bg-white/10 border-white/30' : 'bg-white border-black/10'}`}>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-0 mb-4 md:mb-6">
+                <h2 className={`text-lg md:text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-black'}`}>Manage Games</h2>
                 <div className="flex gap-2">
-                  <div className="relative">
-                    <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 ${isDarkMode ? 'text-white/40' : 'text-black/40'}`} />
+                  <div className="relative flex-1 md:flex-none">
+                    <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 md:h-4 md:w-4 ${isDarkMode ? 'text-white/40' : 'text-black/40'}`} />
                     <Input
-                      placeholder="Search games..."
+                      placeholder="Search..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className={`pl-10 w-64 ${isDarkMode ? 'bg-white/20 border-white/40 text-white placeholder:text-white/50' : ''}`}
+                      className={`pl-8 md:pl-10 w-full md:w-64 text-sm ${isDarkMode ? 'bg-white/20 border-white/40 text-white placeholder:text-white/50' : ''}`}
                     />
                   </div>
-                  <Button onClick={loadGames} variant="outline" size="sm" className={isDarkMode ? 'border-white/20 hover:bg-white/10' : ''}>
-                    <RefreshCw className="h-4 w-4" />
+                  <Button onClick={loadGames} variant="outline" size="sm" className={`px-2 md:px-4 ${isDarkMode ? 'border-white/20 hover:bg-white/10' : ''}`}>
+                    <RefreshCw className="h-3 w-3 md:h-4 md:w-4" />
                   </Button>
                 </div>
               </div>
@@ -742,16 +751,17 @@ export default function Admin() {
             </Card>
           </TabsContent>
 
-          {/* Coin Purchases Tab */}
+          {/* Coin Purchases Tab - Mobile Responsive */}
           <TabsContent value="coins" className="space-y-4">
-            <Card className={`p-6 ${isDarkMode ? 'bg-white/10 border-white/30' : 'bg-white border-black/10'}`}>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className={`text-2xl font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
-                  <Coins className="h-6 w-6 text-yellow-500" />
-                  Coin Purchase Verification
+            <Card className={`p-3 md:p-6 ${isDarkMode ? 'bg-white/10 border-white/30' : 'bg-white border-black/10'}`}>
+              <div className="flex items-center justify-between mb-4 md:mb-6">
+                <h2 className={`text-base md:text-2xl font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                  <Coins className="h-5 w-5 md:h-6 md:w-6 text-yellow-500" />
+                  <span className="hidden sm:inline">Coin Purchase Verification</span>
+                  <span className="sm:hidden">Coin Purchases</span>
                 </h2>
-                <Button onClick={loadCoinPurchases} variant="outline" size="sm" className={isDarkMode ? 'border-white/20 hover:bg-white/10' : ''}>
-                  <RefreshCw className="h-4 w-4" />
+                <Button onClick={loadCoinPurchases} variant="outline" size="sm" className={`px-2 md:px-4 ${isDarkMode ? 'border-white/20 hover:bg-white/10' : ''}`}>
+                  <RefreshCw className="h-3 w-3 md:h-4 md:w-4" />
                 </Button>
               </div>
 
@@ -769,42 +779,42 @@ export default function Admin() {
                       {coinPurchases.filter(p => p.status === 'pending').map((purchase) => (
                         <div
                           key={purchase.id}
-                          className={`p-4 border-2 rounded-lg mb-3 ${
+                          className={`p-3 md:p-4 border-2 rounded-lg mb-3 ${
                             isDarkMode ? 'border-yellow-500/50 bg-yellow-500/10' : 'border-yellow-500/30 bg-yellow-50'
                           }`}
                         >
-                          <div className="flex items-start justify-between gap-4">
+                          <div className="flex flex-col md:flex-row md:items-start justify-between gap-3 md:gap-4">
                             <div className="flex-1 space-y-2">
-                              <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                              <div className="flex items-center gap-2 md:gap-3">
+                                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-sm md:text-base font-bold ${
                                   isDarkMode ? 'bg-white/20 text-white' : 'bg-black/10 text-black'
                                 }`}>
                                   {purchase.user?.username?.[0]?.toUpperCase() || 'U'}
                                 </div>
-                                <div>
-                                  <h4 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className={`font-semibold text-sm md:text-base truncate ${isDarkMode ? 'text-white' : 'text-black'}`}>
                                     @{purchase.user?.username || 'Unknown'}
                                   </h4>
-                                  <p className={`text-xs ${isDarkMode ? 'text-white/60' : 'text-black/50'}`}>
+                                  <p className={`text-[10px] md:text-xs ${isDarkMode ? 'text-white/60' : 'text-black/50'}`}>
                                     {new Date(purchase.created_at).toLocaleString()}
                                   </p>
                                 </div>
                               </div>
                               
-                              <div className="grid grid-cols-2 gap-4 mt-3">
+                              <div className="grid grid-cols-2 gap-3 md:gap-4 mt-2 md:mt-3">
                                 <div>
-                                  <p className={`text-xs ${isDarkMode ? 'text-white/60' : 'text-black/50'}`}>Amount</p>
-                                  <p className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-black'}`}>₹{purchase.amount_inr}</p>
+                                  <p className={`text-[10px] md:text-xs ${isDarkMode ? 'text-white/60' : 'text-black/50'}`}>Amount</p>
+                                  <p className={`text-base md:text-lg font-bold ${isDarkMode ? 'text-white' : 'text-black'}`}>₹{purchase.amount_inr}</p>
                                 </div>
                                 <div>
-                                  <p className={`text-xs ${isDarkMode ? 'text-white/60' : 'text-black/50'}`}>Coins</p>
-                                  <p className={`text-lg font-bold text-yellow-500`}>{purchase.coins_amount}</p>
+                                  <p className={`text-[10px] md:text-xs ${isDarkMode ? 'text-white/60' : 'text-black/50'}`}>Coins</p>
+                                  <p className={`text-base md:text-lg font-bold text-yellow-500`}>{purchase.coins_amount}</p>
                                 </div>
                               </div>
 
                               <div>
-                                <p className={`text-xs ${isDarkMode ? 'text-white/60' : 'text-black/50'}`}>UTR Number</p>
-                                <p className={`font-mono font-semibold ${isDarkMode ? 'text-white' : 'text-black'}`}>{purchase.utr_number}</p>
+                                <p className={`text-[10px] md:text-xs ${isDarkMode ? 'text-white/60' : 'text-black/50'}`}>UTR Number</p>
+                                <p className={`font-mono text-xs md:text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-black'}`}>{purchase.utr_number}</p>
                               </div>
 
                               {purchase.payment_screenshot_url && (
@@ -812,22 +822,24 @@ export default function Admin() {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => window.open(purchase.payment_screenshot_url, '_blank')}
-                                  className={`gap-2 ${isDarkMode ? 'border-white/20 hover:bg-white/10' : ''}`}
+                                  className={`gap-1 md:gap-2 text-xs ${isDarkMode ? 'border-white/20 hover:bg-white/10' : ''}`}
                                 >
                                   <ExternalLink className="h-3 w-3" />
-                                  View Screenshot
+                                  <span className="hidden sm:inline">View Screenshot</span>
+                                  <span className="sm:hidden">View</span>
                                 </Button>
                               )}
                             </div>
 
-                            <div className="flex flex-col gap-2">
+                            <div className="flex md:flex-col gap-2 w-full md:w-auto">
                               <Button
                                 onClick={() => handleVerifyPurchase(purchase.id)}
                                 size="sm"
-                                className="bg-green-600 hover:bg-green-700 text-white gap-2"
+                                className="bg-green-600 hover:bg-green-700 text-white gap-1 md:gap-2 flex-1 md:flex-none text-xs md:text-sm"
                               >
-                                <CheckCircle className="h-4 w-4" />
-                                Verify & Credit
+                                <CheckCircle className="h-3 w-3 md:h-4 md:w-4" />
+                                <span className="hidden sm:inline">Verify & Credit</span>
+                                <span className="sm:hidden">Verify</span>
                               </Button>
                               <Button
                                 onClick={() => {
@@ -836,7 +848,7 @@ export default function Admin() {
                                 }}
                                 variant="destructive"
                                 size="sm"
-                                className="gap-2"
+                                className="gap-1 md:gap-2 flex-1 md:flex-none text-xs md:text-sm"
                               >
                                 <XCircle className="h-4 w-4" />
                                 Reject
@@ -899,26 +911,28 @@ export default function Admin() {
             </Card>
           </TabsContent>
 
-          {/* Upload Tab */}
+          {/* Upload Tab - Mobile Responsive */}
           <TabsContent value="upload" className="space-y-4">
-            <div className="grid lg:grid-cols-2 gap-6">
-              <Card className={`p-6 ${isDarkMode ? 'bg-white/10 border-white/30' : 'bg-white border-black/10'}`}>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className={`text-2xl font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+              <Card className={`p-4 md:p-6 ${isDarkMode ? 'bg-white/10 border-white/30' : 'bg-white border-black/10'}`}>
+                <div className="flex items-center justify-between mb-4 md:mb-6">
+                  <h2 className={`text-lg md:text-2xl font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
                     {editingGameId ? (
                       <>
-                        <Edit className="h-6 w-6" />
-                        Edit Game
+                        <Edit className="h-5 w-5 md:h-6 md:w-6" />
+                        <span className="hidden sm:inline">Edit Game</span>
+                        <span className="sm:hidden">Edit</span>
                       </>
                     ) : (
                       <>
-                        <Upload className="h-6 w-6" />
-                        Upload New Game
+                        <Upload className="h-5 w-5 md:h-6 md:w-6" />
+                        <span className="hidden sm:inline">Upload New Game</span>
+                        <span className="sm:hidden">Upload</span>
                       </>
                     )}
                   </h2>
                   {editingGameId && (
-                    <Button onClick={handleCancelEdit} variant="outline" size="sm" className={isDarkMode ? 'border-white/20 hover:bg-white/10' : ''}>
+                    <Button onClick={handleCancelEdit} variant="outline" size="sm" className={`text-xs md:text-sm ${isDarkMode ? 'border-white/20 hover:bg-white/10' : ''}`}>
                       Cancel
                     </Button>
                   )}

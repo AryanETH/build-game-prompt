@@ -194,7 +194,7 @@ export const CoinPurchase = ({ open, onOpenChange, onSuccess }: CoinPurchaseProp
                   <li>• Golden profile badge</li>
                   <li>• Support your favorite creators</li>
                   <li>• Exclusive Plus member status</li>
-                  <li>• Priority support</li>
+                  <li>• More game Generations</li>
                 </ul>
               </div>
             </div>
