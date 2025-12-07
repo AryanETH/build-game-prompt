@@ -63,6 +63,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE OR REPLACE FUNCTION update_coin_purchase_timestamp() RETURNS TRIGGER AS $$
 BEGIN
+
   NEW.updated_at = now();
   RETURN NEW;
 END;
