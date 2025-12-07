@@ -17,6 +17,11 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { GifPicker } from "./GifPicker";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { OnlineIndicator } from "./OnlineIndicator";
+import { MentionInput } from "./MentionInput";
+import { CommentText } from "./CommentText";
+import { GameCardSkeleton } from "./GameCardSkeleton";
+import { notifyGameLike, notifyGameComment, notifyCommentReply, notifyGamePlay, notifyNewFollower } from "@/lib/notificationSystem";
+import { LinkifiedText } from "./LinkifiedText";
 
 interface Game {
   id: string;
@@ -218,6 +223,29 @@ export const GameFeed = () => {
         
         // Log like activity
         await logActivity({ type: 'game_liked', gameId });
+        
+        // Send notification to game owner
+        const game = hydratedGames.find(g => g.id === gameId);
+        if (game && game.creator_id !== userId) {
+          const { data: userData } = await supabase.auth.getUser();
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username, avatar_url')
+            .eq('id', userId)
+            .single();
+          
+          if (profile && userData.user) {
+            await notifyGameLike(
+              game.creator_id,
+              profile.username,
+              profile.avatar_url || '',
+              userId,
+              gameId,
+              game.title,
+              game.thumbnail_url || game.cover_url || undefined
+            );
+          }
+        }
       }
     },
     onSuccess: (_, { gameId, isLiked }) => {
@@ -264,6 +292,27 @@ export const GameFeed = () => {
         await logActivity({ type: 'game_played', gameId: game.id });
         
         queryClient.invalidateQueries({ queryKey: ['games', 'feed'] });
+        
+        // Send notification to game owner (only if not playing own game)
+        if (game.creator_id !== userId) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username, avatar_url')
+            .eq('id', userId)
+            .single();
+          
+          if (profile) {
+            await notifyGamePlay(
+              game.creator_id,
+              profile.username,
+              profile.avatar_url || '',
+              userId,
+              game.id,
+              game.title,
+              game.thumbnail_url || game.cover_url || undefined
+            );
+          }
+        }
       }
     } catch (err) {
       console.error('Play game error:', err);
@@ -318,7 +367,7 @@ export const GameFeed = () => {
         
         // Add game title (center)
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 64px Arial';
+        ctx.font = 'bold 64px Montserrat, Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
         ctx.shadowBlur = 10;
@@ -326,12 +375,12 @@ export const GameFeed = () => {
         ctx.fillText(title, 600, 300);
         
         // Add tagline
-        ctx.font = '32px Arial';
+        ctx.font = '32px Montserrat, Arial, sans-serif';
         ctx.fillStyle = '#FFFFFF';
         ctx.fillText("Hey! I'm waiting for you, let's play together!", 600, 380);
         
         // Add URL at bottom (important - embedded in image)
-        ctx.font = 'bold 28px Arial';
+        ctx.font = 'bold 28px Montserrat, Arial, sans-serif';
         ctx.fillStyle = '#FFFFFF';
         ctx.shadowBlur = 8;
         // Shorten URL for display if needed
@@ -344,24 +393,24 @@ export const GameFeed = () => {
       logo.onerror = () => {
         // Fallback if logo doesn't load
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 56px Arial';
+        ctx.font = 'bold 56px Montserrat, Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('OPLUS', 600, 100);
         
         // Add game title (center)
-        ctx.font = 'bold 64px Arial';
+        ctx.font = 'bold 64px Montserrat, Arial, sans-serif';
         ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
         ctx.shadowBlur = 10;
         const title = game.title.length > 35 ? game.title.substring(0, 35) + '...' : game.title;
         ctx.fillText(title, 600, 300);
         
         // Add tagline
-        ctx.font = '32px Arial';
+        ctx.font = '32px Montserrat, Arial, sans-serif';
         ctx.fillStyle = '#FFFFFF';
         ctx.fillText("Hey! I'm waiting for you, let's play together!", 600, 380);
         
         // Add URL at bottom
-        ctx.font = 'bold 28px Arial';
+        ctx.font = 'bold 28px Montserrat, Arial, sans-serif';
         ctx.fillStyle = '#FFFFFF';
         ctx.shadowBlur = 8;
         const displayUrl = shareUrl.replace('https://', '').replace('http://', '');
@@ -466,13 +515,25 @@ export const GameFeed = () => {
 
   // Realtime: refetch feed on any games change
   useEffect(() => {
-    const channel = supabase
+    const gamesChannel = supabase
       .channel('realtime:games')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, () => {
         queryClient.invalidateQueries({ queryKey: ['games'] });
       })
       .subscribe();
-    return () => { channel.unsubscribe(); };
+    
+    // Also listen to comment changes to update comment counts in real-time
+    const commentsChannel = supabase
+      .channel('realtime:game_comments_count')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_comments' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['games'] });
+      })
+      .subscribe();
+    
+    return () => { 
+      gamesChannel.unsubscribe();
+      commentsChannel.unsubscribe();
+    };
   }, [queryClient]);
 
   // Remix dialog state
@@ -570,6 +631,44 @@ export const GameFeed = () => {
         toast.success('Comment added!');
         refetchComments();
         queryClient.invalidateQueries({ queryKey: ['games'] });
+        
+        // Send notification to game owner or comment owner
+        if (commentsOpenFor.creator_id !== uid) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username, avatar_url')
+            .eq('id', uid)
+            .single();
+          
+          if (profile) {
+            if (replyingTo) {
+              // Notify comment owner about reply
+              if (replyingTo.user_id !== uid) {
+                await notifyCommentReply(
+                  replyingTo.user_id,
+                  profile.username,
+                  profile.avatar_url || '',
+                  uid,
+                  commentsOpenFor.id,
+                  commentsOpenFor.title,
+                  replyingTo.id
+                );
+              }
+            } else {
+              // Notify game owner about comment
+              await notifyGameComment(
+                commentsOpenFor.creator_id,
+                profile.username,
+                profile.avatar_url || '',
+                uid,
+                commentsOpenFor.id,
+                commentsOpenFor.title,
+                '', // comment ID will be generated
+                commentsOpenFor.thumbnail_url || commentsOpenFor.cover_url || undefined
+              );
+            }
+          }
+        }
       }
     } catch (err) {
       console.error('Comment error:', err);
@@ -639,6 +738,22 @@ export const GameFeed = () => {
         setFollowedUsers(prev => new Set(prev).add(creatorId));
         await logActivity({ type: 'user_followed', targetUserId: creatorId });
         toast.success('Following!');
+        
+        // Send notification to followed user
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('username, avatar_url')
+          .eq('id', userId)
+          .single();
+        
+        if (profile) {
+          await notifyNewFollower(
+            creatorId,
+            profile.username,
+            profile.avatar_url || '',
+            userId
+          );
+        }
       }
       queryClient.invalidateQueries({ queryKey: ['userFollows'] });
     } catch (err) {
@@ -714,7 +829,23 @@ export const GameFeed = () => {
   };
 
   if (isLoading) {
-    return <LoadingSpinner fullScreen />;
+    return (
+      <div className="relative w-full bg-white dark:bg-black md:bg-[#F8F9FA]" style={{ height: '100dvh' }}>
+        <div className="h-full overflow-y-auto snap-y snap-mandatory md:snap-none no-scrollbar pb-16 md:pb-0">
+          <div className="md:flex md:flex-col md:items-start md:w-full md:max-w-[900px] md:mx-auto md:justify-start md:min-h-screen md:py-8 md:gap-8">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="w-full snap-start snap-always md:snap-align-none flex items-center justify-center" style={{ height: 'calc(100dvh - 120px)', minHeight: 'calc(100dvh - 120px)' }}>
+                <div className="relative w-full h-full md:w-auto md:h-auto md:flex md:items-center md:gap-6">
+                  <div className="relative w-full h-full md:w-[374px] md:h-[660px]">
+                    <GameCardSkeleton />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (isError) {
@@ -812,7 +943,7 @@ export const GameFeed = () => {
                   {game.description && (
                     <div>
                       <div className={`text-xs md:text-sm text-white/95 drop-shadow-md leading-snug ${expandedDescriptions.has(game.id) ? '' : 'line-clamp-2'}`}>
-                        {game.description}
+                        <LinkifiedText text={game.description} />
                       </div>
                       {game.description.length > 80 && (
                         <button
@@ -985,7 +1116,7 @@ export const GameFeed = () => {
         setReplyingTo(null);
       }
     }}>
-      <SheetContent side="right" className="w-full sm:w-[420px] md:w-[480px] flex flex-col p-0">
+      <SheetContent side="right" className="w-full sm:w-[420px] md:w-[480px] flex flex-col p-0 pb-safe">
         <SheetHeader className="px-6 py-4 border-b">
           <SheetTitle>Comments ({comments.length})</SheetTitle>
         </SheetHeader>
@@ -1021,7 +1152,9 @@ export const GameFeed = () => {
                     {isGif ? (
                       <img src={gifUrl!} alt="GIF" className="mt-2 rounded-lg max-w-[200px] max-h-[200px] object-cover" />
                     ) : (
-                      <div className="text-sm text-foreground whitespace-pre-wrap break-words mt-1">{c.content}</div>
+                      <div className="text-sm text-foreground whitespace-pre-wrap break-words mt-1">
+                        <CommentText text={c.content} />
+                      </div>
                     )}
                     <div className="flex items-center gap-4 mt-2">
                       <button
@@ -1132,7 +1265,7 @@ export const GameFeed = () => {
             </div>
           )}
         </div>
-        <div className="border-t px-6 py-4 bg-background">
+        <div className="border-t px-6 py-4 bg-background sticky bottom-0 z-10">
           {replyingTo && (
             <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
               <span>Replying to @{replyingTo.user?.username}</span>
@@ -1152,17 +1285,16 @@ export const GameFeed = () => {
                 <GifPicker onSelect={handleGifSelect} />
               </PopoverContent>
             </Popover>
-            <Input
+            <MentionInput
               placeholder={replyingTo ? "Write a reply..." : "Add a comment..."}
               value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
+              onChange={setNewComment}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey && newComment.trim()) {
                   e.preventDefault();
                   handleSendComment();
                 }
               }}
-              className="flex-1"
             />
             <Button 
               onClick={handleSendComment} 

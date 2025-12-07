@@ -10,6 +10,12 @@ interface AppLayoutProps {
 export const AppLayout = ({ children }: AppLayoutProps) => {
   const location = useLocation();
   const isSearchPage = location.pathname === "/search";
+  const isProfilePage = location.pathname === "/profile";
+  const isMessagesPage = location.pathname === "/messages";
+  const isSettingsPage = location.pathname === "/settings";
+  
+  // Hide hamburger menu on search, profile, messages, and settings pages (mobile only)
+  const hideHamburgerMenu = isSearchPage || isProfilePage || isMessagesPage || isSettingsPage;
 
   return (
     <div className="min-h-screen bg-white dark:bg-black flex">
@@ -18,9 +24,9 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         <TikTokSidebar />
       </div>
 
-      {/* Mobile Sidebar Drawer - hide hamburger on search/explore page */}
+      {/* Mobile Sidebar Drawer - hide hamburger on search/explore/profile/messages pages */}
       <div className="md:hidden">
-        <MobileSidebar hideButton={isSearchPage} />
+        <MobileSidebar hideButton={hideHamburgerMenu} />
       </div>
       
       <div className="flex-1 pb-16 md:pb-0 md:ml-[240px] lg:ml-[260px]">

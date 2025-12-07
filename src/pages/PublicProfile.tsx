@@ -7,18 +7,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { Play, Heart, Mail, UserPlus, UserCheck, Loader2, RefreshCw, ArrowLeft } from "lucide-react";
+import { Play, Heart, Mail, UserPlus, UserCheck, Loader2, RefreshCw, ArrowLeft, Trophy, Crown } from "lucide-react";
 import { toast } from "sonner";
 import { GamePlayer } from "@/components/GamePlayer";
 import { sendDirectMessage } from "@/lib/realtime";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { UserAchievementsPanel } from "@/components/UserAchievementsPanel";
+import { PublicProfileSkeleton, GameGridSkeleton } from "@/components/SkeletonComponents";
+import { notifyNewFollower, notifyFollowBack } from "@/lib/notificationSystem";
+import { LinkifiedText } from "@/components/LinkifiedText";
 
 interface ProfileRow {
   id: string;
   username: string;
   avatar_url: string | null;
+  bio?: string | null;
   followers_count?: number | null;
   following_count?: number | null;
+  is_plus_member?: boolean;
+  coins?: number;
 }
 
 interface GameRow {
@@ -141,19 +148,10 @@ export default function PublicProfile() {
     return () => { supabase.removeChannel(presenceChannel); };
   }, [profile?.id]);
 
-  const sendMessage = async () => {
-    if (!profile || !messageText.trim()) return;
-    setIsSendingMessage(true);
-    const { error } = await sendDirectMessage(profile.id, messageText.trim());
-    setIsSendingMessage(false);
-
-    if (error) {
-      toast.error("Failed to send message.", { description: error.message });
-    } else {
-      toast.success("Message sent!");
-      setMessageText("");
-      setMessageOpen(false);
-    }
+  const handleMessage = () => {
+    if (!profile) return;
+    // Navigate to Messages tab with this user pre-selected
+    navigate('/messages', { state: { selectedUserId: profile.id, selectedUsername: profile.username } });
   };
 
   const toggleFollow = async () => {
@@ -171,13 +169,44 @@ export default function PublicProfile() {
     } else {
       await supabase.from('follows').insert({ follower_id: userId, following_id: profile.id });
       setIsFollowing(true);
+      
+      // Send notification to followed user
+      const { data: currentUserProfile } = await supabase
+        .from('profiles')
+        .select('username, avatar_url')
+        .eq('id', userId)
+        .single();
+      
+      if (currentUserProfile) {
+        await notifyNewFollower(
+          profile.id,
+          currentUserProfile.username,
+          currentUserProfile.avatar_url || '',
+          userId
+        );
+        
+        // Check if they follow back
+        const { data: followBack } = await supabase
+          .from('follows')
+          .select('*')
+          .eq('follower_id', profile.id)
+          .eq('following_id', userId)
+          .single();
+        
+        if (followBack) {
+          // Notify current user that they followed back
+          await notifyFollowBack(
+            userId,
+            profile.username,
+            profile.avatar_url || ''
+          );
+        }
+      }
     }
   };
 
   if (!profile) {
-    return (
-      <LoadingSpinner fullScreen />
-    );
+    return <PublicProfileSkeleton />;
   }
 
   return (
@@ -185,7 +214,7 @@ export default function PublicProfile() {
       {selectedGame ? (
         <GamePlayer game={selectedGame as any} onClose={() => setSelectedGame(null)} />
       ) : (
-        <div className="max-w-4xl mx-auto p-4 space-y-6">
+        <div className="max-w-4xl mx-auto px-3 md:px-4 py-4 space-y-6 overflow-x-hidden">
           {/* Back button */}
           <Button
             variant="ghost"
@@ -196,8 +225,8 @@ export default function PublicProfile() {
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
-          <Card className="p-4 md:p-6 gradient-card border-primary/20">
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+          <Card className="p-3 md:p-6 gradient-card border-primary/20">
+            <div className="flex flex-col md:flex-row items-center md:items-center gap-4">
               <div className="relative">
                 <Avatar className="w-20 h-20 ring-2 ring-primary/30">
                   <AvatarImage src={profile.avatar_url || undefined} />
@@ -205,29 +234,43 @@ export default function PublicProfile() {
                 </Avatar>
                 {isOnline && <div className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background" />}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-2xl font-bold truncate">{profile.username}</div>
-                <div className="text-sm text-muted-foreground">{profile.followers_count || 0} followers &bull; {profile.following_count || 0} following</div>
+              <div className="flex-1 min-w-0 text-center md:text-left w-full">
+                <div className="flex items-center gap-2 justify-center md:justify-start mb-1">
+                  <div className="text-xl md:text-2xl font-bold truncate">{profile.username}</div>
+                  {(profile.coins || 0) >= 100 && (
+                    <Crown className="w-5 h-5 text-[#ffd87c] drop-shadow-lg" fill="#ffd87c" />
+                  )}
+                </div>
+                <div className="text-xs md:text-sm text-muted-foreground mb-2">{profile.followers_count || 0} followers &bull; {profile.following_count || 0} following</div>
+                {profile.bio && (
+                  <p className="text-sm text-foreground mt-2">
+                    <LinkifiedText text={profile.bio} />
+                  </p>
+                )}
               </div>
               <div className="flex gap-2 w-full md:w-auto">
                 <Button variant={isFollowing ? "outline" : "default"} className="gap-2 flex-1 md:flex-none" onClick={toggleFollow}>
                   {isFollowing ? <><UserCheck className="w-4 h-4"/> Following</> : <><UserPlus className="w-4 h-4"/> Follow</>}
                 </Button>
-                <Button variant="outline" className="gap-2 flex-1 md:flex-none" onClick={() => setMessageOpen(true)}>
+                <Button variant="outline" className="gap-2 flex-1 md:flex-none" onClick={handleMessage}>
                   <Mail className="w-4 h-4" /> <span className="hidden sm:inline">Message</span>
                 </Button>
               </div>
             </div>
           </Card>
 
-          <Tabs defaultValue="created">
-            <TabsList className="w-full">
-              <TabsTrigger value="created" className="flex-1">Created</TabsTrigger>
-              <TabsTrigger value="remixed" className="flex-1">Remixed</TabsTrigger>
+          <Tabs defaultValue="created" className="overflow-x-hidden">
+            <TabsList className="w-full grid grid-cols-3">
+              <TabsTrigger value="created" className="text-xs md:text-sm">Created</TabsTrigger>
+              <TabsTrigger value="remixed" className="text-xs md:text-sm">Remixed</TabsTrigger>
+              <TabsTrigger value="achievements" className="text-xs md:text-sm">
+                <Trophy className="w-3 h-3 md:w-4 md:h-4 mr-1" />
+                <span className="hidden sm:inline">Achievements</span>
+              </TabsTrigger>
             </TabsList>
-            <TabsContent value="created">
+            <TabsContent value="created" className="px-0">
               {createdGames.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-2 md:gap-3">
                   {createdGames.map((g) => (
                     <div key={g.id} className="aspect-[9/16] relative group overflow-hidden rounded-lg border border-border hover:border-primary transition-all">
                       <img src={g.cover_url || g.thumbnail_url} alt={g.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
@@ -246,9 +289,9 @@ export default function PublicProfile() {
                 </div>
               ) : <Card className="p-12 text-center gradient-card">No games</Card>}
             </TabsContent>
-            <TabsContent value="remixed">
+            <TabsContent value="remixed" className="px-0">
               {remixedGames.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-2 md:gap-3">
                   {remixedGames.map((g) => (
                     <div key={g.id} className="aspect-[9/16] relative group cursor-pointer overflow-hidden rounded-lg border border-border hover:border-primary transition-all" onClick={() => setSelectedGame(g)}>
                       <img src={g.cover_url || g.thumbnail_url} alt={g.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
@@ -264,6 +307,9 @@ export default function PublicProfile() {
                   ))}
                 </div>
               ) : <Card className="p-12 text-center gradient-card">No remixes</Card>}
+            </TabsContent>
+            <TabsContent value="achievements" className="px-0">
+              <UserAchievementsPanel userId={profile.id} />
             </TabsContent>
           </Tabs>
 

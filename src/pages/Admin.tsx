@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, Upload, LogOut, Trash2, Edit, Users, GamepadIcon, BarChart3, Search, Eye, Download, RefreshCw, Moon, Sun, Coins, CheckCircle, XCircle, ExternalLink } from "lucide-react";
+import { Loader2, Upload, LogOut, Trash2, Edit, Users, GamepadIcon, BarChart3, Search, Eye, Download, RefreshCw, Moon, Sun, Coins, CheckCircle, XCircle, ExternalLink, Bell, Send } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -25,6 +25,16 @@ export default function Admin() {
   const [coverUrl, setCoverUrl] = useState("");
   const [editingGameId, setEditingGameId] = useState<string | null>(null);
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
+  
+  // Broadcast form state
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [broadcastSenderName, setBroadcastSenderName] = useState("");
+  const [broadcastSenderAvatar, setBroadcastSenderAvatar] = useState("");
+  const [broadcastContentImage, setBroadcastContentImage] = useState("");
+  const [broadcastVideoUrl, setBroadcastVideoUrl] = useState("");
+  const [uploadingBroadcastAvatar, setUploadingBroadcastAvatar] = useState(false);
+  const [uploadingBroadcastImage, setUploadingBroadcastImage] = useState(false);
+  const [uploadingBroadcastVideo, setUploadingBroadcastVideo] = useState(false);
   
   // Games list
   const [games, setGames] = useState<any[]>([]);
@@ -57,9 +67,13 @@ export default function Admin() {
     }
   }, []);
 
+
+
   useEffect(() => {
     localStorage.setItem('adminTheme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
+
+
 
   const checkAdminAccess = async () => {
     try {
@@ -299,6 +313,150 @@ export default function Admin() {
     } finally {
       setUploadingThumbnail(false);
     }
+  };
+
+  const handleBroadcastAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    setUploadingBroadcastAvatar(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `broadcast-avatar-${Date.now()}.${fileExt}`;
+      const filePath = `thumbnails/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('thumbnails')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('thumbnails')
+        .getPublicUrl(filePath);
+
+      setBroadcastSenderAvatar(data.publicUrl);
+      toast.success('Avatar uploaded!');
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error(error.message || 'Failed to upload avatar');
+    } finally {
+      setUploadingBroadcastAvatar(false);
+    }
+  };
+
+  const handleBroadcastImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    setUploadingBroadcastImage(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `broadcast-content-${Date.now()}.${fileExt}`;
+      const filePath = `thumbnails/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('thumbnails')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('thumbnails')
+        .getPublicUrl(filePath);
+
+      setBroadcastContentImage(data.publicUrl);
+      toast.success('Image uploaded!');
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error(error.message || 'Failed to upload image');
+    } finally {
+      setUploadingBroadcastImage(false);
+    }
+  };
+
+  const handleBroadcastVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('video/')) {
+      toast.error('Please upload a video file');
+      return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('Video size must be less than 50MB');
+      return;
+    }
+
+    setUploadingBroadcastVideo(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `broadcast-video-${Date.now()}.${fileExt}`;
+      const filePath = `thumbnails/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('thumbnails')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('thumbnails')
+        .getPublicUrl(filePath);
+
+      setBroadcastVideoUrl(data.publicUrl);
+      toast.success('Video uploaded!');
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error(error.message || 'Failed to upload video');
+    } finally {
+      setUploadingBroadcastVideo(false);
+    }
+  };
+
+  const handleDeleteBroadcastAvatar = () => {
+    setBroadcastSenderAvatar('');
+    toast.success('Avatar removed');
+  };
+
+  const handleDeleteBroadcastImage = () => {
+    setBroadcastContentImage('');
+    toast.success('Image removed');
+  };
+
+  const handleDeleteBroadcastVideo = () => {
+    setBroadcastVideoUrl('');
+    toast.success('Video removed');
   };
 
   const handleUploadGame = async () => {
@@ -571,7 +729,7 @@ export default function Admin() {
 
         {/* Tabs */}
         <Tabs defaultValue="games" className="space-y-6">
-          <TabsList className={`grid w-full grid-cols-4 max-w-full md:max-w-2xl ${isDarkMode ? 'bg-white/10 border-white/30' : 'bg-black/5 border-black/10'}`}>
+          <TabsList className={`grid w-full grid-cols-5 max-w-full md:max-w-3xl ${isDarkMode ? 'bg-white/10 border-white/30' : 'bg-black/5 border-black/10'}`}>
             <TabsTrigger value="games" className={`text-xs md:text-sm ${isDarkMode ? 'data-[state=active]:bg-white data-[state=active]:text-black text-white' : ''}`}>
               <GamepadIcon className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
               <span className="hidden md:inline">Games</span>
@@ -583,6 +741,10 @@ export default function Admin() {
             <TabsTrigger value="coins" className={`text-xs md:text-sm ${isDarkMode ? 'data-[state=active]:bg-white data-[state=active]:text-black text-white' : ''}`}>
               <Coins className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
               <span className="hidden md:inline">Coins</span>
+            </TabsTrigger>
+            <TabsTrigger value="broadcast" className={`text-xs md:text-sm ${isDarkMode ? 'data-[state=active]:bg-white data-[state=active]:text-black text-white' : ''}`}>
+              <Bell className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
+              <span className="hidden md:inline">Broadcast</span>
             </TabsTrigger>
             <TabsTrigger value="upload" className={`text-xs md:text-sm ${isDarkMode ? 'data-[state=active]:bg-white data-[state=active]:text-black text-white' : ''}`}>
               <Upload className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
@@ -908,6 +1070,410 @@ export default function Admin() {
                   )}
                 </div>
               )}
+            </Card>
+          </TabsContent>
+
+          {/* Broadcast Notification Tab */}
+          <TabsContent value="broadcast" className="space-y-4">
+            <Card className={`p-6 ${isDarkMode ? 'bg-white/10 border-white/30' : 'bg-white border-black/10'}`}>
+              <h2 className={`text-2xl font-bold mb-6 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                <Bell className="w-6 h-6" />
+                Broadcast Notification
+              </h2>
+              <p className={`mb-6 ${isDarkMode ? 'text-white/70' : 'text-black/70'}`}>
+                Send a notification to all users on the platform
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                    Sender Name (Optional)
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="O+ Team"
+                    value={broadcastSenderName}
+                    onChange={(e) => setBroadcastSenderName(e.target.value)}
+                    className={isDarkMode ? 'bg-white/5 border-white/20 text-white' : ''}
+                  />
+                  <p className={`text-xs mt-1 ${isDarkMode ? 'text-white/50' : 'text-black/50'}`}>
+                    Leave empty for system notification
+                  </p>
+                </div>
+
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                    Sender Avatar (Optional)
+                  </label>
+                  
+                  {/* File Upload Button */}
+                  <div className="flex gap-2 mb-2">
+                    <label className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleBroadcastAvatarUpload}
+                        className="hidden"
+                        disabled={uploadingBroadcastAvatar}
+                      />
+                      <div className={`flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                        isDarkMode 
+                          ? 'border-white/40 hover:border-white/60 bg-white/10 hover:bg-white/20' 
+                          : 'border-gray-300 hover:border-gray-400 bg-gray-50 hover:bg-gray-100'
+                      } ${uploadingBroadcastAvatar ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        {uploadingBroadcastAvatar ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-sm">Uploading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4" />
+                            <span className="text-sm">Upload Avatar</span>
+                          </>
+                        )}
+                      </div>
+                    </label>
+                  </div>
+                  
+                  {/* URL Input */}
+                  <Input
+                    type="url"
+                    placeholder="Or paste avatar URL"
+                    value={broadcastSenderAvatar}
+                    onChange={(e) => setBroadcastSenderAvatar(e.target.value)}
+                    className={isDarkMode ? 'bg-white/5 border-white/20 text-white' : ''}
+                  />
+                  
+                  {/* Preview with Delete */}
+                  {broadcastSenderAvatar && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <img 
+                        src={broadcastSenderAvatar}
+                        alt="Avatar preview" 
+                        className="w-12 h-12 object-cover rounded-full border-2 border-white/20"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleDeleteBroadcastAvatar}
+                        className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Remove
+                      </Button>
+                    </div>
+                  )}
+                  
+                  <p className={`text-xs mt-1 ${isDarkMode ? 'text-white/50' : 'text-black/50'}`}>
+                    Upload or paste URL for sender's profile picture
+                  </p>
+                </div>
+
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                    Notification Message *
+                  </label>
+                  <Textarea
+                    placeholder="Enter your message here..."
+                    value={broadcastMessage}
+                    onChange={(e) => setBroadcastMessage(e.target.value)}
+                    className={`min-h-[100px] ${isDarkMode ? 'bg-white/5 border-white/20 text-white' : ''}`}
+                  />
+                </div>
+
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                    Content Image (Optional)
+                  </label>
+                  
+                  {/* File Upload Button */}
+                  <div className="flex gap-2 mb-2">
+                    <label className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleBroadcastImageUpload}
+                        className="hidden"
+                        disabled={uploadingBroadcastImage}
+                      />
+                      <div className={`flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                        isDarkMode 
+                          ? 'border-white/40 hover:border-white/60 bg-white/10 hover:bg-white/20' 
+                          : 'border-gray-300 hover:border-gray-400 bg-gray-50 hover:bg-gray-100'
+                      } ${uploadingBroadcastImage ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        {uploadingBroadcastImage ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-sm">Uploading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4" />
+                            <span className="text-sm">Upload Content Image</span>
+                          </>
+                        )}
+                      </div>
+                    </label>
+                  </div>
+                  
+                  {/* URL Input */}
+                  <Input
+                    type="url"
+                    placeholder="Or paste image URL"
+                    value={broadcastContentImage}
+                    onChange={(e) => setBroadcastContentImage(e.target.value)}
+                    className={isDarkMode ? 'bg-white/5 border-white/20 text-white' : ''}
+                  />
+                  
+                  {/* Preview with Delete */}
+                  {broadcastContentImage && (
+                    <div className="mt-2 space-y-2">
+                      <div className="flex justify-start">
+                        <img 
+                          src={broadcastContentImage}
+                          alt="Content preview" 
+                          className="max-h-[180px] w-auto max-w-full object-contain rounded-lg border-2 border-white/20"
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleDeleteBroadcastImage}
+                        className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Remove Image
+                      </Button>
+                    </div>
+                  )}
+                  
+                  <p className={`text-xs mt-1 ${isDarkMode ? 'text-white/50' : 'text-black/50'}`}>
+                    Add an image to make your notification more engaging
+                  </p>
+                </div>
+
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                    Content Video (Optional)
+                  </label>
+                  
+                  {/* File Upload Button */}
+                  <div className="flex gap-2 mb-2">
+                    <label className="flex-1">
+                      <input
+                        type="file"
+                        accept="video/*"
+                        onChange={handleBroadcastVideoUpload}
+                        className="hidden"
+                        disabled={uploadingBroadcastVideo}
+                      />
+                      <div className={`flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                        isDarkMode 
+                          ? 'border-white/40 hover:border-white/60 bg-white/10 hover:bg-white/20' 
+                          : 'border-gray-300 hover:border-gray-400 bg-gray-50 hover:bg-gray-100'
+                      } ${uploadingBroadcastVideo ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        {uploadingBroadcastVideo ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span className="text-sm">Uploading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4" />
+                            <span className="text-sm">Upload Video</span>
+                          </>
+                        )}
+                      </div>
+                    </label>
+                  </div>
+                  
+                  {/* URL Input */}
+                  <Input
+                    type="url"
+                    placeholder="Or paste video URL (YouTube, Vimeo, etc.)"
+                    value={broadcastVideoUrl}
+                    onChange={(e) => setBroadcastVideoUrl(e.target.value)}
+                    className={isDarkMode ? 'bg-white/5 border-white/20 text-white' : ''}
+                  />
+                  
+                  {/* Preview with Delete */}
+                  {broadcastVideoUrl && (
+                    <div className="mt-2 space-y-2">
+                      <div className="flex justify-start">
+                        <video 
+                          src={broadcastVideoUrl}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          className="max-h-[180px] w-auto max-w-full rounded-lg border-2 border-white/20 cursor-pointer"
+                          style={{ aspectRatio: 'auto' }}
+                          onClick={(e) => {
+                            const video = e.currentTarget;
+                            video.muted = !video.muted;
+                          }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">Click video to toggle sound</p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleDeleteBroadcastVideo}
+                        className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Remove Video
+                      </Button>
+                    </div>
+                  )}
+                  
+                  <p className={`text-xs mt-1 ${isDarkMode ? 'text-white/50' : 'text-black/50'}`}>
+                    Upload video (max 50MB) or paste embed URL
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={async () => {
+                      if (!broadcastMessage || broadcastMessage.trim() === '') {
+                        toast.error('Please enter a message');
+                        return;
+                      }
+
+                      const loadingToast = toast.loading('Sending broadcast notification...');
+
+                      try {
+                        // Get all users
+                        const { data: allUsers, error: usersError } = await supabase
+                          .from('profiles')
+                          .select('id');
+
+                        if (usersError) {
+                          console.error('Users fetch error:', usersError);
+                          throw new Error('Failed to fetch users');
+                        }
+
+                        if (!allUsers || allUsers.length === 0) {
+                          toast.dismiss(loadingToast);
+                          toast.error('No users found');
+                          return;
+                        }
+
+                        // Prepare notification payload
+                        const payload = {
+                          type: 'broadcast',
+                          content: broadcastMessage.trim(),
+                          read: false,
+                          ...(broadcastSenderName && broadcastSenderName.trim() !== '' && { username: broadcastSenderName.trim() }),
+                          ...(broadcastSenderAvatar && broadcastSenderAvatar.trim() !== '' && { avatar_url: broadcastSenderAvatar.trim() }),
+                          ...(broadcastContentImage && broadcastContentImage.trim() !== '' && { image_url: broadcastContentImage.trim() }),
+                          ...(broadcastVideoUrl && broadcastVideoUrl.trim() !== '' && { video_url: broadcastVideoUrl.trim() })
+                        };
+
+                        // Insert in batches of 50
+                        const batchSize = 50;
+                        let successCount = 0;
+                        let failCount = 0;
+
+                        for (let i = 0; i < allUsers.length; i += batchSize) {
+                          const batch = allUsers.slice(i, i + batchSize);
+                          const notifications = batch.map(user => ({
+                            user_id: user.id,
+                            payload: payload
+                          }));
+
+                          const { error: batchError } = await supabase
+                            .from('notifications')
+                            .insert(notifications);
+
+                          if (batchError) {
+                            console.error(`Batch ${i / batchSize + 1} error:`, batchError);
+                            failCount += batch.length;
+                          } else {
+                            successCount += batch.length;
+                          }
+
+                          // Update progress
+                          toast.loading(`Sending... ${successCount}/${allUsers.length}`, { id: loadingToast });
+                        }
+
+                        toast.dismiss(loadingToast);
+
+                        if (successCount > 0) {
+                          toast.success(`✅ Notification sent to ${successCount} users!${failCount > 0 ? ` (${failCount} failed)` : ''}`);
+                          
+                          // Clear form
+                          setBroadcastMessage('');
+                          setBroadcastSenderName('');
+                          setBroadcastSenderAvatar('');
+                          setBroadcastContentImage('');
+                          setBroadcastVideoUrl('');
+                        } else {
+                          toast.error('Failed to send notifications. Check console for details.');
+                        }
+                      } catch (error: any) {
+                        console.error('Broadcast error:', error);
+                        toast.dismiss(loadingToast);
+                        toast.error(error.message || 'Failed to send broadcast');
+                      }
+                    }}
+                    className="gap-2"
+                  >
+                    <Send className="w-4 h-4" />
+                    Send to All Users
+                  </Button>
+                </div>
+
+                <div className={`mt-6 p-4 rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-black/5'}`}>
+                  <h3 className={`font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>Preview</h3>
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center overflow-hidden">
+                      {broadcastSenderAvatar ? (
+                        <img src={broadcastSenderAvatar} className="w-full h-full object-cover" alt="Sender" />
+                      ) : (
+                        <Bell className="w-5 h-5 text-primary" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm">
+                        <span className="font-bold">{broadcastSenderName || 'System Notification'}</span>
+                        <br />
+                        <span className={isDarkMode ? 'text-white/90' : 'text-black/90'}>
+                          {broadcastMessage || 'Your message will appear here...'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">just now</div>
+                      {broadcastContentImage && (
+                        <div className="mt-2 flex justify-start">
+                          <img 
+                            src={broadcastContentImage} 
+                            className="max-h-[180px] w-auto max-w-full rounded-lg object-contain" 
+                            alt="Content" 
+                          />
+                        </div>
+                      )}
+                      {broadcastVideoUrl && (
+                        <div className="mt-2 flex justify-start">
+                          <video 
+                            src={broadcastVideoUrl} 
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            className="max-h-[180px] w-auto max-w-full rounded-lg cursor-pointer"
+                            style={{ aspectRatio: 'auto' }}
+                            onClick={(e) => {
+                              const video = e.currentTarget;
+                              video.muted = !video.muted;
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </Card>
           </TabsContent>
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Heart, Play, Loader2, Pencil, UserPlus, UserCheck, Star, Trash2, Coins, LogOut, Share2, Settings, Bookmark, Sparkles, Plus, HelpCircle, Crown } from "lucide-react";
+import { User, Heart, Play, Loader2, Pencil, UserPlus, UserCheck, Star, Trash2, Coins, LogOut, Share2, Settings, Bookmark, Sparkles, Plus, HelpCircle, Crown, Trophy } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -20,10 +20,21 @@ import { OnlineIndicator } from "@/components/OnlineIndicator";
 import { CoinPurchase } from "@/components/CoinPurchase";
 import { PlusBadge } from "@/components/PlusBadge";
 import { ClaimMissingCoins } from "@/components/ClaimMissingCoins";
+import { AchievementsPanel } from "@/components/AchievementsPanel";
+import { ProfileHeaderSkeleton, GameGridSkeleton, TabsContentSkeleton, UserListSkeleton } from "@/components/SkeletonComponents";
+import { NotificationPanel } from "@/components/NotificationPanel";
+import { Bell } from "lucide-react";
+import { LinkifiedText } from "@/components/LinkifiedText";
 
 export default function Profile() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [isLoadingGames, setIsLoadingGames] = useState(true);
+  const [isLoadingRemixed, setIsLoadingRemixed] = useState(true);
+  const [isLoadingLiked, setIsLoadingLiked] = useState(true);
+  const [notificationsPanelOpen, setNotificationsPanelOpen] = useState(false);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [userGames, setUserGames] = useState<any[]>([]);
   const [remixedGames, setRemixedGames] = useState<any[]>([]);
   const [likedGames, setLikedGames] = useState<any[]>([]);
@@ -85,6 +96,7 @@ export default function Profile() {
     fetchRemixedGames();
     fetchLikedGames();
     checkFollowStatus();
+    fetchUnreadNotificationsCount();
 
     // Live updates for follower counts, games, and coins
     const followChannel = supabase
@@ -198,6 +210,7 @@ export default function Profile() {
   };
 
   const fetchProfile = async () => {
+    setIsLoadingProfile(true);
     const { data } = await supabase.auth.getUser();
     const uid = data.user?.id || null;
     if (uid) {
@@ -244,6 +257,7 @@ export default function Profile() {
       if (refreshed.data?.bio) setFormBio(refreshed.data.bio);
       if (refreshed.data?.avatar_url) setPreviewUrl(refreshed.data.avatar_url);
     }
+    setIsLoadingProfile(false);
   };
 
   const loadFollowers = async () => {
@@ -265,6 +279,7 @@ export default function Profile() {
   };
 
   const fetchUserGames = async () => {
+    setIsLoadingGames(true);
     const { data: userRes } = await supabase.auth.getUser();
     const uid = userRes.user?.id;
     if (uid) {
@@ -279,9 +294,11 @@ export default function Profile() {
       }
       setUserGames(games || []);
     }
+    setIsLoadingGames(false);
   };
 
   const fetchRemixedGames = async () => {
+    setIsLoadingRemixed(true);
     const { data: userRes } = await supabase.auth.getUser();
     const uid = userRes.user?.id;
     if (uid) {
@@ -297,9 +314,11 @@ export default function Profile() {
       }
       setRemixedGames(remixes || []);
     }
+    setIsLoadingRemixed(false);
   };
 
   const fetchLikedGames = async () => {
+    setIsLoadingLiked(true);
     const { data: userRes } = await supabase.auth.getUser();
     const uid = userRes.user?.id;
     if (uid) {
@@ -313,6 +332,24 @@ export default function Profile() {
         console.error('Error fetching liked games:', error);
       }
       setLikedGames(likes?.map(l => l.games).filter(Boolean) || []);
+    }
+    setIsLoadingLiked(false);
+  };
+
+  const fetchUnreadNotificationsCount = async () => {
+    const { data: userRes } = await supabase.auth.getUser();
+    const uid = userRes.user?.id;
+    if (uid) {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', uid);
+      
+      if (!error && data) {
+        // Count unread notifications from payload
+        const unreadCount = data.filter((n: any) => !n.payload?.read).length;
+        setUnreadNotificationsCount(unreadCount);
+      }
     }
   };
 
@@ -592,14 +629,48 @@ export default function Profile() {
     return <GamePlayer game={selectedGame} onClose={() => setSelectedGame(null)} />;
   }
 
+  if (isLoadingProfile) {
+    return (
+      <div className="min-h-screen pb-16 md:pb-0">
+        <div className="w-full px-3 md:px-8 py-6">
+          <ProfileHeaderSkeleton />
+          <div className="mt-6">
+            <GameGridSkeleton count={6} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen pb-16 md:pb-0">
       
       <div className="w-full">
         {/* Profile Header - Redesigned Layout */}
-        <div className="px-4 md:px-8 py-6">
-          {/* Top Right: Coins and Logout - Mobile Responsive */}
-          <div className="flex justify-end items-center gap-2 md:gap-3 mb-4 md:mb-6 flex-wrap">
+        <div className="px-3 md:px-8 py-6 max-w-full overflow-x-hidden">
+          {/* Top Row: Notifications (left - mobile only) and Coins/Logout (right) */}
+          <div className="flex justify-between items-center mb-4 md:mb-6">
+            {/* Left: Notification Button - Mobile Only */}
+            <Button
+              onClick={() => setNotificationsPanelOpen(true)}
+              variant="ghost"
+              size="icon"
+              className="relative h-10 w-10 md:hidden hover:bg-red-500/10"
+              title="Notifications"
+            >
+              <Bell className={`w-5 h-5 ${unreadNotificationsCount > 0 ? 'text-red-500' : ''}`} />
+              {unreadNotificationsCount > 0 && (
+                <>
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+                    {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                  </span>
+                  <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full animate-ping" />
+                </>
+              )}
+            </Button>
+
+            {/* Right: Coins and Logout - Mobile Responsive */}
+            <div className="flex items-center gap-2 md:gap-3 flex-wrap md:ml-auto">
             <Button
               onClick={() => setCoinPurchaseOpen(true)}
               variant="outline"
@@ -633,12 +704,13 @@ export default function Profile() {
             >
               <LogOut className="w-4 h-4 md:w-5 md:h-5" />
             </Button>
+            </div>
           </div>
 
-          {/* Profile Info - Mobile Responsive Layout - 30% Bigger on Mobile */}
-          <div className="flex flex-col md:flex-row items-start gap-5 md:gap-8 mb-6">
-            {/* Avatar - 30% bigger on mobile with golden gradient ring for Plus members */}
-            <div className="relative mx-auto md:mx-0">
+          {/* Profile Info - Mobile Responsive Layout - Centered on Mobile */}
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-5 md:gap-8 mb-6">
+            {/* Avatar - Centered on mobile with golden gradient ring for Plus members */}
+            <div className="relative">
 {profile?.is_plus_member ? (
                 <div className="relative">
                   {/* Gold gradient ring */}
@@ -666,12 +738,12 @@ export default function Profile() {
               )}
             </div>
             
-            {/* Username, Buttons, Stats, and Bio - 30% bigger on mobile */}
-            <div className="flex-1 w-full">
+            {/* Username, Buttons, Stats, and Bio - Centered on mobile */}
+            <div className="flex-1 w-full max-w-full px-4 md:px-0">
               {/* Username - 30% bigger on mobile */}
               <div className="flex items-center gap-2 mb-3 justify-center md:justify-start">
                 <h1 className="text-3xl md:text-3xl font-bold">{profile?.username}</h1>
-                {profile?.is_plus_member && (
+                {(profile?.coins || 0) >= 100 && (
                   <Crown className="w-7 h-7 text-[#ffd87c] drop-shadow-lg" fill="#ffd87c" />
                 )}
               </div>
@@ -686,7 +758,13 @@ export default function Profile() {
                   <Share2 className="w-4 h-4 mr-2" />
                   Share
                 </Button>
-                <Button variant="ghost" size="icon" className="h-10 w-10" title="Settings">
+                <Button 
+                  onClick={() => navigate('/settings')}
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-10 w-10" 
+                  title="Settings"
+                >
                   <Settings className="w-5 h-5" />
                 </Button>
               </div>
@@ -717,7 +795,9 @@ export default function Profile() {
 
               {/* Bio - 30% bigger on mobile */}
               {profile?.bio ? (
-                <p className="text-base md:text-base text-foreground leading-relaxed text-center md:text-left">{profile.bio}</p>
+                <p className="text-base md:text-base text-foreground leading-relaxed text-center md:text-left">
+                  <LinkifiedText text={profile.bio} />
+                </p>
               ) : (
                 <p className="text-base md:text-base text-muted-foreground italic text-center md:text-left">No bio yet</p>
               )}
@@ -782,33 +862,42 @@ export default function Profile() {
         </Dialog>
 
         {/* Tabs - TikTok Style */}
-        <Tabs defaultValue="created" className="w-full">
-          <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
+        <Tabs defaultValue="created" className="w-full overflow-x-hidden">
+          <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent overflow-x-auto">
             <TabsTrigger 
               value="created" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent px-6 py-3"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent px-4 md:px-6 py-3 text-sm md:text-base whitespace-nowrap"
             >
-              <Play className="w-4 h-4 mr-2" />
+              <Play className="w-4 h-4 mr-1 md:mr-2" />
               Games
             </TabsTrigger>
             <TabsTrigger 
               value="remixes" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent px-6 py-3"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent px-4 md:px-6 py-3 text-sm md:text-base whitespace-nowrap"
             >
-              <Sparkles className="w-4 h-4 mr-2" />
+              <Sparkles className="w-4 h-4 mr-1 md:mr-2" />
               Remix
             </TabsTrigger>
             <TabsTrigger 
               value="liked" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent px-6 py-3"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent px-4 md:px-6 py-3 text-sm md:text-base whitespace-nowrap"
             >
-              <Heart className="w-4 h-4 mr-2" />
+              <Heart className="w-4 h-4 mr-1 md:mr-2" />
               Liked
+            </TabsTrigger>
+            <TabsTrigger 
+              value="achievements" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent px-4 md:px-6 py-3 text-sm md:text-base whitespace-nowrap"
+            >
+              <Trophy className="w-4 h-4 mr-1 md:mr-2" />
+              Achievements
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="created" className="mt-0">
-            {userGames.length === 0 ? (
+            {isLoadingGames ? (
+              <div className="py-4"><GameGridSkeleton count={6} /></div>
+            ) : userGames.length === 0 ? (
               <div className="text-center text-muted-foreground py-12">No games yet.</div>
             ) : (
               <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1">
@@ -855,7 +944,9 @@ export default function Profile() {
           </TabsContent>
 
           <TabsContent value="remixes" className="mt-0">
-            {remixedGames.length === 0 ? (
+            {isLoadingRemixed ? (
+              <div className="py-4"><GameGridSkeleton count={6} /></div>
+            ) : remixedGames.length === 0 ? (
               <div className="text-center text-muted-foreground py-12">No remixes yet.</div>
             ) : (
               <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1">
@@ -902,7 +993,9 @@ export default function Profile() {
           </TabsContent>
 
           <TabsContent value="liked" className="mt-0">
-            {likedGames.length === 0 ? (
+            {isLoadingLiked ? (
+              <div className="py-4"><GameGridSkeleton count={6} /></div>
+            ) : likedGames.length === 0 ? (
               <div className="text-center text-muted-foreground py-12">No liked games yet.</div>
             ) : (
               <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1">
@@ -937,6 +1030,10 @@ export default function Profile() {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="achievements" className="mt-6 px-0">
+            <AchievementsPanel />
+          </TabsContent>
         </Tabs>
       </div>
       <FollowersFollowingDialogs
@@ -957,6 +1054,12 @@ export default function Profile() {
       <ClaimMissingCoins
         open={claimCoinsOpen}
         onOpenChange={setClaimCoinsOpen}
+      />
+      
+      <NotificationPanel
+        open={notificationsPanelOpen}
+        onOpenChange={setNotificationsPanelOpen}
+        userId={currentUserId}
       />
     </div>
   );

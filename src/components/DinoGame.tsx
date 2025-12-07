@@ -469,14 +469,14 @@ export const DinoGame = ({ color, landType, onScoreUpdate, onRetry }: DinoGamePr
       
       // Draw game over text
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 32px Arial';
+      ctx.font = 'bold 32px Montserrat, Arial, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 30);
       
-      ctx.font = '18px Arial';
+      ctx.font = '18px Montserrat, Arial, sans-serif';
       ctx.fillText(`Score: ${score}`, canvas.width / 2, canvas.height / 2);
       
-      ctx.font = '14px Arial';
+      ctx.font = '14px Montserrat, Arial, sans-serif';
       ctx.fillStyle = '#CCCCCC';
       ctx.fillText('Click or press SPACE to restart', canvas.width / 2, canvas.height / 2 + 30);
     }

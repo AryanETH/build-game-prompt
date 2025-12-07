@@ -10,7 +10,8 @@ import { toast } from "sonner";
 import { OnlineIndicator } from "@/components/OnlineIndicator";
 import { GifPicker } from "@/components/GifPicker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { MessagesListSkeleton, MessageThreadSkeleton } from "@/components/SkeletonComponents";
 
 interface Message {
   id: string;
@@ -38,6 +39,8 @@ interface Conversation {
 
 export default function Messages() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -49,6 +52,7 @@ export default function Messages() {
   const [showMobileList, setShowMobileList] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -108,7 +112,29 @@ export default function Messages() {
     })();
   }, [selectedUser]);
 
+  // Handle pre-selected user from navigation
+  useEffect(() => {
+    const state = location.state as { selectedUserId?: string; selectedUsername?: string };
+    if (state?.selectedUserId && state?.selectedUsername && userId) {
+      // Create or select conversation with this user
+      const preSelectedConversation: Conversation = {
+        user_id: state.selectedUserId,
+        username: state.selectedUsername,
+        avatar_url: null,
+        last_message: '',
+        last_message_time: new Date().toISOString(),
+        unread_count: 0,
+      };
+      setSelectedUser(preSelectedConversation);
+      setShowMobileList(false);
+      loadMessages(state.selectedUserId);
+      // Clear the state
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, userId]);
+
   const loadConversations = async (uid: string) => {
+    setIsLoadingConversations(true);
     try {
       // Get all messages where user is sender or recipient
       const { data: messagesData, error } = await supabase
@@ -151,6 +177,8 @@ export default function Messages() {
       setConversations(Array.from(conversationsMap.values()));
     } catch (error) {
       console.error('Error loading conversations:', error);
+    } finally {
+      setIsLoadingConversations(false);
     }
   };
 
@@ -318,7 +346,9 @@ export default function Messages() {
 
         {/* Conversations */}
         <ScrollArea className="flex-1">
-          {filteredConversations.length === 0 ? (
+          {isLoadingConversations ? (
+            <MessagesListSkeleton />
+          ) : filteredConversations.length === 0 ? (
             <div className="p-8 text-center">
               <div className="text-muted-foreground text-sm">
                 {searchQuery ? 'No conversations found' : 'No conversations yet'}

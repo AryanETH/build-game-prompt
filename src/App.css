@@ -40,3 +40,23 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Mobile keyboard fix - prevent input from being hidden behind keyboard */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Ensure viewport height accounts for mobile browser UI */
+@media (max-width: 768px) {
+  html {
+    height: -webkit-fill-available;
+  }
+  
+  body {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+}

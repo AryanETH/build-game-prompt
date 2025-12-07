@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { GamePlayer } from "@/components/GamePlayer";
 import { useNavigate } from "react-router-dom";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { SearchResultsSkeleton, GameGridSkeleton } from "@/components/SkeletonComponents";
 
 const categories = [
   { id: "action", label: "Action", icon: "💥" },
@@ -311,8 +312,9 @@ export default function Search() {
         )}
 
         {isLoading && (
-          <div className="text-center py-12 md:py-16 flex justify-center">
-            <LoadingSpinner />
+          <div className="space-y-6">
+            {searchQuery && <SearchResultsSkeleton />}
+            <GameGridSkeleton count={8} />
           </div>
         )}
       </main>
