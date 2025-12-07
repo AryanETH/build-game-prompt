@@ -514,34 +514,6 @@ export const GameFeed = () => {
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
   const [gifPickerOpen, setGifPickerOpen] = useState(false);
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
-  const [deletingGameId, setDeletingGameId] = useState<string | null>(null);
-
-  const handleDeleteGame = async (gameId: string) => {
-    if (!userId) {
-      toast.error("Please sign in to delete games");
-      return;
-    }
-
-    if (!confirm("Are you sure you want to delete this game?")) return;
-
-    setDeletingGameId(gameId);
-    try {
-      const { error } = await supabase
-        .from('games')
-        .delete()
-        .eq('id', gameId)
-        .eq('creator_id', userId);
-
-      if (error) throw error;
-
-      toast.success('Game deleted');
-      queryClient.invalidateQueries({ queryKey: ['games'] });
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to delete game');
-    } finally {
-      setDeletingGameId(null);
-    }
-  };
 
   const { data: comments = [], refetch: refetchComments } = useQuery({
     queryKey: ['comments', commentsOpenFor?.id],
@@ -795,8 +767,8 @@ export const GameFeed = () => {
                   </svg>
                 </div>
 
-                {/* Top right buttons - Remix and Delete (if owner) */}
-                <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+                {/* Remix button - top right */}
+                <div className="absolute top-4 right-4 z-10">
                   <button
                     className="px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all duration-200"
                     onClick={() => setRemixFor(game)}
@@ -804,20 +776,6 @@ export const GameFeed = () => {
                     <Sparkles className="w-4 h-4" strokeWidth={2} />
                     Remix
                   </button>
-                  {game.creator_id === userId && (
-                    <button
-                      className="w-9 h-9 rounded-full bg-red-500/90 hover:bg-red-600 text-white flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 backdrop-blur-sm"
-                      onClick={() => handleDeleteGame(game.id)}
-                      disabled={deletingGameId === game.id}
-                      title="Delete game"
-                    >
-                      {deletingGameId === game.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
-                    </button>
-                  )}
                 </div>
 
                 {/* Game info - bottom left - fixed position on mobile to avoid browser UI */}
