@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, Upload, LogOut, Trash2, Edit, Users, GamepadIcon, BarChart3, Search, Eye, Download, RefreshCw, Moon, Sun } from "lucide-react";
+import { Loader2, Upload, LogOut, Trash2, Edit, Users, GamepadIcon, BarChart3, Search, Eye, Download, RefreshCw, Moon, Sun, Coins, CheckCircle, XCircle, ExternalLink } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -43,6 +43,10 @@ export default function Admin() {
     totalPlays: 0,
     totalComments: 0,
   });
+  
+  // Coin purchases
+  const [coinPurchases, setCoinPurchases] = useState<any[]>([]);
+  const [loadingPurchases, setLoadingPurchases] = useState(false);
 
   useEffect(() => {
     checkAdminAccess();
@@ -74,6 +78,7 @@ export default function Admin() {
         loadGames();
         loadUsers();
         loadStats();
+        loadCoinPurchases();
       } else {
         toast.error("Admin access only");
         navigate("/feed");
@@ -143,6 +148,84 @@ export default function Admin() {
       toast.error("Failed to load users");
     } finally {
       setLoadingUsers(false);
+    }
+  };
+
+  const loadCoinPurchases = async () => {
+    setLoadingPurchases(true);
+    try {
+      // First, get all purchases
+      const { data: purchases, error: purchasesError } = await (supabase as any)
+        .from('coin_purchases')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (purchasesError) throw purchasesError;
+
+      // Then, get user profiles for each purchase
+      if (purchases && purchases.length > 0) {
+        const userIds = [...new Set(purchases.map((p: any) => p.user_id))] as string[];
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url')
+          .in('id', userIds);
+
+        // Merge user data with purchases
+        const purchasesWithUsers = purchases.map((purchase: any) => ({
+          ...purchase,
+          user: profiles?.find((p: any) => p.id === purchase.user_id) || null
+        }));
+
+        setCoinPurchases(purchasesWithUsers);
+      } else {
+        setCoinPurchases([]);
+      }
+    } catch (error) {
+      console.error("Load purchases error:", error);
+      toast.error("Failed to load coin purchases");
+    } finally {
+      setLoadingPurchases(false);
+    }
+  };
+
+  const handleVerifyPurchase = async (purchaseId: string) => {
+    try {
+      // Simply update status to verified
+      // The database trigger will handle crediting coins automatically
+      const { error } = await (supabase as any)
+        .from('coin_purchases')
+        .update({ status: 'verified' })
+        .eq('id', purchaseId);
+      
+      if (error) {
+        console.error("Verify error:", error);
+        throw error;
+      }
+
+      toast.success("Payment verified! Coins credited to user.");
+      loadCoinPurchases();
+    } catch (error: any) {
+      console.error("Verify error:", error);
+      toast.error(error.message || "Failed to verify payment");
+    }
+  };
+
+  const handleRejectPurchase = async (purchaseId: string, reason: string) => {
+    try {
+      const { error } = await (supabase as any)
+        .from('coin_purchases')
+        .update({ 
+          status: 'rejected',
+          rejection_reason: reason 
+        })
+        .eq('id', purchaseId);
+      
+      if (error) throw error;
+      toast.success("Payment rejected");
+      loadCoinPurchases();
+    } catch (error) {
+      console.error("Reject error:", error);
+      toast.error("Failed to reject payment");
     }
   };
 
@@ -488,9 +571,13 @@ export default function Admin() {
 
         {/* Tabs */}
         <Tabs defaultValue="games" className="space-y-6">
-          <TabsList className={`grid w-full grid-cols-3 max-w-md ${isDarkMode ? 'bg-white/10 border-white/30' : 'bg-black/5 border-black/10'}`}>
+          <TabsList className={`grid w-full grid-cols-4 max-w-2xl ${isDarkMode ? 'bg-white/10 border-white/30' : 'bg-black/5 border-black/10'}`}>
             <TabsTrigger value="games" className={isDarkMode ? 'data-[state=active]:bg-white data-[state=active]:text-black text-white' : ''}>Games</TabsTrigger>
             <TabsTrigger value="users" className={isDarkMode ? 'data-[state=active]:bg-white data-[state=active]:text-black text-white' : ''}>Users</TabsTrigger>
+            <TabsTrigger value="coins" className={isDarkMode ? 'data-[state=active]:bg-white data-[state=active]:text-black text-white' : ''}>
+              <Coins className="w-4 h-4 mr-2" />
+              Coins
+            </TabsTrigger>
             <TabsTrigger value="upload" className={isDarkMode ? 'data-[state=active]:bg-white data-[state=active]:text-black text-white' : ''}>Upload</TabsTrigger>
           </TabsList>
 
@@ -648,6 +735,163 @@ export default function Admin() {
                   {users.length === 0 && (
                     <div className={`text-center py-12 ${isDarkMode ? 'text-white/50' : 'text-black/50'}`}>
                       No users found
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
+          </TabsContent>
+
+          {/* Coin Purchases Tab */}
+          <TabsContent value="coins" className="space-y-4">
+            <Card className={`p-6 ${isDarkMode ? 'bg-white/10 border-white/30' : 'bg-white border-black/10'}`}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className={`text-2xl font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                  <Coins className="h-6 w-6 text-yellow-500" />
+                  Coin Purchase Verification
+                </h2>
+                <Button onClick={loadCoinPurchases} variant="outline" size="sm" className={isDarkMode ? 'border-white/20 hover:bg-white/10' : ''}>
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {loadingPurchases ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className={`h-8 w-8 animate-spin ${isDarkMode ? 'text-white' : 'text-black'}`} />
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                  {coinPurchases.filter(p => p.status === 'pending').length > 0 && (
+                    <div>
+                      <h3 className={`text-lg font-semibold mb-3 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>
+                        Pending Verification ({coinPurchases.filter(p => p.status === 'pending').length})
+                      </h3>
+                      {coinPurchases.filter(p => p.status === 'pending').map((purchase) => (
+                        <div
+                          key={purchase.id}
+                          className={`p-4 border-2 rounded-lg mb-3 ${
+                            isDarkMode ? 'border-yellow-500/50 bg-yellow-500/10' : 'border-yellow-500/30 bg-yellow-50'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 space-y-2">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                                  isDarkMode ? 'bg-white/20 text-white' : 'bg-black/10 text-black'
+                                }`}>
+                                  {purchase.user?.username?.[0]?.toUpperCase() || 'U'}
+                                </div>
+                                <div>
+                                  <h4 className={`font-semibold ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                                    @{purchase.user?.username || 'Unknown'}
+                                  </h4>
+                                  <p className={`text-xs ${isDarkMode ? 'text-white/60' : 'text-black/50'}`}>
+                                    {new Date(purchase.created_at).toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="grid grid-cols-2 gap-4 mt-3">
+                                <div>
+                                  <p className={`text-xs ${isDarkMode ? 'text-white/60' : 'text-black/50'}`}>Amount</p>
+                                  <p className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-black'}`}>₹{purchase.amount_inr}</p>
+                                </div>
+                                <div>
+                                  <p className={`text-xs ${isDarkMode ? 'text-white/60' : 'text-black/50'}`}>Coins</p>
+                                  <p className={`text-lg font-bold text-yellow-500`}>{purchase.coins_amount}</p>
+                                </div>
+                              </div>
+
+                              <div>
+                                <p className={`text-xs ${isDarkMode ? 'text-white/60' : 'text-black/50'}`}>UTR Number</p>
+                                <p className={`font-mono font-semibold ${isDarkMode ? 'text-white' : 'text-black'}`}>{purchase.utr_number}</p>
+                              </div>
+
+                              {purchase.payment_screenshot_url && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => window.open(purchase.payment_screenshot_url, '_blank')}
+                                  className={`gap-2 ${isDarkMode ? 'border-white/20 hover:bg-white/10' : ''}`}
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  View Screenshot
+                                </Button>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                              <Button
+                                onClick={() => handleVerifyPurchase(purchase.id)}
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700 text-white gap-2"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                                Verify & Credit
+                              </Button>
+                              <Button
+                                onClick={() => {
+                                  const reason = prompt("Rejection reason:");
+                                  if (reason) handleRejectPurchase(purchase.id, reason);
+                                }}
+                                variant="destructive"
+                                size="sm"
+                                className="gap-2"
+                              >
+                                <XCircle className="h-4 w-4" />
+                                Reject
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {coinPurchases.filter(p => p.status !== 'pending').length > 0 && (
+                    <div>
+                      <h3 className={`text-lg font-semibold mb-3 ${isDarkMode ? 'text-white/70' : 'text-black/70'}`}>
+                        History
+                      </h3>
+                      {coinPurchases.filter(p => p.status !== 'pending').map((purchase) => (
+                        <div
+                          key={purchase.id}
+                          className={`p-3 border rounded-lg mb-2 ${
+                            isDarkMode ? 'border-white/20 bg-white/5' : 'border-black/10 bg-black/5'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                                isDarkMode ? 'bg-white/20 text-white' : 'bg-black/10 text-black'
+                              }`}>
+                                {purchase.user?.username?.[0]?.toUpperCase() || 'U'}
+                              </div>
+                              <div>
+                                <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                                  @{purchase.user?.username} - ₹{purchase.amount_inr} ({purchase.coins_amount} coins)
+                                </p>
+                                <p className={`text-xs ${isDarkMode ? 'text-white/50' : 'text-black/50'}`}>
+                                  {new Date(purchase.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              purchase.status === 'verified' 
+                                ? 'bg-green-500/20 text-green-500' 
+                                : 'bg-red-500/20 text-red-500'
+                            }`}>
+                              {purchase.status}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {coinPurchases.length === 0 && (
+                    <div className={`text-center py-12 ${isDarkMode ? 'text-white/50' : 'text-black/50'}`}>
+                      No coin purchases yet
                     </div>
                   )}
                 </div>
@@ -818,11 +1062,12 @@ export default function Admin() {
 <head>
   <meta charset="UTF-8">
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
     body {
       margin: 0;
       background: #000;
       color: #fff;
-      font-family: Arial;
+      font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'San Francisco', Roboto, 'Helvetica Neue', Arial, sans-serif;
       display: flex;
       align-items: center;
       justify-content: center;

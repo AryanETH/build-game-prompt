@@ -24,7 +24,8 @@ const buildFallbackGameCode = (title: string) => `<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${title || "Arcade"}</title>
   <style>
-    html,body{margin:0;height:100%;background:#0b1021;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto}
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+    html,body{margin:0;height:100%;background:#0b1021;color:#fff;font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'San Francisco',Roboto,'Helvetica Neue',Arial,sans-serif}
     #hud{position:fixed;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:center}
     #hud .pill{background:rgba(255,255,255,0.08);padding:8px 12px;border-radius:999px;border:1px solid rgba(255,255,255,0.15)}
     #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}

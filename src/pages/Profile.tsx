@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Heart, Play, Loader2, Pencil, UserPlus, UserCheck, Star, Trash2 } from "lucide-react";
+import { User, Heart, Play, Loader2, Pencil, UserPlus, UserCheck, Star, Trash2, Coins, LogOut, Share2, Settings, Bookmark, Sparkles, Plus, HelpCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,13 +17,19 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog as UIDialog, DialogContent as UIDialogContent, DialogHeader as UIDialogHeader, DialogTitle as UIDialogTitle } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
 import { OnlineIndicator } from "@/components/OnlineIndicator";
+import { CoinPurchase } from "@/components/CoinPurchase";
+import { PlusBadge } from "@/components/PlusBadge";
+import { ClaimMissingCoins } from "@/components/ClaimMissingCoins";
 
 export default function Profile() {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
   const [userGames, setUserGames] = useState<any[]>([]);
   const [remixedGames, setRemixedGames] = useState<any[]>([]);
+  const [likedGames, setLikedGames] = useState<any[]>([]);
   const [editOpen, setEditOpen] = useState(false);
   const [formUsername, setFormUsername] = useState("");
+  const [formBio, setFormBio] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -35,6 +41,9 @@ export default function Profile() {
   const [followingOpen, setFollowingOpen] = useState(false);
   const [followers, setFollowers] = useState<any[]>([]);
   const [following, setFollowing] = useState<any[]>([]);
+  const [totalLikes, setTotalLikes] = useState(0);
+  const [coinPurchaseOpen, setCoinPurchaseOpen] = useState(false);
+  const [claimCoinsOpen, setClaimCoinsOpen] = useState(false);
 
   // Game-related settings (persisted locally)
   const [autoplayFeed, setAutoplayFeed] = useState<boolean>(true);
@@ -74,9 +83,10 @@ export default function Profile() {
     fetchProfile();
     fetchUserGames();
     fetchRemixedGames();
+    fetchLikedGames();
     checkFollowStatus();
 
-    // Live updates for follower counts and games
+    // Live updates for follower counts, games, and coins
     const followChannel = supabase
       .channel('realtime:follows')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'follows' }, () => {
@@ -88,13 +98,57 @@ export default function Profile() {
       .channel('realtime:games')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, () => {
         fetchUserGames();
-        fetchRemixedGames();
+      })
+      .subscribe();
+
+    // Realtime coin updates
+    const profileChannel = supabase
+      .channel('realtime:profile')
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'profiles',
+        filter: `id=eq.${currentUserId}`
+      }, (payload) => {
+        console.log('Profile updated:', payload);
+        // Update profile with new coin count
+        if (payload.new) {
+          setProfile((prev: any) => ({
+            ...prev,
+            coins: payload.new.coins,
+            is_plus_member: payload.new.is_plus_member
+          }));
+          
+          // Show toast notification if coins increased
+          if (payload.old && payload.new.coins > payload.old.coins) {
+            const coinsAdded = payload.new.coins - payload.old.coins;
+            toast.success(`🎉 ${coinsAdded} coins credited to your account!`, {
+              description: "You're now a Plus member!"
+            });
+          }
+        }
       })
       .subscribe();
 
     return () => {
       followChannel.unsubscribe();
       gamesChannel.unsubscribe();
+      profileChannel.unsubscribe();
+    };
+  }, [currentUserId]);
+
+  // Separate effect for likes channel
+  useEffect(() => {
+    const likesChannel = supabase
+      .channel('realtime:likes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_likes' }, () => {
+        fetchLikedGames();
+        calculateTotalLikes();
+      })
+      .subscribe();
+
+    return () => {
+      likesChannel.unsubscribe();
     };
   }, []);
 
@@ -187,6 +241,7 @@ export default function Profile() {
 
       setProfile(refreshed.data);
       if (refreshed.data?.username) setFormUsername(refreshed.data.username);
+      if (refreshed.data?.bio) setFormBio(refreshed.data.bio);
       if (refreshed.data?.avatar_url) setPreviewUrl(refreshed.data.avatar_url);
     }
   };
@@ -244,6 +299,50 @@ export default function Profile() {
     }
   };
 
+  const fetchLikedGames = async () => {
+    const { data: userRes } = await supabase.auth.getUser();
+    const uid = userRes.user?.id;
+    if (uid) {
+      const { data: likes, error } = await supabase
+        .from('game_likes')
+        .select('game_id, games(*)')
+        .eq('user_id', uid)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching liked games:', error);
+      }
+      setLikedGames(likes?.map(l => l.games).filter(Boolean) || []);
+    }
+  };
+
+  const calculateTotalLikes = async () => {
+    const { data: userRes } = await supabase.auth.getUser();
+    const uid = userRes.user?.id;
+    if (uid) {
+      const { data: games } = await supabase
+        .from('games')
+        .select('id')
+        .eq('creator_id', uid);
+      
+      if (games && games.length > 0) {
+        const gameIds = games.map(g => g.id);
+        const { count } = await supabase
+          .from('game_likes')
+          .select('*', { count: 'exact', head: true })
+          .in('game_id', gameIds);
+        
+        setTotalLikes(count || 0);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (userGames.length > 0) {
+      calculateTotalLikes();
+    }
+  }, [userGames]);
+
   const deleteGame = async (gameId: string) => {
     const { data } = await supabase.auth.getUser();
     const uid = data.user?.id;
@@ -270,6 +369,7 @@ export default function Profile() {
       await fetchProfile();
     }
     setFormUsername(profile?.username || "");
+    setFormBio(profile?.bio || "");
     setPreviewUrl(profile?.avatar_url || null);
     setSelectedFile(null);
     setEditOpen(true);
@@ -418,7 +518,7 @@ export default function Profile() {
 
       const { error } = await supabase
         .from('profiles')
-        .update({ username: newUsername, avatar_url: avatarUrl })
+        .update({ username: newUsername, bio: formBio.trim(), avatar_url: avatarUrl })
         .eq('id', uid);
 
       if (error) {
@@ -449,92 +549,160 @@ export default function Profile() {
 
   const levelInfo = profile ? getLevelInfo(profile.xp || 0) : { level: 1, progress: 0 };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success("Logged out successfully");
+    navigate("/auth");
+  };
+
+  const handleShareProfile = async () => {
+    const profileUrl = `${window.location.origin}/u/${profile?.username}`;
+    const shareText = `Check out ${profile?.username}'s profile on Oplus!\n\n${profileUrl}`;
+    
+    try {
+      // Try Web Share API first (for mobile)
+      if (navigator.share) {
+        await navigator.share({
+          title: `${profile?.username} on Oplus`,
+          text: shareText,
+          url: profileUrl,
+        });
+        toast.success("Profile shared!");
+        return;
+      }
+      
+      // Fallback to clipboard
+      await navigator.clipboard.writeText(profileUrl);
+      toast.success("Profile link copied to clipboard!");
+    } catch (error: any) {
+      // User cancelled or error occurred
+      if (error.name !== 'AbortError') {
+        // Try clipboard as last resort
+        try {
+          await navigator.clipboard.writeText(profileUrl);
+          toast.success("Profile link copied to clipboard!");
+        } catch {
+          toast.error("Failed to share profile");
+        }
+      }
+    }
+  };
+
   if (selectedGame) {
     return <GamePlayer game={selectedGame} onClose={() => setSelectedGame(null)} />;
   }
 
   return (
-    <div className="min-h-screen pb-16 md:pb-0 gradient-hero">
+    <div className="min-h-screen pb-16 md:pb-0">
       
-      <div className="max-w-4xl mx-auto p-4 space-y-6">
-        {/* Profile Header */}
-        <Card className="p-6 gradient-card border-primary/20">
-          <div className="flex flex-col items-center text-center gap-4">
-            <Avatar className="w-32 h-32 ring-4 ring-primary/30">
-              <AvatarImage src={profile?.avatar_url || undefined} />
-              <AvatarFallback className="text-3xl bg-primary/20">
-                {profile?.username?.[0]?.toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+      <div className="w-full">
+        {/* Profile Header - Redesigned Layout */}
+        <div className="px-4 md:px-8 py-6">
+          {/* Top Right: Coins and Logout */}
+          <div className="flex justify-end items-center gap-3 mb-6">
+            <Button
+              onClick={() => setCoinPurchaseOpen(true)}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Buy Coins
+            </Button>
+            <Button
+              onClick={() => setClaimCoinsOpen(true)}
+              variant="ghost"
+              size="sm"
+              className="gap-2 text-blue-500 hover:text-blue-600 hover:bg-blue-500/10"
+              title="Claim missing coins"
+            >
+              <HelpCircle className="w-4 h-4" />
+              Claim
+            </Button>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-yellow-500/20 to-amber-500/20">
+              <Coins className="w-5 h-5 text-yellow-500" />
+              <span className="font-bold text-yellow-500">{profile?.coins || 0}</span>
+            </div>
+            <Button 
+              onClick={handleLogout}
+              variant="ghost"
+              size="icon"
+              title="Logout"
+            >
+              <LogOut className="w-5 h-5" />
+            </Button>
+          </div>
+
+          {/* Profile Info - Left Aligned Layout */}
+          <div className="flex items-start gap-8 mb-6">
+            {/* Avatar - 30% bigger with Plus badge */}
+            <div className="relative">
+              <Avatar className={`w-36 h-36 flex-shrink-0 ${profile?.is_plus_member ? 'ring-4 ring-gradient-to-br from-yellow-400 to-amber-500 ring-offset-2' : ''}`}>
+                <AvatarImage src={profile?.avatar_url || undefined} />
+                <AvatarFallback className="text-4xl bg-primary/20">
+                  {profile?.username?.[0]?.toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              {profile?.is_plus_member && (
+                <div className="absolute -bottom-1 -right-1">
+                  <PlusBadge size="lg" />
+                </div>
+              )}
+            </div>
             
-            <div className="w-full">
-              <h1 className="text-3xl font-bold mb-2">{profile?.username}</h1>
+            {/* Username, Buttons, Stats, and Bio */}
+            <div className="flex-1">
+              {/* Username - Larger font */}
+              <h1 className="text-3xl font-bold mb-3">{profile?.username}</h1>
               
-              {/* Level Badge */}
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-accent/20 border border-accent/50">
-                  <Star className="w-4 h-4 text-accent fill-accent" />
-                  <span className="font-bold text-accent">Level {levelInfo.level}</span>
-                </div>
-                <div className="flex-1 max-w-[200px] h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-accent transition-all"
-                    style={{ width: `${levelInfo.progress}%` }}
-                  />
-                </div>
+              {/* Action Buttons Row - Horizontal */}
+              <div className="flex gap-2 mb-4">
+                <Button onClick={handleOpenEdit} variant="default" size="sm" className="px-6">
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Edit profile
+                </Button>
+                <Button onClick={handleShareProfile} variant="outline" size="sm" className="px-6">
+                  <Share2 className="w-4 h-4 mr-2" />
+                  Share profile
+                </Button>
+                <Button variant="ghost" size="icon" title="Settings">
+                  <Settings className="w-5 h-5" />
+                </Button>
               </div>
               
-              <div className="flex justify-center gap-8 mb-4 text-sm">
+              {/* Stats Row - Below buttons */}
+              <div className="flex gap-6 mb-4">
                 <button
                   type="button"
-                  className="text-center hover:opacity-80"
-                  onClick={async () => { await loadFollowers(); setFollowersOpen(true); }}
-                >
-                  <div className="font-bold text-xl">{profile?.followers_count || 0}</div>
-                  <div className="text-muted-foreground">Followers</div>
-                </button>
-                <button
-                  type="button"
-                  className="text-center hover:opacity-80"
+                  className="hover:opacity-80 transition-opacity"
                   onClick={async () => { await loadFollowing(); setFollowingOpen(true); }}
                 >
-                  <div className="font-bold text-xl">{profile?.following_count || 0}</div>
-                  <div className="text-muted-foreground">Following</div>
+                  <span className="font-bold text-xl">{profile?.following_count || 0}</span>
+                  <span className="text-muted-foreground text-base ml-1.5">Following</span>
                 </button>
-                <div className="text-center">
-                  <div className="font-bold text-xl">{userGames.length}</div>
-                  <div className="text-muted-foreground">Games</div>
+                <button
+                  type="button"
+                  className="hover:opacity-80 transition-opacity"
+                  onClick={async () => { await loadFollowers(); setFollowersOpen(true); }}
+                >
+                  <span className="font-bold text-xl">{profile?.followers_count || 0}</span>
+                  <span className="text-muted-foreground text-base ml-1.5">Followers</span>
+                </button>
+                <div>
+                  <span className="font-bold text-xl">{totalLikes}</span>
+                  <span className="text-muted-foreground text-base ml-1.5">Likes</span>
                 </div>
               </div>
 
-              <div className="flex gap-2 justify-center">
-                <Button onClick={handleOpenEdit} className="gap-2">
-                  <Pencil className="w-4 h-4" />
-                  Edit Profile
-                </Button>
-                {profile?.id !== currentUserId && (
-                  <Button 
-                    onClick={toggleFollow}
-                    variant={isFollowing ? "outline" : "default"}
-                    className="gap-2"
-                  >
-                    {isFollowing ? (
-                      <>
-                        <UserCheck className="w-4 h-4" />
-                        Following
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="w-4 h-4" />
-                        Follow
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
+              {/* Bio - At the end */}
+              {profile?.bio ? (
+                <p className="text-base text-foreground leading-relaxed">{profile.bio}</p>
+              ) : (
+                <p className="text-base text-muted-foreground italic">No bio yet</p>
+              )}
             </div>
           </div>
-        </Card>
+        </div>
 
         {/* Edit Profile Dialog */}
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -567,6 +735,20 @@ export default function Profile() {
                   placeholder="Your username"
                 />
               </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="bio">Bio</Label>
+                <textarea
+                  id="bio"
+                  value={formBio}
+                  onChange={(e) => setFormBio(e.target.value)}
+                  placeholder="Tell us about yourself..."
+                  maxLength={100}
+                  rows={3}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                />
+                <p className="text-xs text-muted-foreground text-right">{formBio.length}/100</p>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>Cancel</Button>
@@ -578,46 +760,72 @@ export default function Profile() {
           </DialogContent>
         </Dialog>
 
-        <Tabs defaultValue="my-games" className="mt-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="my-games">My Games</TabsTrigger>
-            <TabsTrigger value="remixes">Remixes</TabsTrigger>
+        {/* Tabs - TikTok Style */}
+        <Tabs defaultValue="created" className="w-full">
+          <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
+            <TabsTrigger 
+              value="created" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent px-6 py-3"
+            >
+              <Play className="w-4 h-4 mr-2" />
+              Games
+            </TabsTrigger>
+            <TabsTrigger 
+              value="remixes" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent px-6 py-3"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Remix
+            </TabsTrigger>
+            <TabsTrigger 
+              value="liked" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent px-6 py-3"
+            >
+              <Heart className="w-4 h-4 mr-2" />
+              Liked
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="my-games">
+          <TabsContent value="created" className="mt-0">
             {userGames.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">No games yet.</div>
+              <div className="text-center text-muted-foreground py-12">No games yet.</div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1">
                 {userGames.map((game) => (
                   <div
                     key={game.id}
                     onClick={() => setSelectedGame(game)}
-                    className="aspect-[9/16] relative group cursor-pointer overflow-hidden rounded-lg border border-border hover:border-primary transition-all"
+                    className="aspect-[9/16] relative cursor-pointer overflow-hidden bg-muted group"
                   >
                     {game.thumbnail_url ? (
-                      <img src={game.thumbnail_url} alt={game.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                      <img src={game.thumbnail_url} alt={game.title} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full gradient-primary flex items-center justify-center"><Play className="w-12 h-12 text-white" /></div>
+                      <div className="w-full h-full bg-muted flex items-center justify-center"><Play className="w-8 h-8 text-muted-foreground" /></div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
-                        <p className="font-bold text-sm mb-1 truncate">{game.title}</p>
-                        <div className="flex gap-3 text-xs items-center">
-                          <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{game.likes_count}</span>
-                          <span className="flex items-center gap-1"><Play className="w-3 h-3" />{game.plays_count}</span>
-                          <Button 
-                            size="icon" 
-                            variant="destructive" 
-                            className="ml-auto h-6 w-6 opacity-90" 
-                            onClick={(e) => { e.stopPropagation(); deleteGame(game.id); }} 
-                            disabled={deletingId === game.id} 
-                            title="Delete game"
-                          >
-                            {deletingId === game.id ? (<Loader2 className="w-3 h-3 animate-spin" />) : (<Trash2 className="w-3 h-3" />)}
-                          </Button>
-                        </div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-2">
+                      <p className="text-white text-xs font-semibold truncate">{game.title}</p>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/90 backdrop-blur-sm px-2 py-1.5 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-3 text-white text-xs font-semibold">
+                        <span className="flex items-center gap-1">
+                          <Play className="w-3 h-3" fill="white" />
+                          {game.plays_count || 0}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Heart className="w-3 h-3" fill="white" />
+                          {game.likes_count || 0}
+                        </span>
                       </div>
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-6 w-6 text-white hover:text-red-500 hover:bg-red-500/20" 
+                        onClick={(e) => { e.stopPropagation(); deleteGame(game.id); }} 
+                        disabled={deletingId === game.id} 
+                        title="Delete game"
+                      >
+                        {deletingId === game.id ? (<Loader2 className="w-3 h-3 animate-spin" />) : (<Trash2 className="w-3 h-3" />)}
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -625,31 +833,46 @@ export default function Profile() {
             )}
           </TabsContent>
 
-          <TabsContent value="remixes">
+          <TabsContent value="remixes" className="mt-0">
             {remixedGames.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">No remixes yet.</div>
+              <div className="text-center text-muted-foreground py-12">No remixes yet.</div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1">
                 {remixedGames.map((game) => (
                   <div
                     key={game.id}
                     onClick={() => setSelectedGame(game)}
-                    className="aspect-[9/16] relative group cursor-pointer overflow-hidden rounded-lg border border-border hover:border-primary transition-all"
+                    className="aspect-[9/16] relative cursor-pointer overflow-hidden bg-muted group"
                   >
                     {game.thumbnail_url ? (
-                      <img src={game.thumbnail_url} alt={game.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                      <img src={game.thumbnail_url} alt={game.title} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full gradient-primary flex items-center justify-center"><Play className="w-12 h-12 text-white" /></div>
+                      <div className="w-full h-full bg-muted flex items-center justify-center"><Play className="w-8 h-8 text-muted-foreground" /></div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
-                        <p className="font-bold text-sm mb-1 truncate">{game.title}</p>
-                        <div className="flex gap-2 text-xs items-center flex-wrap">
-                          <span className="px-2 py-0.5 text-[10px] rounded-full bg-white/20 text-white/90">Remix</span>
-                          <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{game.likes_count}</span>
-                          <span className="flex items-center gap-1"><Play className="w-3 h-3" />{game.plays_count}</span>
-                        </div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-2">
+                      <p className="text-white text-xs font-semibold truncate">{game.title}</p>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/90 backdrop-blur-sm px-2 py-1.5 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-3 text-white text-xs font-semibold">
+                        <span className="flex items-center gap-1">
+                          <Play className="w-3 h-3" fill="white" />
+                          {game.plays_count || 0}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Heart className="w-3 h-3" fill="white" />
+                          {game.likes_count || 0}
+                        </span>
                       </div>
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-6 w-6 text-white hover:text-red-500 hover:bg-red-500/20" 
+                        onClick={(e) => { e.stopPropagation(); deleteGame(game.id); }} 
+                        disabled={deletingId === game.id} 
+                        title="Delete game"
+                      >
+                        {deletingId === game.id ? (<Loader2 className="w-3 h-3 animate-spin" />) : (<Trash2 className="w-3 h-3" />)}
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -657,7 +880,42 @@ export default function Profile() {
             )}
           </TabsContent>
 
-
+          <TabsContent value="liked" className="mt-0">
+            {likedGames.length === 0 ? (
+              <div className="text-center text-muted-foreground py-12">No liked games yet.</div>
+            ) : (
+              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1">
+                {likedGames.map((game: any) => (
+                  <div
+                    key={game.id}
+                    onClick={() => setSelectedGame(game)}
+                    className="aspect-[9/16] relative cursor-pointer overflow-hidden bg-muted group"
+                  >
+                    {game.thumbnail_url ? (
+                      <img src={game.thumbnail_url} alt={game.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-muted flex items-center justify-center"><Play className="w-8 h-8 text-muted-foreground" /></div>
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-2">
+                      <p className="text-white text-xs font-semibold truncate">{game.title}</p>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/90 backdrop-blur-sm px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-3 text-white text-xs font-semibold">
+                        <span className="flex items-center gap-1">
+                          <Play className="w-3 h-3" fill="white" />
+                          {game.plays_count || 0}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Heart className="w-3 h-3" fill="white" />
+                          {game.likes_count || 0}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       </div>
       <FollowersFollowingDialogs
@@ -667,6 +925,17 @@ export default function Profile() {
         setFollowingOpen={setFollowingOpen}
         followers={followers}
         following={following}
+      />
+      
+      <CoinPurchase
+        open={coinPurchaseOpen}
+        onOpenChange={setCoinPurchaseOpen}
+        onSuccess={() => fetchProfile()}
+      />
+      
+      <ClaimMissingCoins
+        open={claimCoinsOpen}
+        onOpenChange={setClaimCoinsOpen}
       />
     </div>
   );

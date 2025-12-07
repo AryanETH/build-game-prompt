@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Instagram-style Fonts - Proxima Nova alternative (Montserrat) + System fonts */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap');
+
 /* Premium Animations - Apple-level quality */
 
 @keyframes float {
@@ -257,6 +260,16 @@ All colors MUST be HSL.
   
   .transition-smooth {
     transition: var(--transition-smooth);
+  }
+
+  /* Remove borders and shadows from menus and dialogs */
+  [role="menu"],
+  [role="dialog"],
+  .sheet-content,
+  .popover-content,
+  .dropdown-menu {
+    border: none !important;
+    box-shadow: none !important;
   }
 
   /* Centered, responsive 9:16 container helper for desktop/laptop */

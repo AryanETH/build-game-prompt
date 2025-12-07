@@ -13,6 +13,9 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Montserrat', '-apple-system', 'BlinkMacSystemFont', 'San Francisco', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
