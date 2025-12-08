@@ -153,7 +153,7 @@ export const CoinPurchase = ({ open, onOpenChange, onSuccess }: CoinPurchaseProp
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] md:max-w-[800px]">
+      <DialogContent className="sm:max-w-[500px] md:max-w-[800px] rounded-2xl">
         {step === 'amount' && (
           <>
             <DialogHeader>

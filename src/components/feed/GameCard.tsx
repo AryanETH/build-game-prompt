@@ -74,7 +74,7 @@ export const GameCard = ({
           >
             <div className="relative">
               <Avatar className={`${isMobile ? 'w-9 h-9' : 'w-12 h-12'} border-2 border-white/50 group-hover:border-white transition-colors`}>
-                <AvatarImage src={game.creator?.avatar_url || undefined} />
+                <AvatarImage className="object-cover" src={game.creator?.avatar_url || undefined} />
                 <AvatarFallback className={`gradient-primary text-white ${isMobile ? 'text-xs' : 'text-sm'} font-semibold`}>
                   {game.creator?.username?.[0]?.toUpperCase() || 'U'}
                 </AvatarFallback>

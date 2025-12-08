@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 
 export default function Settings() {
+  const navigate = useNavigate();
   // Game-related settings (persisted locally)
   const [autoplayFeed, setAutoplayFeed] = useState<boolean>(true);
   const [enableSoundByDefault, setEnableSoundByDefault] = useState<boolean>(false);
@@ -41,12 +45,23 @@ export default function Settings() {
   return (
     <div className="min-h-screen pb-16 md:pb-0 gradient-hero">
       <div className="max-w-4xl mx-auto p-4 space-y-6">
-        <Card className="p-6 gradient-card border-primary/20">
+        <div className="flex items-center gap-3 mb-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate(-1)}
+            className="rounded-full"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </div>
+        
+        <Card className="p-6 gradient-card border-primary/20 rounded-2xl">
           <h1 className="text-3xl font-bold mb-2">Settings</h1>
           <p className="text-muted-foreground">Customize your experience</p>
         </Card>
 
-        <Card className="p-6">
+        <Card className="p-6 rounded-2xl">
           <div className="space-y-5">
             <div className="flex items-center justify-between">
               <div>

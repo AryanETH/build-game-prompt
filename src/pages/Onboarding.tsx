@@ -190,7 +190,7 @@ const Onboarding = () => {
           <CardContent className="space-y-4">
             <div className="flex flex-col items-center space-y-4">
               <Avatar className="w-24 h-24">
-                <AvatarImage src={avatarUrl ?? undefined} />
+                <AvatarImage src={avatarUrl ?? undefined}  className="object-cover"/>
                 <AvatarFallback>
                   <Upload className="w-8 h-8" />
                 </AvatarFallback>

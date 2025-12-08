@@ -369,7 +369,7 @@ export default function Messages() {
                 >
                   <div className="relative flex-shrink-0">
                     <Avatar className="h-12 w-12 ring-2 ring-background">
-                      <AvatarImage src={conv.avatar_url || undefined} />
+                      <AvatarImage src={conv.avatar_url || undefined}  className="object-cover"/>
                       <AvatarFallback className="gradient-primary text-white text-sm font-semibold">
                         {conv.username?.[0]?.toUpperCase() || '?'}
                       </AvatarFallback>
@@ -419,7 +419,7 @@ export default function Messages() {
             >
               <div className="relative flex-shrink-0">
                 <Avatar className="h-10 w-10 ring-2 ring-background">
-                  <AvatarImage src={selectedUser.avatar_url || undefined} />
+                  <AvatarImage src={selectedUser.avatar_url || undefined}  className="object-cover"/>
                   <AvatarFallback className="gradient-primary text-white text-sm font-semibold">
                     {selectedUser.username?.[0]?.toUpperCase() || '?'}
                   </AvatarFallback>

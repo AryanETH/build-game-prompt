@@ -371,7 +371,7 @@ export default function Activity() {
                           {notification.payload.avatar_url ? (
                             <div className="relative">
                               <Avatar className="w-12 h-12 ring-2 ring-background">
-                                <AvatarImage src={notification.payload.avatar_url} />
+                                <AvatarImage src={notification.payload.avatar_url}  className="object-cover"/>
                                 <AvatarFallback className="gradient-primary text-white text-xs font-semibold">
                                   {notification.payload.username?.[0]?.toUpperCase() || '?'}
                                 </AvatarFallback>

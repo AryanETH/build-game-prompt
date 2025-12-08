@@ -25,6 +25,7 @@ import { ProfileHeaderSkeleton, GameGridSkeleton, TabsContentSkeleton, UserListS
 import { NotificationPanel } from "@/components/NotificationPanel";
 import { Bell } from "lucide-react";
 import { LinkifiedText } from "@/components/LinkifiedText";
+import { ImageCropper } from "@/components/ImageCropper";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -43,6 +44,8 @@ export default function Profile() {
   const [formBio, setFormBio] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showCropper, setShowCropper] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [selectedGame, setSelectedGame] = useState<any>(null);
@@ -424,23 +427,39 @@ export default function Profile() {
       return;
     }
     setSelectedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
+    const imageUrl = URL.createObjectURL(file);
+    setImageToCrop(imageUrl);
+    setShowCropper(true);
+  };
+
+  const handleCropComplete = (croppedImage: string) => {
+    setPreviewUrl(croppedImage);
+    setShowCropper(false);
+    setImageToCrop(null);
+  };
+
+  const handleCropCancel = () => {
+    setShowCropper(false);
+    setImageToCrop(null);
+    setSelectedFile(null);
   };
 
   const uploadAvatarAndGetUrl = async (userId: string, file: File): Promise<string> => {
     try {
-      // Resize image before upload to reduce file size
-      const resizedFile = await resizeImage(file, 500); // Resize to max 500px width/height
+      // Use the cropped preview URL directly
+      if (previewUrl && previewUrl.startsWith('data:')) {
+        toast.success("Profile image updated successfully");
+        return previewUrl;
+      }
       
-      // Use data URL as fallback (works without Supabase storage)
+      // Fallback: use original file
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => {
           toast.success("Profile image updated successfully");
-          // Return the data URL as the avatar URL
           resolve(reader.result as string);
         };
-        reader.readAsDataURL(resizedFile);
+        reader.readAsDataURL(file);
       });
       
       /* Commented out Supabase storage upload due to RLS issues
@@ -658,7 +677,7 @@ export default function Profile() {
               className="relative h-10 w-10 md:hidden hover:bg-red-500/10"
               title="Notifications"
             >
-              <Bell className={`w-5 h-5 ${unreadNotificationsCount > 0 ? 'text-red-500' : ''}`} />
+              <Bell className={`w-6 h-6 ${unreadNotificationsCount > 0 ? 'text-red-500' : ''}`} />
               {unreadNotificationsCount > 0 && (
                 <>
                   <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
@@ -721,7 +740,7 @@ export default function Profile() {
                     }}
                   >
                     <Avatar className="w-full h-full">
-                      <AvatarImage src={profile?.avatar_url || undefined} />
+                      <AvatarImage src={profile?.avatar_url || undefined} className="object-cover" />
                       <AvatarFallback className="text-3xl md:text-4xl bg-primary/20">
                         {profile?.username?.[0]?.toUpperCase()}
                       </AvatarFallback>
@@ -730,7 +749,7 @@ export default function Profile() {
                 </div>
               ) : (
                 <Avatar className="w-32 h-32 md:w-36 md:h-36 flex-shrink-0">
-                  <AvatarImage src={profile?.avatar_url || undefined} />
+                  <AvatarImage src={profile?.avatar_url || undefined} className="object-cover" />
                   <AvatarFallback className="text-3xl md:text-4xl bg-primary/20">
                     {profile?.username?.[0]?.toUpperCase()}
                   </AvatarFallback>
@@ -807,7 +826,7 @@ export default function Profile() {
 
         {/* Edit Profile Dialog */}
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[500px] rounded-2xl">
             <DialogHeader>
               <DialogTitle>Edit Profile</DialogTitle>
             </DialogHeader>
@@ -815,7 +834,7 @@ export default function Profile() {
               <div className="flex items-center gap-4">
                 <div className="h-16 w-16 rounded-full overflow-hidden border border-border/60">
                   <Avatar className="h-16 w-16">
-                    <AvatarImage src={previewUrl || undefined} alt="preview" />
+                    <AvatarImage src={previewUrl || undefined} alt="preview" className="object-cover" />
                     <AvatarFallback className="bg-muted">
                       <User className="h-6 w-6" />
                     </AvatarFallback>
@@ -1061,6 +1080,15 @@ export default function Profile() {
         onOpenChange={setNotificationsPanelOpen}
         userId={currentUserId}
       />
+
+      {/* Image Cropper */}
+      {showCropper && imageToCrop && (
+        <ImageCropper
+          image={imageToCrop}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+        />
+      )}
     </div>
   );
 }
@@ -1084,7 +1112,7 @@ export function FollowersFollowingDialogs({
   return (
     <>
       <UIDialog open={followersOpen} onOpenChange={setFollowersOpen}>
-        <UIDialogContent className="sm:max-w-[400px]">
+        <UIDialogContent className="sm:max-w-[400px] rounded-2xl">
           <UIDialogHeader>
             <UIDialogTitle>Followers</UIDialogTitle>
           </UIDialogHeader>
@@ -1100,7 +1128,7 @@ export function FollowersFollowingDialogs({
                 >
                   <div className="relative">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={u.avatar_url || undefined} />
+                      <AvatarImage src={u.avatar_url || undefined} className="object-cover" />
                       <AvatarFallback className="gradient-primary text-white text-sm">
                         {u.username?.[0]?.toUpperCase() || '?'}
                       </AvatarFallback>
@@ -1115,7 +1143,7 @@ export function FollowersFollowingDialogs({
         </UIDialogContent>
       </UIDialog>
       <UIDialog open={followingOpen} onOpenChange={setFollowingOpen}>
-        <UIDialogContent className="sm:max-w-[400px]">
+        <UIDialogContent className="sm:max-w-[400px] rounded-2xl">
           <UIDialogHeader>
             <UIDialogTitle>Following</UIDialogTitle>
           </UIDialogHeader>
@@ -1131,7 +1159,7 @@ export function FollowersFollowingDialogs({
                 >
                   <div className="relative">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={u.avatar_url || undefined} />
+                      <AvatarImage src={u.avatar_url || undefined} className="object-cover" />
                       <AvatarFallback className="gradient-primary text-white text-sm">
                         {u.username?.[0]?.toUpperCase() || '?'}
                       </AvatarFallback>

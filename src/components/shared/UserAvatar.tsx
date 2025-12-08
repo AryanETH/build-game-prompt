@@ -26,7 +26,7 @@ export const UserAvatar = ({
 }: UserAvatarProps) => {
   return (
     <Avatar className={`${sizeClasses[size]} ${className}`}>
-      <AvatarImage src={avatarUrl || undefined} alt={username || 'User'} />
+      <AvatarImage src={avatarUrl || undefined} alt={username || 'User'}  className="object-cover"/>
       <AvatarFallback className="gradient-primary text-white font-semibold">
         {username?.[0]?.toUpperCase() || '?'}
       </AvatarFallback>

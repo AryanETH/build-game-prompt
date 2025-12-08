@@ -47,7 +47,7 @@ export const TurnBasedGame = ({
           {/* Player 1 */}
           <div className={`flex items-center gap-3 ${currentTurn === player1.id ? 'ring-2 ring-green-500 rounded-lg p-2' : 'p-2'}`}>
             <Avatar className="h-10 w-10 border-2 border-white/50">
-              <AvatarImage src={player1.avatar_url || undefined} />
+              <AvatarImage className="object-cover" src={player1.avatar_url || undefined} />
               <AvatarFallback className="gradient-primary text-white">
                 {player1.username[0]?.toUpperCase()}
               </AvatarFallback>
@@ -74,7 +74,7 @@ export const TurnBasedGame = ({
               </div>
             </div>
             <Avatar className="h-10 w-10 border-2 border-white/50">
-              <AvatarImage src={player2.avatar_url || undefined} />
+              <AvatarImage className="object-cover" src={player2.avatar_url || undefined} />
               <AvatarFallback className="gradient-primary text-white">
                 {player2.username[0]?.toUpperCase()}
               </AvatarFallback>

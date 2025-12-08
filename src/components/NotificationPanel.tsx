@@ -401,7 +401,7 @@ export const NotificationPanel = ({ open, onOpenChange, userId }: NotificationPa
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:w-[420px] md:w-[480px] flex flex-col p-0">
         <SheetHeader className="px-6 py-4 border-b">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pr-8">
             <SheetTitle className="flex items-center gap-2">
               <Bell className="w-5 h-5" />
               Notifications
@@ -411,7 +411,9 @@ export const NotificationPanel = ({ open, onOpenChange, userId }: NotificationPa
                 </Badge>
               )}
             </SheetTitle>
-            <div className="flex items-center gap-2">
+          </div>
+          {(unreadCount > 0 || notifications.length > 0) && (
+            <div className="flex items-center justify-between mt-2">
               {unreadCount > 0 && (
                 <Button
                   variant="ghost"
@@ -422,6 +424,7 @@ export const NotificationPanel = ({ open, onOpenChange, userId }: NotificationPa
                   Mark all read
                 </Button>
               )}
+              <div className="flex-1" />
               {notifications.length > 0 && (
                 <Button
                   variant="ghost"
@@ -433,7 +436,7 @@ export const NotificationPanel = ({ open, onOpenChange, userId }: NotificationPa
                 </Button>
               )}
             </div>
-          </div>
+          )}
         </SheetHeader>
 
         {/* Category Tabs */}
@@ -512,7 +515,7 @@ export const NotificationPanel = ({ open, onOpenChange, userId }: NotificationPa
                           {notification.payload.avatar_url ? (
                             <div className="relative">
                               <Avatar className="w-12 h-12 ring-2 ring-background">
-                                <AvatarImage src={notification.payload.avatar_url} />
+                                <AvatarImage className="object-cover" src={notification.payload.avatar_url} />
                                 <AvatarFallback className="gradient-primary text-white text-xs font-semibold">
                                   {notification.payload.username?.[0]?.toUpperCase() || '?'}
                                 </AvatarFallback>
@@ -611,7 +614,7 @@ export const NotificationPanel = ({ open, onOpenChange, userId }: NotificationPa
               <div className="flex items-center gap-3 mb-2">
                 {selectedNotification.payload.avatar_url ? (
                   <Avatar className="w-12 h-12 ring-2 ring-primary/20">
-                    <AvatarImage src={selectedNotification.payload.avatar_url} />
+                    <AvatarImage className="object-cover" src={selectedNotification.payload.avatar_url} />
                     <AvatarFallback className="gradient-primary text-white font-semibold">
                       {selectedNotification.payload.username?.[0]?.toUpperCase() || 'S'}
                     </AvatarFallback>

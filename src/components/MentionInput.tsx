@@ -139,7 +139,7 @@ export const MentionInput = ({ value, onChange, onKeyDown, placeholder, classNam
               }`}
             >
               <Avatar className="w-6 h-6">
-                <AvatarImage src={user.avatar_url || undefined} />
+                <AvatarImage className="object-cover" src={user.avatar_url || undefined} />
                 <AvatarFallback className="text-xs">
                   {user.username[0]?.toUpperCase()}
                 </AvatarFallback>

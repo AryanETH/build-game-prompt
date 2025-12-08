@@ -163,7 +163,7 @@ export const ActivityFeed = () => {
         <Card key={activity.id} className="p-4">
           <div className="flex items-start gap-3">
             <Avatar className="w-10 h-10 flex-shrink-0">
-              <AvatarImage src={activity.user?.avatar_url || undefined} />
+              <AvatarImage className="object-cover" src={activity.user?.avatar_url || undefined} />
               <AvatarFallback className="bg-primary/20 text-primary">
                 {activity.user?.username?.[0]?.toUpperCase() || 'U'}
               </AvatarFallback>

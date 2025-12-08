@@ -218,7 +218,7 @@ export const WatchFeed = () => {
             {comments.map((c) => (
               <div key={c.id} className="flex items-start gap-2 md:gap-3">
                 <Avatar className="h-7 w-7 md:h-8 md:w-8">
-                  <AvatarImage src={c.user?.avatar_url || undefined} />
+                  <AvatarImage className="object-cover" src={c.user?.avatar_url || undefined} />
                   <AvatarFallback>{c.user?.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
                 </Avatar>
                 <div>

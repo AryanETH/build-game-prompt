@@ -157,7 +157,7 @@ export const TikTokSidebar = () => {
                 className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-muted/50 transition-colors"
               >
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={user.avatar_url || undefined} />
+                  <AvatarImage className="object-cover" src={user.avatar_url || undefined} />
                   <AvatarFallback className="gradient-primary text-white text-xs font-semibold">
                     {user.username[0]?.toUpperCase() || 'U'}
                   </AvatarFallback>

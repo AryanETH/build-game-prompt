@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Play, Heart, Mail, UserPlus, UserCheck, Loader2, RefreshCw, ArrowLeft, Trophy, Crown } from "lucide-react";
 import { toast } from "sonner";
@@ -16,6 +17,7 @@ import { UserAchievementsPanel } from "@/components/UserAchievementsPanel";
 import { PublicProfileSkeleton, GameGridSkeleton } from "@/components/SkeletonComponents";
 import { notifyNewFollower, notifyFollowBack } from "@/lib/notificationSystem";
 import { LinkifiedText } from "@/components/LinkifiedText";
+import { OnlineIndicator } from "@/components/OnlineIndicator";
 
 interface ProfileRow {
   id: string;
@@ -48,6 +50,10 @@ export default function PublicProfile() {
   const [selectedGame, setSelectedGame] = useState<GameRow | null>(null);
   const [messageOpen, setMessageOpen] = useState(false);
   const [messageText, setMessageText] = useState("");
+  const [followersOpen, setFollowersOpen] = useState(false);
+  const [followingOpen, setFollowingOpen] = useState(false);
+  const [followers, setFollowers] = useState<any[]>([]);
+  const [following, setFollowing] = useState<any[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [remixingId, setRemixingId] = useState<string | null>(null);
   const [remixPrompt, setRemixPrompt] = useState<string>("");
@@ -154,6 +160,38 @@ export default function PublicProfile() {
     navigate('/messages', { state: { selectedUserId: profile.id, selectedUsername: profile.username } });
   };
 
+  const loadFollowers = async () => {
+    if (!profile?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('follows')
+        .select('follower_id, profiles!follows_follower_id_fkey(id, username, avatar_url)')
+        .eq('following_id', profile.id);
+      
+      if (error) throw error;
+      const followersList = (data || []).map((f: any) => f.profiles).filter(Boolean);
+      setFollowers(followersList);
+    } catch (error) {
+      console.error('Error loading followers:', error);
+    }
+  };
+
+  const loadFollowing = async () => {
+    if (!profile?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('follows')
+        .select('following_id, profiles!follows_following_id_fkey(id, username, avatar_url)')
+        .eq('follower_id', profile.id);
+      
+      if (error) throw error;
+      const followingList = (data || []).map((f: any) => f.profiles).filter(Boolean);
+      setFollowing(followingList);
+    } catch (error) {
+      console.error('Error loading following:', error);
+    }
+  };
+
   const toggleFollow = async () => {
     if (!profile) return;
     const { data: { session } } = await supabase.auth.getSession();
@@ -218,18 +256,17 @@ export default function PublicProfile() {
           {/* Back button */}
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={() => navigate(-1)}
-            className="gap-2"
+            className="rounded-full"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Back
+            <ArrowLeft className="h-5 w-5" />
           </Button>
           <Card className="p-3 md:p-6 gradient-card border-primary/20">
             <div className="flex flex-col md:flex-row items-center md:items-center gap-4">
               <div className="relative">
                 <Avatar className="w-20 h-20 ring-2 ring-primary/30">
-                  <AvatarImage src={profile.avatar_url || undefined} />
+                  <AvatarImage src={profile.avatar_url || undefined} className="object-cover" />
                   <AvatarFallback>{profile.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
                 </Avatar>
                 {isOnline && <div className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background" />}
@@ -241,7 +278,27 @@ export default function PublicProfile() {
                     <Crown className="w-5 h-5 text-[#ffd87c] drop-shadow-lg" fill="#ffd87c" />
                   )}
                 </div>
-                <div className="text-xs md:text-sm text-muted-foreground mb-2">{profile.followers_count || 0} followers &bull; {profile.following_count || 0} following</div>
+                <div className="text-xs md:text-sm text-muted-foreground mb-2 flex gap-3 justify-center md:justify-start">
+                  <button 
+                    onClick={() => {
+                      loadFollowers();
+                      setFollowersOpen(true);
+                    }}
+                    className="hover:text-foreground transition-colors hover:underline"
+                  >
+                    <span className="font-semibold">{profile.followers_count || 0}</span> followers
+                  </button>
+                  <span>&bull;</span>
+                  <button 
+                    onClick={() => {
+                      loadFollowing();
+                      setFollowingOpen(true);
+                    }}
+                    className="hover:text-foreground transition-colors hover:underline"
+                  >
+                    <span className="font-semibold">{profile.following_count || 0}</span> following
+                  </button>
+                </div>
                 {profile.bio && (
                   <p className="text-sm text-foreground mt-2">
                     <LinkifiedText text={profile.bio} />
@@ -327,6 +384,78 @@ export default function PublicProfile() {
           )}
         </div>
       )}
+
+      {/* Followers Dialog */}
+      <Dialog open={followersOpen} onOpenChange={setFollowersOpen}>
+        <DialogContent className="sm:max-w-[400px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Followers</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-1">
+            {followers.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-4">No followers yet.</div>
+            ) : (
+              followers.map((u: any) => (
+                <button
+                  key={u.id}
+                  onClick={() => {
+                    navigate(`/u/${u.username}`);
+                    setFollowersOpen(false);
+                  }}
+                  className="flex items-center gap-3 w-full hover:bg-muted/50 p-3 rounded-lg transition-colors text-left"
+                >
+                  <div className="relative">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={u.avatar_url || undefined} className="object-cover" />
+                      <AvatarFallback className="gradient-primary text-white text-sm">
+                        {u.username?.[0]?.toUpperCase() || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <OnlineIndicator userId={u.id} className="absolute bottom-0 right-0 w-3 h-3" />
+                  </div>
+                  <div className="text-sm font-medium">@{u.username}</div>
+                </button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Following Dialog */}
+      <Dialog open={followingOpen} onOpenChange={setFollowingOpen}>
+        <DialogContent className="sm:max-w-[400px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Following</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-1">
+            {following.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-4">Not following anyone.</div>
+            ) : (
+              following.map((u: any) => (
+                <button
+                  key={u.id}
+                  onClick={() => {
+                    navigate(`/u/${u.username}`);
+                    setFollowingOpen(false);
+                  }}
+                  className="flex items-center gap-3 w-full hover:bg-muted/50 p-3 rounded-lg transition-colors text-left"
+                >
+                  <div className="relative">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={u.avatar_url || undefined} className="object-cover" />
+                      <AvatarFallback className="gradient-primary text-white text-sm">
+                        {u.username?.[0]?.toUpperCase() || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <OnlineIndicator userId={u.id} className="absolute bottom-0 right-0 w-3 h-3" />
+                  </div>
+                  <div className="text-sm font-medium">@{u.username}</div>
+                </button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

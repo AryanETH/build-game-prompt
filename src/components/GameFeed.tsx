@@ -918,7 +918,7 @@ export const GameFeed = () => {
                     >
                       <div className="relative">
                         <Avatar className="w-9 h-9 md:w-12 md:h-12 border-2 border-white/50 group-hover:border-white transition-colors">
-                          <AvatarImage src={game.creator?.avatar_url || undefined} />
+                          <AvatarImage src={game.creator?.avatar_url || undefined} className="object-cover" />
                           <AvatarFallback className="gradient-primary text-white text-xs md:text-sm font-semibold">
                             {game.creator?.username?.[0]?.toUpperCase() || 'U'}
                           </AvatarFallback>
@@ -1132,7 +1132,7 @@ export const GameFeed = () => {
                 <div className="flex items-start gap-3">
                   <button onClick={() => c.user?.username && navigate(`/u/${c.user.username}`)} className="relative flex-shrink-0">
                     <Avatar className="h-9 w-9 hover:opacity-80 transition-opacity">
-                      <AvatarImage src={c.user?.avatar_url || undefined} />
+                      <AvatarImage src={c.user?.avatar_url || undefined} className="object-cover" />
                       <AvatarFallback className="gradient-primary text-white text-xs">
                         {c.user?.username?.[0]?.toUpperCase() || '?'}
                       </AvatarFallback>
@@ -1209,7 +1209,7 @@ export const GameFeed = () => {
                         <div key={r.id} className="flex items-start gap-3">
                           <button onClick={() => r.user?.username && navigate(`/u/${r.user.username}`)} className="relative flex-shrink-0">
                             <Avatar className="h-8 w-8 hover:opacity-80 transition-opacity">
-                              <AvatarImage src={r.user?.avatar_url || undefined} />
+                              <AvatarImage src={r.user?.avatar_url || undefined} className="object-cover" />
                               <AvatarFallback className="gradient-primary text-white text-xs">
                                 {r.user?.username?.[0]?.toUpperCase() || '?'}
                               </AvatarFallback>
