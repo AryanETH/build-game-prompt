@@ -14,8 +14,8 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   const isMessagesPage = location.pathname === "/messages";
   const isSettingsPage = location.pathname === "/settings";
   
-  // Hide hamburger menu on search, profile, messages, and settings pages (mobile only)
-  const hideHamburgerMenu = isSearchPage || isProfilePage || isMessagesPage || isSettingsPage;
+  // Always hide hamburger menu
+  const hideHamburgerMenu = true;
 
   return (
     <div className="min-h-screen bg-white dark:bg-black flex">

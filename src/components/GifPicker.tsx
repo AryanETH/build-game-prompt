@@ -62,8 +62,8 @@ export const GifPicker = ({ onSelect }: GifPickerProps) => {
   };
 
   return (
-    <div className="flex flex-col h-[400px]">
-      <div className="p-3 border-b">
+    <div className="flex flex-col h-[400px] max-h-[60vh] w-full overflow-hidden">
+      <div className="p-3 border-b flex-shrink-0 bg-background">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -74,13 +74,14 @@ export const GifPicker = ({ onSelect }: GifPickerProps) => {
           />
         </div>
       </div>
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-y-auto overscroll-contain">
+        <div className="w-full">
         {loading ? (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-center h-[300px]">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         ) : gifs.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+          <div className="flex items-center justify-center h-[300px] text-sm text-muted-foreground">
             No GIFs found
           </div>
         ) : (
@@ -95,12 +96,14 @@ export const GifPicker = ({ onSelect }: GifPickerProps) => {
                   src={gif.images.fixed_height_small.url}
                   alt={gif.title}
                   className="w-full h-full object-cover"
+                  loading="lazy"
                 />
               </button>
             ))}
           </div>
         )}
-      </ScrollArea>
+        </div>
+      </div>
     </div>
   );
 };

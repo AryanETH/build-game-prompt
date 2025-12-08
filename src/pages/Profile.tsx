@@ -25,6 +25,7 @@ import { ProfileHeaderSkeleton, GameGridSkeleton, TabsContentSkeleton, UserListS
 import { NotificationPanel } from "@/components/NotificationPanel";
 import { Bell } from "lucide-react";
 import { LinkifiedText } from "@/components/LinkifiedText";
+import { MentionTextarea } from "@/components/MentionTextarea";
 import { ImageCropper } from "@/components/ImageCropper";
 
 export default function Profile() {
@@ -94,6 +95,15 @@ export default function Profile() {
   }, [autoplayFeed, enableSoundByDefault, highGraphicsQuality, showRemixBadges, compactGridLayout]);
 
   useEffect(() => {
+    // Check if edit parameter is in URL
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('edit') === 'true') {
+      // Wait for profile to load then open edit dialog
+      setTimeout(() => setEditOpen(true), 500);
+      // Remove the parameter from URL
+      window.history.replaceState({}, '', '/profile');
+    }
+    
     fetchProfile();
     fetchUserGames();
     fetchRemixedGames();
@@ -857,15 +867,14 @@ export default function Profile() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="bio">Bio</Label>
-                <textarea
+                <Label htmlFor="bio">Bio (@ for users, + for games)</Label>
+                <MentionTextarea
                   id="bio"
                   value={formBio}
-                  onChange={(e) => setFormBio(e.target.value)}
-                  placeholder="Tell us about yourself..."
+                  onChange={setFormBio}
+                  placeholder="Tell us about yourself... (@ users, + games)"
                   maxLength={100}
-                  rows={3}
-                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                  className="resize-none min-h-[80px]"
                 />
                 <p className="text-xs text-muted-foreground text-right">{formBio.length}/100</p>
               </div>

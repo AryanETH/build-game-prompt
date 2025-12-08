@@ -10,10 +10,11 @@ import {
   Heart, MessageCircle, UserPlus, Play, Sparkles, Trash2, 
   TrendingUp, Award, Gift, DollarSign, Bell,
   Share2, Bookmark, AtSign, Users, Trophy,
-  AlertCircle, CheckCircle, Flame, Star, Zap
+  AlertCircle, CheckCircle, Flame, Star, Zap, BarChart3, Gamepad2
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface NotificationPayload {
   type: string;
@@ -44,8 +45,10 @@ type NotificationCategory = 'all' | 'engagement' | 'followers' | 'milestones' | 
 export default function Activity() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<NotificationCategory>('all');
+  const [activeTab, setActiveTab] = useState<NotificationCategory | 'stats'>('all');
   const [userId, setUserId] = useState<string | null>(null);
+  const [stats, setStats] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -55,8 +58,87 @@ export default function Activity() {
   useEffect(() => {
     if (userId) {
       fetchNotifications();
+      fetchUserStats();
     }
   }, [userId]);
+
+  const fetchUserStats = async () => {
+    if (!userId) return;
+    
+    setLoadingStats(true);
+    try {
+      // Fetch user's games
+      const { data: games } = await supabase
+        .from('games')
+        .select('id, created_at, plays_count, likes_count, comments_count')
+        .eq('creator_id', userId)
+        .order('created_at', { ascending: true });
+
+      // Fetch total likes
+      const { data: likesData } = await supabase
+        .from('game_likes')
+        .select('game_id')
+        .in('game_id', games?.map(g => g.id) || []);
+
+      // Fetch followers
+      const { count: followersCount } = await supabase
+        .from('follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('following_id', userId);
+
+      // Fetch following
+      const { count: followingCount } = await supabase
+        .from('follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('follower_id', userId);
+
+      // Calculate stats
+      const totalGames = games?.length || 0;
+      const totalPlays = games?.reduce((sum, g) => sum + (g.plays_count || 0), 0) || 0;
+      const totalLikes = likesData?.length || 0;
+      const totalComments = games?.reduce((sum, g) => sum + (g.comments_count || 0), 0) || 0;
+
+      // Group games by date for chart
+      const gamesByDate: Record<string, number> = {};
+      const playsByDate: Record<string, number> = {};
+      const likesByDate: Record<string, number> = {};
+
+      games?.forEach(game => {
+        const date = new Date(game.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        gamesByDate[date] = (gamesByDate[date] || 0) + 1;
+        playsByDate[date] = (playsByDate[date] || 0) + (game.plays_count || 0);
+        likesByDate[date] = (likesByDate[date] || 0) + (game.likes_count || 0);
+      });
+
+      // Convert to chart data (last 7 days)
+      const last7Days = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (6 - i));
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      });
+
+      const chartData = last7Days.map(date => ({
+        date,
+        games: gamesByDate[date] || 0,
+        plays: playsByDate[date] || 0,
+        likes: likesByDate[date] || 0,
+      }));
+
+      setStats({
+        totalGames,
+        totalPlays,
+        totalLikes,
+        totalComments,
+        followersCount: followersCount || 0,
+        followingCount: followingCount || 0,
+        chartData,
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
 
   // Real-time subscription
   useEffect(() => {
@@ -105,7 +187,7 @@ export default function Activity() {
         .limit(100);
 
       if (error) throw error;
-      setNotifications((data || []) as Notification[]);
+      setNotifications((data || []) as any);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     } finally {
@@ -242,7 +324,7 @@ export default function Activity() {
   };
 
   const filterNotifications = (notifications: Notification[]) => {
-    if (activeTab === 'all') return notifications;
+    if (activeTab === 'all' || activeTab === 'stats') return notifications;
     return notifications.filter(n => getNotificationCategory(n.payload.type) === activeTab);
   };
 
@@ -269,7 +351,7 @@ export default function Activity() {
   return (
     <div className="min-h-screen pb-16 md:pb-0">
       <div className="max-w-4xl mx-auto p-4 space-y-6">
-        <Card className="p-6 gradient-card border-primary/20">
+        <Card className="p-6 gradient-card border-primary/20 shadow-soft-lg hover-lift transition-smooth">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
@@ -290,12 +372,12 @@ export default function Activity() {
             </div>
             <div className="flex gap-2">
               {unreadCount > 0 && (
-                <Button variant="outline" size="sm" onClick={markAllAsRead}>
+                <Button variant="outline" size="sm" onClick={markAllAsRead} className="shadow-soft hover-lift transition-smooth active-scale">
                   Mark all read
                 </Button>
               )}
               {notifications.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearAllNotifications} className="text-red-500">
+                <Button variant="ghost" size="sm" onClick={clearAllNotifications} className="text-red-500 hover-lift transition-smooth active-scale">
                   Clear all
                 </Button>
               )}
@@ -303,9 +385,9 @@ export default function Activity() {
           </div>
         </Card>
 
-        <Card className="p-0 overflow-hidden">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as NotificationCategory)}>
-            <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 h-auto">
+        <Card className="p-0 overflow-hidden shadow-soft-lg">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as NotificationCategory | 'stats')}>
+            <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 h-auto overflow-x-auto">
               <TabsTrigger 
                 value="all" 
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-4"
@@ -333,9 +415,115 @@ export default function Activity() {
                 <Trophy className="w-4 h-4 mr-2" />
                 Rewards
               </TabsTrigger>
+              <TabsTrigger 
+                value="stats" 
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-4"
+              >
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Stats
+              </TabsTrigger>
             </TabsList>
 
-            <TabsContent value={activeTab} className="m-0">
+            <TabsContent value="stats" className="m-0">
+              <div className="p-6 space-y-6">
+                {loadingStats ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                  </div>
+                ) : stats ? (
+                  <>
+                    {/* Overview Cards */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <Card className="p-4 shadow-soft hover-lift transition-smooth">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Gamepad2 className="w-4 h-4 text-purple-500" />
+                          <span className="text-sm text-muted-foreground">Games</span>
+                        </div>
+                        <div className="text-2xl font-bold">{stats.totalGames}</div>
+                      </Card>
+                      <Card className="p-4 shadow-soft hover-lift transition-smooth">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Play className="w-4 h-4 text-blue-500" />
+                          <span className="text-sm text-muted-foreground">Plays</span>
+                        </div>
+                        <div className="text-2xl font-bold">{stats.totalPlays}</div>
+                      </Card>
+                      <Card className="p-4 shadow-soft hover-lift transition-smooth">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Heart className="w-4 h-4 text-red-500" />
+                          <span className="text-sm text-muted-foreground">Likes</span>
+                        </div>
+                        <div className="text-2xl font-bold">{stats.totalLikes}</div>
+                      </Card>
+                      <Card className="p-4 shadow-soft hover-lift transition-smooth">
+                        <div className="flex items-center gap-2 mb-2">
+                          <MessageCircle className="w-4 h-4 text-green-500" />
+                          <span className="text-sm text-muted-foreground">Comments</span>
+                        </div>
+                        <div className="text-2xl font-bold">{stats.totalComments}</div>
+                      </Card>
+                    </div>
+
+                    {/* Social Stats */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <Card className="p-4 shadow-soft hover-lift transition-smooth">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Users className="w-4 h-4 text-blue-500" />
+                          <span className="text-sm text-muted-foreground">Followers</span>
+                        </div>
+                        <div className="text-2xl font-bold">{stats.followersCount}</div>
+                      </Card>
+                      <Card className="p-4 shadow-soft hover-lift transition-smooth">
+                        <div className="flex items-center gap-2 mb-2">
+                          <UserPlus className="w-4 h-4 text-green-500" />
+                          <span className="text-sm text-muted-foreground">Following</span>
+                        </div>
+                        <div className="text-2xl font-bold">{stats.followingCount}</div>
+                      </Card>
+                    </div>
+
+                    {/* Games Created Chart */}
+                    <Card className="p-6 shadow-soft hover-lift transition-smooth">
+                      <h3 className="text-lg font-semibold mb-4">Games Created (Last 7 Days)</h3>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={stats.chartData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="games" fill="#8b5cf6" name="Games" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </Card>
+
+                    {/* Plays & Likes Chart */}
+                    <Card className="p-6 shadow-soft hover-lift transition-smooth">
+                      <h3 className="text-lg font-semibold mb-4">Engagement (Last 7 Days)</h3>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <LineChart data={stats.chartData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Line type="monotone" dataKey="plays" stroke="#3b82f6" name="Plays" strokeWidth={2} />
+                          <Line type="monotone" dataKey="likes" stroke="#ef4444" name="Likes" strokeWidth={2} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </Card>
+                  </>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <BarChart3 className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                    <p>No stats available yet</p>
+                    <p className="text-sm mt-2">Create some games to see your stats!</p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            {activeTab !== 'stats' && (
+            <TabsContent value={activeTab as NotificationCategory} className="m-0">
               <ScrollArea className="h-[calc(100vh-300px)]">
                 {isLoading ? (
                   <div className="p-6 space-y-4">
@@ -362,8 +550,8 @@ export default function Activity() {
                     {filteredNotifications.map((notification) => (
                       <div
                         key={notification.id}
-                        className={`group relative flex items-start gap-3 p-4 rounded-xl transition-all cursor-pointer hover:bg-accent/50 ${
-                          !notification.payload.read ? 'bg-primary/5 border border-primary/10' : ''
+                        className={`group relative flex items-start gap-3 p-4 rounded-xl transition-smooth cursor-pointer hover:bg-accent/50 hover-lift active-scale ${
+                          !notification.payload.read ? 'bg-primary/5 border border-primary/10 shadow-soft' : ''
                         }`}
                         onClick={() => handleNotificationClick(notification)}
                       >
@@ -447,6 +635,7 @@ export default function Activity() {
                 )}
               </ScrollArea>
             </TabsContent>
+            )}
           </Tabs>
         </Card>
       </div>

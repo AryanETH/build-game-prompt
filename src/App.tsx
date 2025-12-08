@@ -260,7 +260,7 @@ const App = () => {
                 <Route path="/blog/:slug" element={<AppLayout><Blog /></AppLayout>} />
                 <Route path="/docs" element={<AppLayout><Docs /></AppLayout>} />
                 <Route path="/docs/:slug" element={<AppLayout><Docs /></AppLayout>} />
-                <Route path="/about" element={<AppLayout><About /></AppLayout>} />
+                <Route path="/about" element={<About />} />
 
                   {/* 404 Fallback */}
                   <Route path="*" element={<NotFound />} />

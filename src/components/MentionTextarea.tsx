@@ -1,15 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Input } from './ui/input';
+import { Textarea } from './ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { User, Gamepad2 } from 'lucide-react';
 
-interface MentionInputProps {
+interface MentionTextareaProps {
   value: string;
   onChange: (value: string) => void;
-  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   placeholder?: string;
   className?: string;
+  maxLength?: number;
+  id?: string;
 }
 
 interface UserSuggestion {
@@ -28,18 +29,18 @@ type Suggestion =
   | { type: 'user'; data: UserSuggestion }
   | { type: 'game'; data: GameSuggestion };
 
-export const MentionInput = ({ value, onChange, onKeyDown, placeholder, className }: MentionInputProps) => {
+export const MentionTextarea = ({ value, onChange, placeholder, className, maxLength, id }: MentionTextareaProps) => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionType, setMentionType] = useState<'user' | 'game' | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Detect @ (user) and + (game) mentions and fetch suggestions
   useEffect(() => {
     const detectMention = () => {
-      const cursorPos = inputRef.current?.selectionStart || 0;
+      const cursorPos = textareaRef.current?.selectionStart || 0;
       const textBeforeCursor = value.substring(0, cursorPos);
       
       // Check for @ (user mention)
@@ -130,7 +131,7 @@ export const MentionInput = ({ value, onChange, onKeyDown, placeholder, classNam
   };
 
   const insertMention = (suggestion: Suggestion) => {
-    const cursorPos = inputRef.current?.selectionStart || 0;
+    const cursorPos = textareaRef.current?.selectionStart || 0;
     const textBeforeCursor = value.substring(0, cursorPos);
     const textAfterCursor = value.substring(cursorPos);
     
@@ -157,16 +158,16 @@ export const MentionInput = ({ value, onChange, onKeyDown, placeholder, classNam
       setSuggestions([]);
       setMentionType(null);
       
-      // Focus back on input
+      // Focus back on textarea
       setTimeout(() => {
-        inputRef.current?.focus();
+        textareaRef.current?.focus();
         const newCursorPos = lastIndex + mentionText.length;
-        inputRef.current?.setSelectionRange(newCursorPos, newCursorPos);
+        textareaRef.current?.setSelectionRange(newCursorPos, newCursorPos);
       }, 0);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (showSuggestions && suggestions.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -188,19 +189,19 @@ export const MentionInput = ({ value, onChange, onKeyDown, placeholder, classNam
         return;
       }
     }
-
-    onKeyDown?.(e);
   };
 
   return (
-    <div className="relative flex-1">
-      <Input
-        ref={inputRef}
+    <div className="relative">
+      <Textarea
+        ref={textareaRef}
+        id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className={className}
+        maxLength={maxLength}
       />
       
       {showSuggestions && suggestions.length > 0 && (

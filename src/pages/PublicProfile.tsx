@@ -265,11 +265,31 @@ export default function PublicProfile() {
           <Card className="p-3 md:p-6 gradient-card border-primary/20">
             <div className="flex flex-col md:flex-row items-center md:items-center gap-4">
               <div className="relative">
-                <Avatar className="w-20 h-20 ring-2 ring-primary/30">
-                  <AvatarImage src={profile.avatar_url || undefined} className="object-cover" />
-                  <AvatarFallback>{profile.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
-                </Avatar>
-                {isOnline && <div className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background" />}
+                {profile.is_plus_member ? (
+                  <div className="relative">
+                    {/* Gold gradient ring for Plus members */}
+                    <div 
+                      className="w-24 h-24 rounded-full p-[3px]"
+                      style={{
+                        background: 'linear-gradient(135deg, #a47a1e 0%, #d3a84c 14%, #ffec94 28%, #ffd87c 42%, #e6be69 57%, #b58f3e 71%, #956d13 85%, #a47a1e 100%)'
+                      }}
+                    >
+                      <Avatar className="w-full h-full">
+                        <AvatarImage src={profile.avatar_url || undefined} className="object-cover" />
+                        <AvatarFallback>{profile.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+                      </Avatar>
+                    </div>
+                    {isOnline && <div className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background" />}
+                  </div>
+                ) : (
+                  <>
+                    <Avatar className="w-20 h-20 ring-2 ring-primary/30">
+                      <AvatarImage src={profile.avatar_url || undefined} className="object-cover" />
+                      <AvatarFallback>{profile.username?.[0]?.toUpperCase() || '?'}</AvatarFallback>
+                    </Avatar>
+                    {isOnline && <div className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background" />}
+                  </>
+                )}
               </div>
               <div className="flex-1 min-w-0 text-center md:text-left w-full">
                 <div className="flex items-center gap-2 justify-center md:justify-start mb-1">

@@ -5,11 +5,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Image as ImageIcon, Smile, Eye, EyeOff, ArrowLeft, Search, MoreVertical } from "lucide-react";
+import { Send, Image as ImageIcon, Smile, Eye, EyeOff, ArrowLeft, Search, MoreVertical, Trash2, Copy, Reply, Clock, X } from "lucide-react";
 import { toast } from "sonner";
 import { OnlineIndicator } from "@/components/OnlineIndicator";
 import { GifPicker } from "@/components/GifPicker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { useNavigate, useLocation } from "react-router-dom";
 import { MessagesListSkeleton, MessageThreadSkeleton } from "@/components/SkeletonComponents";
 
@@ -21,6 +22,8 @@ interface Message {
   is_one_time: boolean;
   viewed_at: string | null;
   created_at: string;
+  reply_to_id?: string | null;
+  reply_to_content?: string | null;
   sender?: {
     id: string;
     username: string;
@@ -50,6 +53,7 @@ export default function Messages() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showMobileList, setShowMobileList] = useState(true);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -136,24 +140,66 @@ export default function Messages() {
   const loadConversations = async (uid: string) => {
     setIsLoadingConversations(true);
     try {
-      // Get all messages where user is sender or recipient
-      const { data: messagesData, error } = await supabase
+      console.log('Loading conversations for user:', uid);
+      
+      // Get all messages where user is sender or recipient (without foreign keys)
+      const { data: messagesData, error: messagesError } = await supabase
         .from('direct_messages')
-        .select('*, sender:profiles!direct_messages_sender_id_fkey(id, username, avatar_url), recipient:profiles!direct_messages_recipient_id_fkey(id, username, avatar_url)')
+        .select('*')
         .or(`sender_id.eq.${uid},recipient_id.eq.${uid}`)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (messagesError) {
+        console.error('Error fetching messages:', messagesError);
+        throw messagesError;
+      }
+
+      console.log('Messages fetched:', messagesData?.length || 0);
+
+      if (!messagesData || messagesData.length === 0) {
+        setConversations([]);
+        return;
+      }
+
+      // Get unique user IDs we need to fetch profiles for
+      const userIds = new Set<string>();
+      messagesData.forEach((msg: any) => {
+        if (msg.sender_id !== uid) userIds.add(msg.sender_id);
+        if (msg.recipient_id !== uid) userIds.add(msg.recipient_id);
+      });
+
+      console.log('Fetching profiles for:', Array.from(userIds));
+
+      // Fetch all profiles at once
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .in('id', Array.from(userIds));
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+      }
+
+      console.log('Profiles fetched:', profilesData?.length || 0);
+
+      // Create a map of profiles
+      const profilesMap = new Map();
+      profilesData?.forEach((profile: any) => {
+        profilesMap.set(profile.id, profile);
+      });
 
       // Group messages by conversation partner
       const conversationsMap = new Map<string, Conversation>();
 
-      messagesData?.forEach((msg: any) => {
+      messagesData.forEach((msg: any) => {
         const isFromMe = msg.sender_id === uid;
         const partnerId = isFromMe ? msg.recipient_id : msg.sender_id;
-        const partner = isFromMe ? msg.recipient : msg.sender;
+        const partner = profilesMap.get(partnerId);
 
-        if (!partner) return;
+        if (!partner) {
+          console.warn('Partner profile not found for:', partnerId);
+          return;
+        }
 
         const existing = conversationsMap.get(partnerId);
         if (!existing || new Date(msg.created_at) > new Date(existing.last_message_time)) {
@@ -174,7 +220,9 @@ export default function Messages() {
         }
       });
 
-      setConversations(Array.from(conversationsMap.values()));
+      const conversationsList = Array.from(conversationsMap.values());
+      console.log('Conversations created:', conversationsList.length);
+      setConversations(conversationsList);
     } catch (error) {
       console.error('Error loading conversations:', error);
     } finally {
@@ -193,12 +241,14 @@ export default function Messages() {
           recipient_id: selectedUser.user_id,
           content: newMessage.trim(),
           is_one_time: isOneTime,
+          reply_to_id: replyingTo?.id || null,
         });
 
       if (error) throw error;
 
       setNewMessage("");
       setIsOneTime(false);
+      setReplyingTo(null); // Clear reply after sending
       toast.success('Message sent!');
       loadMessages(selectedUser.user_id);
       if (userId) {
@@ -275,15 +325,64 @@ export default function Messages() {
 
   const loadMessages = async (otherUserId: string) => {
     if (!userId) return;
+    
+    setIsLoadingMessages(true);
+    try {
+      console.log('Loading messages between:', userId, 'and', otherUserId);
 
-    const { data, error } = await supabase
-      .from('direct_messages')
-      .select('*, sender:profiles!direct_messages_sender_id_fkey(id, username, avatar_url)')
-      .or(`and(sender_id.eq.${userId},recipient_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},recipient_id.eq.${userId})`)
-      .order('created_at', { ascending: true });
+      const { data: messagesData, error } = await supabase
+        .from('direct_messages')
+        .select('*')
+        .or(`and(sender_id.eq.${userId},recipient_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},recipient_id.eq.${userId})`)
+        .order('created_at', { ascending: true });
 
-    if (!error && data) {
-      setMessages(data as unknown as Message[]);
+      if (error) {
+        console.error('Error loading messages:', error);
+        return;
+      }
+
+      console.log('Messages loaded:', messagesData?.length || 0);
+
+      // Get sender profiles
+      const senderIds = new Set<string>();
+      messagesData?.forEach((msg: any) => {
+        senderIds.add(msg.sender_id);
+      });
+
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .in('id', Array.from(senderIds));
+
+      const profilesMap = new Map();
+      profilesData?.forEach((profile: any) => {
+        profilesMap.set(profile.id, profile);
+      });
+
+      // Get reply content for messages that have reply_to_id
+      const replyIds = messagesData
+        ?.filter((m: any) => m.reply_to_id)
+        .map((m: any) => m.reply_to_id)
+        .filter(Boolean);
+
+      let replyMap = new Map();
+      if (replyIds && replyIds.length > 0) {
+        const { data: repliedMessages } = await supabase
+          .from('direct_messages')
+          .select('id, content')
+          .in('id', replyIds);
+        
+        repliedMessages?.forEach((r: any) => replyMap.set(r.id, r.content));
+      }
+
+      // Attach sender info and reply content to messages
+      const messagesWithSender = messagesData?.map((msg: any) => ({
+        ...msg,
+        sender: profilesMap.get(msg.sender_id),
+        reply_to_content: msg.reply_to_id ? replyMap.get(msg.reply_to_id) : null
+      }));
+
+      setMessages(messagesWithSender as unknown as Message[]);
       
       // Mark messages as viewed
       await supabase
@@ -297,6 +396,8 @@ export default function Messages() {
       if (userId) {
         loadConversations(userId);
       }
+    } finally {
+      setIsLoadingMessages(false);
     }
   };
 
@@ -326,9 +427,9 @@ export default function Messages() {
   );
 
   return (
-    <div className="h-screen flex flex-col md:flex-row pb-16 md:pb-0 bg-background">
+    <div className="flex flex-col md:flex-row bg-background h-screen pb-16 md:pb-0 w-full" style={{ paddingBottom: 'calc(4rem + env(safe-area-inset-bottom))' }}>
       {/* Conversations list - responsive */}
-      <div className={`${showMobileList ? 'flex' : 'hidden'} md:flex w-full md:w-96 border-r border-border flex-col bg-background`}>
+      <div className={`${showMobileList ? 'flex' : 'hidden'} md:flex w-full md:w-96 border-r border-border flex-col bg-background h-full`}>
         {/* Header */}
         <div className="p-4 border-b space-y-3">
           <h2 className="text-2xl font-bold">Messages</h2>
@@ -399,9 +500,9 @@ export default function Messages() {
 
       {/* Messages area - responsive */}
       {selectedUser ? (
-        <div className={`${showMobileList ? 'hidden' : 'flex'} md:flex flex-1 flex-col bg-background`}>
-          {/* Header */}
-          <div className="p-4 border-b flex items-center gap-3 bg-background/95 backdrop-blur-sm">
+        <div className={`${showMobileList ? 'hidden' : 'flex'} md:flex flex-1 flex-col bg-background fixed md:relative inset-0 md:inset-auto`}>
+          {/* Header with profile photo - Instagram style - FIXED */}
+          <div className="p-4 border-b flex items-center gap-3 bg-background/95 backdrop-blur-sm flex-shrink-0 z-10">
             <Button
               variant="ghost"
               size="icon"
@@ -436,8 +537,8 @@ export default function Messages() {
             </Button>
           </div>
 
-          {/* Messages */}
-          <ScrollArea className="flex-1 p-4 bg-muted/20">
+          {/* Messages - SCROLLABLE ONLY */}
+          <ScrollArea className="flex-1 p-4 bg-muted/20 overflow-y-auto">
             <div className="space-y-3 max-w-4xl mx-auto">
               {messages.map((msg) => {
                 const isMine = msg.sender_id === userId;
@@ -446,34 +547,174 @@ export default function Messages() {
                 const isOneTimeViewed = msg.is_one_time && msg.viewed_at;
 
                 return (
-                  <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-                    <div className={`max-w-[75%] md:max-w-[60%] ${
-                      isMine 
-                        ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground' 
-                        : 'bg-background border border-border'
-                    } rounded-2xl ${isMine ? 'rounded-br-sm' : 'rounded-bl-sm'} shadow-sm`}>
-                      {isOneTimeViewed ? (
-                        <div className="flex items-center gap-2 text-sm opacity-60 p-3">
-                          <EyeOff className="h-4 w-4" />
-                          <span>One-time message viewed</span>
-                        </div>
-                      ) : isGif ? (
-                        <div className="p-1">
-                          <img src={msg.content.substring(5)} alt="GIF" className="rounded-xl max-w-[250px] w-full" />
-                        </div>
-                      ) : isImage ? (
-                        <div className="p-1">
-                          <img src={msg.content.substring(7)} alt="Image" className="rounded-xl max-w-[250px] w-full" />
-                        </div>
-                      ) : (
-                        <div className="px-4 py-2.5 whitespace-pre-wrap break-words">{msg.content}</div>
-                      )}
-                      {msg.is_one_time && !isOneTimeViewed && (
-                        <div className={`flex items-center gap-1 text-xs px-4 pb-2 ${isMine ? 'opacity-80' : 'text-muted-foreground'}`}>
-                          <Eye className="h-3 w-3" />
-                          <span>View once</span>
-                        </div>
-                      )}
+                  <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300 group`}>
+                    <div className="flex items-start gap-2 max-w-[80%] md:max-w-[65%]">
+                      {/* Message bubble */}
+                      <div className={`flex-1 ${
+                        isMine 
+                          ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground' 
+                          : 'bg-background border border-border'
+                      } rounded-2xl ${isMine ? 'rounded-br-sm' : 'rounded-bl-sm'} shadow-sm`}>
+                        
+                        {/* Reply Indicator - WhatsApp/Instagram Style */}
+                        {msg.reply_to_id && msg.reply_to_content && (
+                          <div className={`mx-3 mt-3 mb-2 px-3 py-2 rounded-lg border-l-2 ${
+                            isMine 
+                              ? 'bg-white/10 border-white/30' 
+                              : 'bg-muted/50 border-primary/50'
+                          }`}>
+                            <div className={`text-xs font-semibold mb-1 ${isMine ? 'text-white/70' : 'text-primary'}`}>
+                              Replied to message
+                            </div>
+                            {msg.reply_to_content.startsWith('[GIF]') ? (
+                              <div className="flex items-center gap-2 text-xs opacity-70">
+                                <ImageIcon className="h-3 w-3" />
+                                <span>GIF</span>
+                              </div>
+                            ) : msg.reply_to_content.startsWith('[IMAGE]') ? (
+                              <div className="flex items-center gap-2">
+                                <img 
+                                  src={msg.reply_to_content.substring(7)} 
+                                  alt="Reply" 
+                                  className="h-10 w-10 rounded object-cover"
+                                />
+                                <span className="text-xs opacity-70">Photo</span>
+                              </div>
+                            ) : (
+                              <div className={`text-xs truncate ${isMine ? 'text-white/70' : 'text-muted-foreground'}`}>
+                                {msg.reply_to_content}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {isOneTimeViewed ? (
+                          <div className="flex items-center gap-2 text-sm opacity-60 p-3">
+                            <EyeOff className="h-4 w-4" />
+                            <span>One-time message viewed</span>
+                          </div>
+                        ) : isGif ? (
+                          <div className="p-1">
+                            <img src={msg.content.substring(5)} alt="GIF" className="rounded-xl max-w-[250px] w-full" />
+                          </div>
+                        ) : isImage ? (
+                          <div className="p-1">
+                            <img src={msg.content.substring(7)} alt="Image" className="rounded-xl max-w-[250px] w-full" />
+                          </div>
+                        ) : (
+                          <div className="px-4 py-2.5 whitespace-pre-wrap break-words">{msg.content}</div>
+                        )}
+                        {msg.is_one_time && !isOneTimeViewed && (
+                          <div className={`flex items-center gap-1 text-xs px-4 pb-2 ${isMine ? 'opacity-80' : 'text-muted-foreground'}`}>
+                            <Eye className="h-3 w-3" />
+                            <span>View once</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 3-dot menu */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align={isMine ? "end" : "start"}>
+                          <DropdownMenuItem
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              try {
+                                const textToCopy = isGif ? msg.content.substring(5) :
+                                                  isImage ? msg.content.substring(7) :
+                                                  msg.content;
+                                await navigator.clipboard.writeText(textToCopy);
+                                toast.success('Copied to clipboard');
+                              } catch (error) {
+                                console.error('Copy failed:', error);
+                                toast.error('Failed to copy');
+                              }
+                            }}
+                          >
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copy
+                          </DropdownMenuItem>
+
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setReplyingTo(msg);
+                              toast.success('Replying to message');
+                            }}
+                          >
+                            <Reply className="h-4 w-4 mr-2" />
+                            Reply
+                          </DropdownMenuItem>
+                          
+                          <DropdownMenuItem
+                            onClick={() => {
+                              const date = new Date(msg.created_at);
+                              const formatted = date.toLocaleString();
+                              toast.info(formatted);
+                            }}
+                          >
+                            <Clock className="h-4 w-4 mr-2" />
+                            {new Date(msg.created_at).toLocaleString()}
+                          </DropdownMenuItem>
+
+                          <DropdownMenuSeparator />
+
+                          {isMine && (
+                            <>
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={async () => {
+                                  try {
+                                    await supabase
+                                      .from('direct_messages')
+                                      .delete()
+                                      .eq('id', msg.id);
+                                    toast.success('Message deleted for everyone');
+                                    if (selectedUser) loadMessages(selectedUser.user_id);
+                                  } catch (error) {
+                                    toast.error('Failed to delete message');
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete for everyone
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={async () => {
+                              // For "delete for me", we could add a deleted_for field
+                              // For now, just delete if it's your message
+                              if (isMine) {
+                                try {
+                                  await supabase
+                                    .from('direct_messages')
+                                    .delete()
+                                    .eq('id', msg.id);
+                                  toast.success('Message deleted');
+                                  if (selectedUser) loadMessages(selectedUser.user_id);
+                                } catch (error) {
+                                  toast.error('Failed to delete message');
+                                }
+                              } else {
+                                toast.info('Delete for me feature coming soon');
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete for me
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 );
@@ -482,8 +723,44 @@ export default function Messages() {
             </div>
           </ScrollArea>
 
-          {/* Input */}
-          <div className="p-4 border-t bg-background/95 backdrop-blur-sm">
+          {/* Input - FIXED AT BOTTOM */}
+          <div className="p-4 pb-20 md:pb-4 border-t bg-background/95 backdrop-blur-sm flex-shrink-0 z-10">
+            {/* Reply Preview - WhatsApp/Instagram Style */}
+            {replyingTo && (
+              <div className="max-w-4xl mx-auto mb-3 px-3 py-2 bg-muted/50 border-l-4 border-primary rounded-r-lg flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-primary mb-1">
+                    Replying to {replyingTo.sender_id === userId ? 'yourself' : selectedUser?.username}
+                  </div>
+                  {replyingTo.content.startsWith('[GIF]') ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <ImageIcon className="h-4 w-4" />
+                      <span>GIF</span>
+                    </div>
+                  ) : replyingTo.content.startsWith('[IMAGE]') ? (
+                    <div className="flex items-center gap-2">
+                      <img 
+                        src={replyingTo.content.substring(7)} 
+                        alt="Reply" 
+                        className="h-12 w-12 rounded object-cover"
+                      />
+                      <span className="text-sm text-muted-foreground">Photo</span>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-foreground truncate">{replyingTo.content}</div>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 flex-shrink-0"
+                  onClick={() => setReplyingTo(null)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            
             <div className="flex gap-2 items-end max-w-4xl mx-auto">
               <Popover open={gifPickerOpen} onOpenChange={setGifPickerOpen}>
                 <PopoverTrigger asChild>

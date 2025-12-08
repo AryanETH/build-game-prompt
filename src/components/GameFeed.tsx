@@ -889,7 +889,7 @@ export const GameFeed = () => {
                   alt={game.title}
                   className="absolute inset-0 w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent dark:from-black/95 dark:via-black/20 md:bg-gradient-to-b md:from-gray-200/50 md:via-gray-300/50 md:to-black/80" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent dark:from-black/95 dark:via-black/20 md:bg-gradient-to-b md:from-transparent md:via-transparent md:to-black/80" />
                 
                 {/* Center Placeholder Icon - Desktop only */}
                 <div className="hidden md:flex absolute inset-0 items-center justify-center z-0 opacity-20">
@@ -1116,11 +1116,44 @@ export const GameFeed = () => {
         setReplyingTo(null);
       }
     }}>
-      <SheetContent side="right" className="w-full sm:w-[420px] md:w-[480px] flex flex-col p-0 pb-safe">
-        <SheetHeader className="px-6 py-4 border-b">
-          <SheetTitle>Comments ({comments.length})</SheetTitle>
-        </SheetHeader>
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+      <SheetContent side="right" className="w-full sm:w-[420px] md:w-[480px] flex flex-col p-0 h-full">
+        {/* Mobile: Instagram/TikTok style with profile header */}
+        {/* Desktop: Simple header with just title */}
+        <div className="md:hidden px-4 py-3 border-b flex items-center gap-3 flex-shrink-0 bg-background">
+          <button 
+            onClick={() => commentsOpenFor?.creator?.username && navigate(`/u/${commentsOpenFor.creator.username}`)}
+            className="flex items-center gap-3 flex-1 hover:opacity-80 transition-opacity"
+          >
+            <Avatar className="h-10 w-10 border-2 border-muted">
+              <AvatarImage src={commentsOpenFor?.creator?.avatar_url || undefined} className="object-cover" />
+              <AvatarFallback className="gradient-primary text-white text-sm font-semibold">
+                {commentsOpenFor?.creator?.username?.[0]?.toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col items-start">
+              <span className="text-sm font-bold">@{commentsOpenFor?.creator?.username || 'creator'}</span>
+              <span className="text-xs text-muted-foreground">{comments.length} {comments.length === 1 ? 'comment' : 'comments'}</span>
+            </div>
+          </button>
+          {commentsOpenFor?.creator_id && commentsOpenFor.creator_id !== userId && (
+            <Button
+              size="sm"
+              variant={followedUsers.has(commentsOpenFor.creator_id) ? "outline" : "default"}
+              className={followedUsers.has(commentsOpenFor.creator_id) ? "" : "gradient-primary"}
+              onClick={() => handleFollowUser(commentsOpenFor.creator_id)}
+            >
+              {followedUsers.has(commentsOpenFor.creator_id) ? 'Following' : 'Follow'}
+            </Button>
+          )}
+        </div>
+        
+        {/* Desktop: Simple header */}
+        <div className="hidden md:block px-6 py-4 border-b flex-shrink-0 bg-background">
+          <h3 className="text-lg font-semibold">Comments ({comments.length})</h3>
+        </div>
+        
+        {/* Scrollable comments area */}
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-4 smooth-scroll-mobile">
           {comments.filter(c => !c.parent_comment_id).map((c) => {
             const replies = comments.filter(r => r.parent_comment_id === c.id);
             const isExpanded = expandedComments.has(c.id);
@@ -1260,12 +1293,69 @@ export const GameFeed = () => {
             );
           })}
           {comments.length === 0 && (
-            <div className="text-center py-8">
-              <div className="text-sm text-muted-foreground">No comments yet. Be the first!</div>
+            <div className="text-center py-12">
+              <MessageCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+              <div className="text-sm font-medium text-muted-foreground">No comments yet</div>
+              <div className="text-xs text-muted-foreground mt-1">Be the first to comment!</div>
             </div>
           )}
         </div>
-        <div className="border-t px-6 py-4 bg-background sticky bottom-0 z-10">
+        
+        {/* Mobile: Fixed input with avatar - Instagram/TikTok style */}
+        <div className="md:hidden border-t px-4 py-3 pb-20 bg-background flex-shrink-0">
+          {replyingTo && (
+            <div className="mb-2 flex items-center gap-2 text-xs bg-muted/50 px-3 py-2 rounded-lg">
+              <span className="text-muted-foreground">Replying to <span className="font-semibold text-foreground">@{replyingTo.user?.username}</span></span>
+              <button onClick={() => setReplyingTo(null)} className="ml-auto text-primary hover:underline font-medium">
+                Cancel
+              </button>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            {userId && (
+              <Avatar className="h-8 w-8 flex-shrink-0">
+                <AvatarFallback className="gradient-primary text-white text-xs">
+                  U
+                </AvatarFallback>
+              </Avatar>
+            )}
+            <div className="flex-1 flex gap-2">
+              <MentionInput
+                placeholder={replyingTo ? "Write a reply... (@ for users, + for games)" : "Add a comment... (@ for users, + for games)"}
+                value={newComment}
+                onChange={setNewComment}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && newComment.trim()) {
+                    e.preventDefault();
+                    handleSendComment();
+                  }
+                }}
+                className="flex-1"
+              />
+              <Popover open={gifPickerOpen} onOpenChange={setGifPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="flex-shrink-0 h-9 w-9">
+                    <Smile className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[320px] p-0 max-h-[60vh] overflow-hidden" align="end" side="top" sideOffset={8}>
+                  <GifPicker onSelect={handleGifSelect} />
+                </PopoverContent>
+              </Popover>
+              <Button 
+                onClick={handleSendComment} 
+                disabled={!newComment.trim()}
+                size="sm"
+                className="gradient-primary font-semibold"
+              >
+                {replyingTo ? 'Reply' : 'Post'}
+              </Button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Desktop: Simple input - Old style */}
+        <div className="hidden md:block border-t px-6 py-4 bg-background flex-shrink-0">
           {replyingTo && (
             <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
               <span>Replying to @{replyingTo.user?.username}</span>
@@ -1281,12 +1371,12 @@ export const GameFeed = () => {
                   <Smile className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[320px] p-0" align="start">
+              <PopoverContent className="w-[320px] p-0 max-h-[60vh] overflow-hidden" align="start" sideOffset={8}>
                 <GifPicker onSelect={handleGifSelect} />
               </PopoverContent>
             </Popover>
             <MentionInput
-              placeholder={replyingTo ? "Write a reply..." : "Add a comment..."}
+              placeholder={replyingTo ? "Write a reply... (@ users, + games)" : "Add a comment... (@ users, + games)"}
               value={newComment}
               onChange={setNewComment}
               onKeyDown={(e) => {

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { MentionTextarea } from "@/components/MentionTextarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
@@ -1174,13 +1175,13 @@ export default function Create() {
                 </div>
 
                 <div>
-                  <Label htmlFor="description" className="text-sm md:text-base">Description (optional)</Label>
-                  <Textarea
+                  <Label htmlFor="description" className="text-sm md:text-base">Description (@ for users, + for games)</Label>
+                  <MentionTextarea
                     id="description"
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Brief description of your game"
-                    className="mt-2 text-sm md:text-base"
+                    onChange={setDescription}
+                    placeholder="Brief description of your game (@ users, + games)"
+                    className="mt-2 text-sm md:text-base resize-none min-h-[80px]"
                   />
                 </div>
 
