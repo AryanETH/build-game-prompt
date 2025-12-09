@@ -41,6 +41,7 @@ export default function Profile() {
   const [remixedGames, setRemixedGames] = useState<any[]>([]);
   const [likedGames, setLikedGames] = useState<any[]>([]);
   const [editOpen, setEditOpen] = useState(false);
+  const [formName, setFormName] = useState("");
   const [formUsername, setFormUsername] = useState("");
   const [formBio, setFormBio] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -266,6 +267,7 @@ export default function Profile() {
         .single();
 
       setProfile(refreshed.data);
+      if (refreshed.data?.name) setFormName(refreshed.data.name);
       if (refreshed.data?.username) setFormUsername(refreshed.data.username);
       if (refreshed.data?.bio) setFormBio(refreshed.data.bio);
       if (refreshed.data?.avatar_url) setPreviewUrl(refreshed.data.avatar_url);
@@ -418,6 +420,7 @@ export default function Profile() {
     if (!profile) {
       await fetchProfile();
     }
+    setFormName(profile?.name || "");
     setFormUsername(profile?.username || "");
     setFormBio(profile?.bio || "");
     setPreviewUrl(profile?.avatar_url || null);
@@ -576,7 +579,14 @@ export default function Profile() {
         avatarUrl = await uploadAvatarAndGetUrl(uid, selectedFile);
       }
 
+      const newName = formName.trim();
       const newUsername = formUsername.trim();
+      
+      if (!newName) {
+        toast.error('Name cannot be empty');
+        return;
+      }
+      
       if (!newUsername) {
         toast.error('Username cannot be empty');
         return;
@@ -584,7 +594,12 @@ export default function Profile() {
 
       const { error } = await supabase
         .from('profiles')
-        .update({ username: newUsername, bio: formBio.trim(), avatar_url: avatarUrl })
+        .update({ 
+          name: newName,
+          username: newUsername, 
+          bio: formBio.trim(), 
+          avatar_url: avatarUrl 
+        })
         .eq('id', uid);
 
       if (error) {
@@ -677,14 +692,14 @@ export default function Profile() {
       <div className="w-full">
         {/* Profile Header - Redesigned Layout */}
         <div className="px-3 md:px-8 py-6 max-w-full overflow-x-hidden">
-          {/* Top Row: Notifications (left - mobile only) and Coins/Logout (right) */}
+          {/* Top Row: Notifications, Name, and Coins/Logout */}
           <div className="flex justify-between items-center mb-4 md:mb-6">
             {/* Left: Notification Button - Mobile Only */}
             <Button
               onClick={() => setNotificationsPanelOpen(true)}
               variant="ghost"
               size="icon"
-              className="relative h-10 w-10 md:hidden hover:bg-red-500/10"
+              className="relative h-10 w-10 md:hidden hover:bg-red-500/10 flex-shrink-0"
               title="Notifications"
             >
               <Bell className={`w-6 h-6 ${unreadNotificationsCount > 0 ? 'text-red-500' : ''}`} />
@@ -698,8 +713,15 @@ export default function Profile() {
               )}
             </Button>
 
+            {/* Center: Name - Display name */}
+            <div className="flex-1 text-center px-2">
+              <h2 className="text-xl md:text-2xl font-bold truncate">
+                {profile?.name || profile?.username || 'User'}
+              </h2>
+            </div>
+
             {/* Right: Coins and Logout - Mobile Responsive */}
-            <div className="flex items-center gap-2 md:gap-3 flex-wrap md:ml-auto">
+            <div className="flex items-center gap-2 md:gap-3 flex-wrap flex-shrink-0">
             <Button
               onClick={() => setCoinPurchaseOpen(true)}
               variant="outline"
@@ -769,11 +791,13 @@ export default function Profile() {
             
             {/* Username, Buttons, Stats, and Bio - Centered on mobile */}
             <div className="flex-1 w-full max-w-full px-4 md:px-0">
-              {/* Username - 30% bigger on mobile */}
+              {/* Username with @ - Below profile photo */}
               <div className="flex items-center gap-2 mb-3 justify-center md:justify-start">
-                <h1 className="text-3xl md:text-3xl font-bold">{profile?.username}</h1>
+                <h1 className="text-xl md:text-2xl font-semibold text-muted-foreground truncate max-w-[250px] md:max-w-none">
+                  @{profile?.username}
+                </h1>
                 {(profile?.coins || 0) >= 100 && (
-                  <Crown className="w-7 h-7 text-[#ffd87c] drop-shadow-lg" fill="#ffd87c" />
+                  <Crown className="w-6 h-6 text-[#ffd87c] drop-shadow-lg flex-shrink-0" fill="#ffd87c" />
                 )}
               </div>
               
@@ -857,13 +881,27 @@ export default function Profile() {
               </div>
 
               <div className="grid gap-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  placeholder="Your display name"
+                />
+                <p className="text-xs text-muted-foreground">Your name as it appears on your profile</p>
+              </div>
+
+              <div className="grid gap-2">
                 <Label htmlFor="username">Username</Label>
                 <Input
                   id="username"
                   value={formUsername}
                   onChange={(e) => setFormUsername(e.target.value)}
                   placeholder="Your username"
+                  disabled
+                  className="opacity-60 cursor-not-allowed"
                 />
+                <p className="text-xs text-muted-foreground">Username cannot be changed</p>
               </div>
 
               <div className="grid gap-2">

@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Sparkles, Globe, Lock, Eye, Pencil, Image as ImageIcon, Wand2, Gamepad2, Users, Volume2, Construction, DollarSign, Heart, QrCode, Smartphone, MessageSquare, X } from "lucide-react";
+import Lottie from "react-lottie-player";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { logActivity } from "@/lib/activityLogger";
 import { playClick, playSuccess, playError } from "@/lib/sounds";
@@ -374,6 +375,17 @@ export default function Create() {
   // Feedback popup state
   const [showFeedbackPopup, setShowFeedbackPopup] = useState(false);
   const FEEDBACK_URL = "https://docs.google.com/forms/d/e/1FAIpQLSd1PCiR8rk3j2me_fjNHfbr_KyyYlYUxHFUT73Lwc6xiSFHag/viewform?usp=publish-editor";
+  
+  // Lottie animation state
+  const [lottieAnimation, setLottieAnimation] = useState<any>(null);
+  
+  // Load Lottie animation
+  useEffect(() => {
+    fetch('/under-development.json')
+      .then(res => res.json())
+      .then(data => setLottieAnimation(data))
+      .catch(err => console.error('Failed to load animation:', err));
+  }, []);
 
   // Sound URL input removed per product direction; audio may be auto-generated
   // If arriving via Remix, load base game code for editing
@@ -996,12 +1008,19 @@ export default function Create() {
       {/* Under Development Overlay - Theme Adaptive */}
       <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/60 dark:bg-black/40 backdrop-blur-md">
         <div className="text-center px-6 py-8 max-w-md mx-auto">
-          {/* Construction Icon with Animation */}
-          <div className="mb-6 relative">
-            <Construction className="h-20 w-20 md:h-24 md:w-24 mx-auto text-yellow-500 dark:text-yellow-400 animate-pulse" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="h-24 w-24 md:h-28 md:w-28 border-4 border-yellow-500/30 dark:border-yellow-400/30 rounded-full animate-ping" />
-            </div>
+          {/* Lottie Animation */}
+          <div className="mb-3 flex justify-center">
+            {lottieAnimation ? (
+              <Lottie
+                loop
+                animationData={lottieAnimation}
+                play
+                style={{ width: 312, height: 312 }}
+                className="mx-auto"
+              />
+            ) : (
+              <Construction className="h-20 w-20 md:h-24 md:w-24 mx-auto text-yellow-500 dark:text-yellow-400 animate-pulse" />
+            )}
           </div>
           
           {/* Title */}

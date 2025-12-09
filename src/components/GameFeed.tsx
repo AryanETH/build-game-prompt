@@ -86,6 +86,22 @@ export const GameFeed = () => {
     })();
   }, []);
 
+  // Fetch current user's profile
+  const { data: currentUserProfile } = useQuery({
+    queryKey: ['currentUserProfile', userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      if (!userId) return null;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .eq('id', userId)
+        .single();
+      if (error) return null;
+      return data as Profile;
+    },
+  });
+
   const pageSize = 20; // Increased from 10 for better UX
   const { data: pages, isLoading, isError, error, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = useInfiniteQuery({
     queryKey: ['games', 'feed'],
@@ -890,13 +906,6 @@ export const GameFeed = () => {
                   className="absolute inset-0 w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent dark:from-black/95 dark:via-black/20 md:bg-gradient-to-b md:from-transparent md:via-transparent md:to-black/80" />
-                
-                {/* Center Placeholder Icon - Desktop only */}
-                <div className="hidden md:flex absolute inset-0 items-center justify-center z-0 opacity-20">
-                  <svg className="w-24 h-24 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                  </svg>
-                </div>
 
                 {/* Remix button - top right */}
                 <div className="absolute top-4 right-4 z-10">
@@ -1122,7 +1131,7 @@ export const GameFeed = () => {
         <div className="md:hidden px-4 py-3 border-b flex items-center gap-3 flex-shrink-0 bg-background">
           <button 
             onClick={() => commentsOpenFor?.creator?.username && navigate(`/u/${commentsOpenFor.creator.username}`)}
-            className="flex items-center gap-3 flex-1 hover:opacity-80 transition-opacity"
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
             <Avatar className="h-10 w-10 border-2 border-muted">
               <AvatarImage src={commentsOpenFor?.creator?.avatar_url || undefined} className="object-cover" />
@@ -1145,6 +1154,8 @@ export const GameFeed = () => {
               {followedUsers.has(commentsOpenFor.creator_id) ? 'Following' : 'Follow'}
             </Button>
           )}
+          {/* Spacer to push close button to the right and prevent overlap */}
+          <div className="flex-1" />
         </div>
         
         {/* Desktop: Simple header */}
@@ -1301,82 +1312,59 @@ export const GameFeed = () => {
           )}
         </div>
         
-        {/* Mobile: Fixed input with avatar - Instagram/TikTok style */}
-        <div className="md:hidden border-t px-4 py-3 pb-20 bg-background flex-shrink-0">
+        {/* Unified input for both Mobile and Desktop */}
+        <div className="border-t px-4 md:px-6 py-3 md:py-4 pb-20 md:pb-4 bg-background flex-shrink-0">
           {replyingTo && (
-            <div className="mb-2 flex items-center gap-2 text-xs bg-muted/50 px-3 py-2 rounded-lg">
-              <span className="text-muted-foreground">Replying to <span className="font-semibold text-foreground">@{replyingTo.user?.username}</span></span>
+            <div className="mb-2 flex items-center gap-2 text-xs bg-muted/50 md:bg-transparent px-3 md:px-0 py-2 md:py-0 rounded-lg md:rounded-none text-muted-foreground">
+              <span className="md:hidden">Replying to <span className="font-semibold text-foreground">@{replyingTo.user?.username}</span></span>
+              <span className="hidden md:inline">Replying to @{replyingTo.user?.username}</span>
               <button onClick={() => setReplyingTo(null)} className="ml-auto text-primary hover:underline font-medium">
                 Cancel
               </button>
             </div>
           )}
           <div className="flex items-center gap-2">
+            {/* Mobile: Show avatar */}
             {userId && (
-              <Avatar className="h-8 w-8 flex-shrink-0">
+              <Avatar className="h-8 w-8 flex-shrink-0 md:hidden">
+                <AvatarImage src={currentUserProfile?.avatar_url || undefined} className="object-cover" />
                 <AvatarFallback className="gradient-primary text-white text-xs">
-                  U
+                  {currentUserProfile?.username?.[0]?.toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
             )}
-            <div className="flex-1 flex gap-2">
-              <MentionInput
-                placeholder={replyingTo ? "Write a reply... (@ for users, + for games)" : "Add a comment... (@ for users, + for games)"}
-                value={newComment}
-                onChange={setNewComment}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey && newComment.trim()) {
-                    e.preventDefault();
-                    handleSendComment();
-                  }
-                }}
-                className="flex-1"
-              />
-              <Popover open={gifPickerOpen} onOpenChange={setGifPickerOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" className="flex-shrink-0 h-9 w-9">
-                    <Smile className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[320px] p-0 max-h-[60vh] overflow-hidden" align="end" side="top" sideOffset={8}>
-                  <GifPicker onSelect={handleGifSelect} />
-                </PopoverContent>
-              </Popover>
-              <Button 
-                onClick={handleSendComment} 
-                disabled={!newComment.trim()}
-                size="sm"
-                className="gradient-primary font-semibold"
-              >
-                {replyingTo ? 'Reply' : 'Post'}
-              </Button>
-            </div>
-          </div>
-        </div>
-        
-        {/* Desktop: Simple input - Old style */}
-        <div className="hidden md:block border-t px-6 py-4 bg-background flex-shrink-0">
-          {replyingTo && (
-            <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Replying to @{replyingTo.user?.username}</span>
-              <button onClick={() => setReplyingTo(null)} className="text-primary hover:underline">
-                Cancel
-              </button>
-            </div>
-          )}
-          <div className="flex gap-2">
-            <Popover open={gifPickerOpen} onOpenChange={setGifPickerOpen}>
+            
+            {/* Single GIF Picker Popover - button position changes based on screen size */}
+            <Popover open={gifPickerOpen} onOpenChange={setGifPickerOpen} modal={false}>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="icon" className="flex-shrink-0">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className="flex-shrink-0 md:order-first h-9 w-9 md:h-10 md:w-10"
+                  type="button"
+                >
                   <Smile className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[320px] p-0 max-h-[60vh] overflow-hidden" align="start" sideOffset={8}>
+              <PopoverContent 
+                className="w-[320px] p-0 max-h-[60vh] overflow-hidden" 
+                align="start" 
+                side="top" 
+                sideOffset={8}
+                onInteractOutside={(e) => {
+                  const target = e.target as HTMLElement;
+                  if (target.closest('[role="dialog"]')) {
+                    e.preventDefault();
+                  }
+                }}
+              >
                 <GifPicker onSelect={handleGifSelect} />
               </PopoverContent>
             </Popover>
+            
+            {/* Input field */}
             <MentionInput
-              placeholder={replyingTo ? "Write a reply... (@ users, + games)" : "Add a comment... (@ users, + games)"}
+              placeholder={replyingTo ? "Write a reply... (@ for users, + for games)" : "Add a comment... (@ for users, + for games)"}
               value={newComment}
               onChange={setNewComment}
               onKeyDown={(e) => {
@@ -1385,13 +1373,20 @@ export const GameFeed = () => {
                   handleSendComment();
                 }
               }}
+              className="flex-1 order-first md:order-none"
             />
+            
+            {/* Send button */}
             <Button 
               onClick={handleSendComment} 
               disabled={!newComment.trim()}
-              className="gradient-primary"
+              size="sm"
+              className="gradient-primary font-semibold md:font-normal"
             >
-              {replyingTo ? 'Reply' : 'Send'}
+              {replyingTo ? 'Reply' : (
+                <span className="md:hidden">Post</span>
+              )}
+              <span className="hidden md:inline">{replyingTo ? 'Reply' : 'Send'}</span>
             </Button>
           </div>
         </div>

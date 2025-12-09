@@ -627,10 +627,18 @@ export default function Messages() {
                           <DropdownMenuItem
                             onClick={async (e) => {
                               e.preventDefault();
+                              e.stopPropagation();
                               try {
-                                const textToCopy = isGif ? msg.content.substring(5) :
-                                                  isImage ? msg.content.substring(7) :
-                                                  msg.content;
+                                let textToCopy = msg.content;
+                                
+                                // For GIFs and Images, copy the URL without the prefix
+                                if (isGif) {
+                                  textToCopy = msg.content.substring(5); // Remove '[GIF]'
+                                } else if (isImage) {
+                                  textToCopy = msg.content.substring(7); // Remove '[IMAGE]'
+                                }
+                                // For regular text, copy as-is
+                                
                                 await navigator.clipboard.writeText(textToCopy);
                                 toast.success('Copied to clipboard');
                               } catch (error) {
@@ -640,7 +648,7 @@ export default function Messages() {
                             }}
                           >
                             <Copy className="h-4 w-4 mr-2" />
-                            Copy
+                            Copy {isGif ? 'GIF URL' : isImage ? 'Image URL' : 'Text'}
                           </DropdownMenuItem>
 
                           <DropdownMenuItem
@@ -762,13 +770,29 @@ export default function Messages() {
             )}
             
             <div className="flex gap-2 items-end max-w-4xl mx-auto">
-              <Popover open={gifPickerOpen} onOpenChange={setGifPickerOpen}>
+              <Popover open={gifPickerOpen} onOpenChange={setGifPickerOpen} modal={false}>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="icon" className="flex-shrink-0">
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="flex-shrink-0"
+                    type="button"
+                  >
                     <Smile className="h-5 w-5" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[320px] p-0" align="start" side="top">
+                <PopoverContent 
+                  className="w-[320px] p-0" 
+                  align="start" 
+                  side="top"
+                  onInteractOutside={(e) => {
+                    // Prevent closing when clicking inside the popover
+                    const target = e.target as HTMLElement;
+                    if (target.closest('[role="dialog"]')) {
+                      e.preventDefault();
+                    }
+                  }}
+                >
                   <GifPicker onSelect={handleGifSelect} />
                 </PopoverContent>
               </Popover>

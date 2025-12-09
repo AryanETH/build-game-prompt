@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Tv, Users, Play } from "lucide-react";
+import { Tv, Users, Play, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { LoadingSpinner } from "./LoadingSpinner";
 
@@ -17,6 +17,10 @@ interface Game {
   creator_id: string;
   city?: string | null;
   country?: string | null;
+  is_live?: boolean;
+  live_started_at?: string | null;
+  thumbnail_url?: string | null;
+  cover_url?: string | null;
 }
 
 interface CommentRow {
@@ -28,17 +32,22 @@ interface CommentRow {
 
 export const WatchFeed = () => {
   const navigate = useNavigate();
+  const [hearts, setHearts] = useState<{ id: number; x: number }[]>([]);
+  
   const { data: games = [] } = useQuery({
-    queryKey: ["watch-games"],
+    queryKey: ["watch-games-live"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch ONLY games that are marked as live
+      const { data, error} = await supabase
         .from("games")
-        .select("id,title,description,creator_id,city,country")
-        .order("plays_count", { ascending: false })
+        .select("id,title,description,creator_id,city,country,is_live,live_started_at,thumbnail_url,cover_url")
+        .eq("is_live", true)
+        .order("live_started_at", { ascending: false })
         .limit(20);
       if (error) throw error;
       return data as Game[];
     },
+    refetchInterval: 10000, // Refetch every 10 seconds to get new live streams
   });
 
   const [selected, setSelected] = useState<Game | null>(null);
@@ -116,71 +125,93 @@ export const WatchFeed = () => {
     const { error } = await supabase.from("game_comments").insert({ game_id: selected.id, user_id: uid, content: text.trim() });
     if (!error) setText("");
   };
+  
+  // Heart shower animation (Instagram/TikTok Live style)
+  const sendHeart = () => {
+    const newHeart = {
+      id: Date.now() + Math.random(),
+      x: Math.random() * 80 + 10, // Random position between 10% and 90%
+    };
+    setHearts(prev => [...prev, newHeart]);
+    
+    // Remove heart after animation completes
+    setTimeout(() => {
+      setHearts(prev => prev.filter(h => h.id !== newHeart.id));
+    }, 3000);
+  };
 
-  // Live detection via presence counts per game
-  const [liveGameIds, setLiveGameIds] = useState<Set<string>>(new Set());
-  useEffect(() => {
-    const channels = games.map((g) => {
-      const ch = supabase.channel(`playing:${g.id}`, { config: { presence: { key: `watch_${Math.random().toString(36).slice(2)}` } } });
-      ch.on("presence", { event: "sync" }, () => {
-        const size = Object.keys(ch.presenceState() as Record<string, any[]>).length;
-        setLiveGameIds((prev) => {
-          const next = new Set(prev);
-          if (size > 0) next.add(g.id); else next.delete(g.id);
-          return next;
-        });
-      });
-      ch.subscribe((status) => { if (status === "SUBSCRIBED") ch.track({ watching: true }); });
-      return ch;
-    });
-    return () => { channels.forEach((c) => c.unsubscribe()); };
-  }, [JSON.stringify(games.map((g) => g.id))]);
-
-  const liveGames = games.filter((g) => liveGameIds.has(g.id));
-  const nonLiveGames = games.filter((g) => !liveGameIds.has(g.id));
+  // All games in this feed are live (filtered by database query)
+  const liveGames = games;
 
   // Flip-to-play 9:16 tile: clicking flips from watch to play (load iframe)
   const [flippedId, setFlippedId] = useState<string | null>(null);
 
   return (
     <div className="p-3 md:p-4 space-y-4 md:space-y-6 pb-20 md:pb-4">
-      {/* 9:16 grid of up to 4 live streams visible; scroll for more */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-        {liveGames.map((g) => (
-          <div key={g.id} className="aspect-[9/16] [perspective:1000px]">
-            <div className={`relative w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${flippedId === g.id ? '[transform:rotateY(180deg)]' : ''}`}>
-              {/* front: watch preview */}
-              <Card className="absolute inset-0 overflow-hidden group cursor-pointer [backface-visibility:hidden]" onClick={() => { setFlippedId(g.id); setSelected(g); }}>
-                <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white">
-                  <div className="text-center">
-                    <div className="text-sm opacity-80 mb-1">Live viewers</div>
-                    <div className="flex items-center justify-center gap-2">
-                      <Users className="h-4 w-4" />
+      {/* Live streams grid - Instagram/TikTok Live style */}
+      {liveGames.length === 0 ? (
+        <Card className="p-8 md:p-12 text-center gradient-card">
+          <Tv className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-3 md:mb-4 text-primary" />
+          <h3 className="text-xl md:text-2xl font-bold mb-2">No Live Streams</h3>
+          <p className="text-muted-foreground">Check back later when creators go live!</p>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+          {liveGames.map((g) => (
+            <div key={g.id} className="aspect-[9/16] [perspective:1000px]">
+              <div className={`relative w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${flippedId === g.id ? '[transform:rotateY(180deg)]' : ''}`}>
+                {/* front: watch preview with thumbnail */}
+                <Card className="absolute inset-0 overflow-hidden group cursor-pointer [backface-visibility:hidden]" onClick={() => { setFlippedId(g.id); setSelected(g); }}>
+                  {/* Thumbnail background */}
+                  <img 
+                    src={g.cover_url || g.thumbnail_url || '/placeholder.svg'} 
+                    alt={g.title}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/40" />
+                  
+                  {/* LIVE badge - top left */}
+                  <div className="absolute top-2 left-2 z-10">
+                    <div className="px-2 py-1 rounded-md bg-red-500 text-white text-xs font-bold flex items-center gap-1 shadow-lg">
+                      <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+                      LIVE
+                    </div>
+                  </div>
+                  
+                  {/* Viewer count - top right */}
+                  <div className="absolute top-2 right-2 z-10">
+                    <div className="px-2 py-1 rounded-md bg-black/60 text-white text-xs font-medium flex items-center gap-1">
+                      <Users className="h-3 w-3" />
                       <span>{viewerCount}</span>
                     </div>
-                    <div className="mt-2 text-xs opacity-90">Tap to play</div>
                   </div>
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 p-2 text-white text-sm bg-gradient-to-t from-black/70 to-transparent">
-                  {g.title}
-                </div>
-              </Card>
-              {/* back: playing iframe */}
-              <Card className="absolute inset-0 overflow-hidden [transform:rotateY(180deg)] [backface-visibility:hidden]">
-                <div className="absolute inset-0">
-                  {selected?.id === g.id && fullGameData?.game_code ? (
-                    <iframe title={g.title} srcDoc={fullGameData.game_code} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <LoadingSpinner />
+                  
+                  {/* Title and tap to watch */}
+                  <div className="absolute bottom-0 left-0 right-0 p-3 text-white bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+                    <div className="font-semibold text-sm line-clamp-2 mb-1">{g.title}</div>
+                    <div className="text-xs opacity-90 flex items-center gap-1">
+                      <Play className="h-3 w-3" />
+                      Tap to watch
                     </div>
-                  )}
-                </div>
-              </Card>
+                  </div>
+                </Card>
+                {/* back: playing iframe */}
+                <Card className="absolute inset-0 overflow-hidden [transform:rotateY(180deg)] [backface-visibility:hidden]">
+                  <div className="absolute inset-0">
+                    {selected?.id === g.id && fullGameData?.game_code ? (
+                      <iframe title={g.title} srcDoc={fullGameData.game_code} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <LoadingSpinner />
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Player area */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
@@ -232,27 +263,47 @@ export const WatchFeed = () => {
             )}
           </div>
           <div className="p-2 md:p-3 flex gap-2 border-t">
-            <Input placeholder="Say something..." value={text} onChange={(e) => setText(e.target.value)} className="text-sm md:text-base" />
+            <Button 
+              onClick={sendHeart} 
+              size="icon" 
+              variant="ghost"
+              className="flex-shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+              title="Send heart"
+            >
+              <Heart className="h-5 w-5 fill-current" />
+            </Button>
+            <Input 
+              placeholder="Say something..." 
+              value={text} 
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && text.trim()) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+              className="text-sm md:text-base" 
+            />
             <Button onClick={send} disabled={!text.trim()} size="sm" className="text-xs md:text-sm">Send</Button>
           </div>
         </Card>
       </div>
-
-      {/* Non-live games row: show Play button to redirect */}
-      {nonLiveGames.length > 0 && (
-        <div>
-          <div className="font-semibold mb-2 text-sm md:text-base">Not live right now</div>
-          <div className="flex gap-2 md:gap-3 overflow-x-auto no-scrollbar">
-            {nonLiveGames.map((g) => (
-              <Card key={g.id} className="min-w-[160px] md:min-w-[200px] p-2 md:p-3">
-                <div className="font-semibold line-clamp-1 mb-2 text-xs md:text-sm">{g.title}</div>
-                <Button size="sm" className="gap-1.5 md:gap-2 text-xs md:text-sm" onClick={() => navigate(`/feed?game=${g.id}`)}>
-                  <Play className="h-3 w-3 md:h-4 md:w-4" />
-                  Play
-                </Button>
-              </Card>
-            ))}
-          </div>
+      
+      {/* Heart shower animation overlay - Instagram/TikTok Live style */}
+      {selected && (
+        <div className="fixed inset-0 pointer-events-none z-50">
+          {hearts.map((heart) => (
+            <div
+              key={heart.id}
+              className="absolute bottom-0 animate-float-up"
+              style={{
+                left: `${heart.x}%`,
+                animationDuration: '3s',
+              }}
+            >
+              <Heart className="h-8 w-8 md:h-10 md:w-10 text-red-500 fill-red-500 opacity-90" />
+            </div>
+          ))}
         </div>
       )}
     </div>

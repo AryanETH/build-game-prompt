@@ -62,7 +62,11 @@ export const GifPicker = ({ onSelect }: GifPickerProps) => {
   };
 
   return (
-    <div className="flex flex-col h-[400px] max-h-[60vh] w-full overflow-hidden">
+    <div 
+      className="flex flex-col h-[400px] max-h-[60vh] w-full overflow-hidden"
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
       <div className="p-3 border-b flex-shrink-0 bg-background">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -71,10 +75,16 @@ export const GifPicker = ({ onSelect }: GifPickerProps) => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
           />
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto overscroll-contain">
+      <div 
+        className="flex-1 overflow-y-auto overscroll-contain"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <div className="w-full">
         {loading ? (
           <div className="flex items-center justify-center h-[300px]">
@@ -89,7 +99,11 @@ export const GifPicker = ({ onSelect }: GifPickerProps) => {
             {gifs.map((gif) => (
               <button
                 key={gif.id}
-                onClick={() => onSelect(gif.images.fixed_height.url)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect(gif.images.fixed_height.url);
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
                 className="relative aspect-square rounded-lg overflow-hidden hover:opacity-80 transition-opacity bg-muted"
               >
                 <img

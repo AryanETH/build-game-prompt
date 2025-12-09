@@ -1,4 +1,4 @@
-import { X, Timer, Mic, MicOff, Users, Volume2, VolumeX, Keyboard, MousePointer, DollarSign, Gamepad2, QrCode, Smartphone } from "lucide-react";
+import { X, Timer, Mic, MicOff, Users, Volume2, VolumeX, Keyboard, MousePointer, DollarSign, Gamepad2, QrCode, Smartphone, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 import { useVoiceChat } from "@/hooks/use-voice-chat";
@@ -57,6 +57,7 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
   const [showQrCode, setShowQrCode] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
+  const [isLive, setIsLive] = useState(false);
   
   // UPI details
   const UPI_ID = "6260976807@axl";
@@ -170,6 +171,25 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
     }
   }, []);
 
+  // Toggle live status
+  const toggleLive = async () => {
+    try {
+      const newLiveStatus = !isLive;
+      const { error } = await supabase
+        .from('games')
+        .update({
+          is_live: newLiveStatus,
+          live_started_at: newLiveStatus ? new Date().toISOString() : null,
+        })
+        .eq('id', game.id);
+      
+      if (error) throw error;
+      setIsLive(newLiveStatus);
+    } catch (error) {
+      console.error('Failed to toggle live status:', error);
+    }
+  };
+
   useEffect(() => {
     // Mark this game as being actively played via presence
     const presenceKey = `player_${Math.random().toString(36).slice(2)}`;
@@ -185,6 +205,18 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
       channel.unsubscribe();
     };
   }, [game.id]);
+  
+  // Cleanup: Turn off live when closing
+  useEffect(() => {
+    return () => {
+      if (isLive) {
+        supabase
+          .from('games')
+          .update({ is_live: false, live_started_at: null })
+          .eq('id', game.id);
+      }
+    };
+  }, [isLive, game.id]);
 
 
 
@@ -253,6 +285,15 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
             <div className="text-xs text-muted-foreground hidden md:flex items-center gap-1 mr-2">
               <Users className="h-4 w-4" /> {participants.length}
             </div>
+            <Button
+              variant={isLive ? "default" : "secondary"}
+              size="icon"
+              onClick={toggleLive}
+              title={isLive ? "Stop broadcasting live" : "Go live"}
+              className={isLive ? "bg-red-500 hover:bg-red-600 text-white animate-pulse" : ""}
+            >
+              <Radio className="h-5 w-5" />
+            </Button>
             <Button
               variant={soundOn ? "default" : "secondary"}
               size="icon"
