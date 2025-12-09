@@ -607,11 +607,36 @@ export const GameFeed = () => {
     },
   });
 
+  // Fetch user's comment likes
+  const { data: userCommentLikes } = useQuery({
+    queryKey: ['userCommentLikes', userId, commentsOpenFor?.id],
+    enabled: !!userId && !!commentsOpenFor?.id,
+    queryFn: async () => {
+      if (!userId) return [];
+      const { data, error } = await supabase
+        .from('comment_likes')
+        .select('comment_id')
+        .eq('user_id', userId);
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  useEffect(() => {
+    if (userCommentLikes) {
+      setLikedComments(new Set(userCommentLikes.map(like => like.comment_id)));
+    }
+  }, [userCommentLikes]);
+
   useEffect(() => {
     if (!commentsOpenFor) return;
     const channel = supabase
       .channel(`comments:${commentsOpenFor.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'game_comments', filter: `game_id=eq.${commentsOpenFor.id}` }, () => {
+        refetchComments();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comment_likes' }, () => {
         refetchComments();
       })
       .subscribe();
@@ -839,47 +864,65 @@ export const GameFeed = () => {
     
     const isLiked = likedComments.has(commentId);
     
-    setLikedComments(prev => {
-      const next = new Set(prev);
+    try {
       if (isLiked) {
-        next.delete(commentId);
+        // Unlike: Delete from database
+        const { error } = await supabase
+          .from('comment_likes')
+          .delete()
+          .eq('comment_id', commentId)
+          .eq('user_id', userId);
+        
+        if (error) throw error;
+        
+        // Update local state
+        setLikedComments(prev => {
+          const next = new Set(prev);
+          next.delete(commentId);
+          return next;
+        });
       } else {
-        next.add(commentId);
-      }
-      return next;
-    });
-    
-    // Show optimistic update
-    toast.success(isLiked ? 'Unliked' : 'Liked!');
-    
-    // Send notification if liking (not unliking)
-    if (!isLiked && commentsOpenFor) {
-      try {
-        // Find the comment to get the owner
-        const comment = comments?.find(c => c.id === commentId);
-        if (comment && comment.user_id !== userId) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('username, avatar_url')
-            .eq('id', userId)
-            .single();
-          
-          if (profile) {
-            await notifyCommentLike(
-              comment.user_id,
-              profile.username,
-              profile.avatar_url || '',
-              userId,
-              commentsOpenFor.id,
-              commentsOpenFor.title,
-              commentId,
-              commentsOpenFor.thumbnail_url || commentsOpenFor.cover_url || undefined
-            );
+        // Like: Insert into database
+        const { error } = await supabase
+          .from('comment_likes')
+          .insert({ comment_id: commentId, user_id: userId });
+        
+        if (error) throw error;
+        
+        // Update local state
+        setLikedComments(prev => new Set(prev).add(commentId));
+        
+        // Send notification to comment owner
+        if (commentsOpenFor) {
+          const comment = comments?.find(c => c.id === commentId);
+          if (comment && comment.user_id !== userId) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('username, avatar_url')
+              .eq('id', userId)
+              .single();
+            
+            if (profile) {
+              await notifyCommentLike(
+                comment.user_id,
+                profile.username,
+                profile.avatar_url || '',
+                userId,
+                commentsOpenFor.id,
+                commentsOpenFor.title,
+                commentId,
+                commentsOpenFor.thumbnail_url || commentsOpenFor.cover_url || undefined
+              );
+            }
           }
         }
-      } catch (error) {
-        console.error('Failed to send comment like notification:', error);
       }
+      
+      // Refetch comments to get updated likes_count
+      refetchComments();
+    } catch (error) {
+      console.error('Failed to like/unlike comment:', error);
+      toast.error('Failed to update like');
     }
   };
 
@@ -1289,7 +1332,7 @@ export const GameFeed = () => {
                         className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors group"
                       >
                         <span className={`text-lg font-bold transition-colors ${likedComments.has(c.id) ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'}`}>+</span>
-                        <span className="text-muted-foreground">{likedComments.has(c.id) ? 1 : 0}</span>
+                        <span className="text-muted-foreground">{c.likes_count || 0}</span>
                       </button>
                       <button
                         onClick={() => setReplyingTo(c)}
@@ -1364,7 +1407,13 @@ export const GameFeed = () => {
                                 className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors group"
                               >
                                 <span className={`text-lg font-bold transition-colors ${likedComments.has(r.id) ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'}`}>+</span>
-                                <span className="text-muted-foreground">{likedComments.has(r.id) ? 1 : 0}</span>
+                                <span className="text-muted-foreground">{r.likes_count || 0}</span>
+                              </button>
+                              <button
+                                onClick={() => setReplyingTo(r)}
+                                className="text-xs text-muted-foreground hover:text-primary transition-colors font-medium"
+                              >
+                                Reply
                               </button>
                               {r.user_id === userId && (
                                 <button
