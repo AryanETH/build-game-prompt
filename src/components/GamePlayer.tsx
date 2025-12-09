@@ -1,5 +1,6 @@
-import { X, Timer, Mic, MicOff, Users, Volume2, VolumeX, Keyboard, MousePointer, DollarSign, Gamepad2, QrCode, Smartphone, Radio } from "lucide-react";
+import { X, Timer, Mic, MicOff, Users, Volume2, VolumeX, Keyboard, MousePointer, DollarSign, Gamepad2, QrCode, Smartphone, Radio, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { useEffect, useRef, useState } from "react";
 import { useVoiceChat } from "@/hooks/use-voice-chat";
 import { supabase } from "@/integrations/supabase/client";
@@ -272,72 +273,69 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
   return (
     <div className="fixed inset-0 z-[100] bg-background">
       <div className="h-full flex flex-col">
-        {/* Header */}
-        <div className="border-b border-border/50 p-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold">{game.title}</h2>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Users className="h-4 w-4" />
-              <span>{participants.length} playing</span>
+        {/* Header - Slim Version */}
+        <div className="border-b border-border/50 px-3 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <h2 className="text-base md:text-lg font-bold truncate">{game.title}</h2>
+            <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
+              <Users className="h-3 w-3" />
+              <span>{participants.length}</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="text-xs text-muted-foreground hidden md:flex items-center gap-1 mr-2">
-              <Users className="h-4 w-4" /> {participants.length}
-            </div>
-            <Button
-              variant={isLive ? "default" : "secondary"}
-              size="icon"
-              onClick={toggleLive}
-              title={isLive ? "Stop broadcasting live" : "Go live"}
-              className={isLive ? "bg-red-500 hover:bg-red-600 text-white animate-pulse" : ""}
-            >
-              <Radio className="h-5 w-5" />
-            </Button>
-            <Button
-              variant={soundOn ? "default" : "secondary"}
-              size="icon"
-              onClick={() => setSoundOn((v) => !v)}
-              title={soundOn ? "Sound off" : "Sound on"}
-              className={soundOn ? "gradient-primary" : ""}
-            >
-              {soundOn ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
-            </Button>
-            <Button
-              variant={isMicOn ? "default" : "secondary"}
-              size="icon"
-              onClick={toggleMic}
-              title={isMicOn ? "Mute mic" : "Unmute mic"}
-              className={isMicOn ? "gradient-primary" : ""}
-            >
-              {isMicOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
-            </Button>
-            <Button
-              variant="secondary"
-              size="icon"
-              onClick={joinQueue}
-              title="Find player for multiplayer"
-              className="bg-purple-500 hover:bg-purple-600 text-white"
-              disabled={isInQueue || !!matchSession}
-            >
-              <Gamepad2 className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="secondary"
-              size="icon"
-              onClick={() => setTipDialogOpen(true)}
-              title="Tip the creator"
-              className="bg-yellow-500 hover:bg-yellow-600 text-white"
-            >
-              <DollarSign className="h-5 w-5" />
-            </Button>
+          
+          <div className="flex items-center gap-1">
+            {/* Dropdown Menu for Controls */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 z-[150]">
+                <DropdownMenuItem onClick={toggleLive} className="cursor-pointer">
+                  <Radio className={`h-4 w-4 mr-2 ${isLive ? 'text-red-500' : ''}`} />
+                  <span>{isLive ? 'Stop Live' : 'Go Live'}</span>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem onClick={() => setSoundOn((v) => !v)} className="cursor-pointer">
+                  {soundOn ? <Volume2 className="h-4 w-4 mr-2" /> : <VolumeX className="h-4 w-4 mr-2" />}
+                  <span>{soundOn ? 'Sound On' : 'Sound Off'}</span>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem onClick={toggleMic} className="cursor-pointer">
+                  {isMicOn ? <Mic className="h-4 w-4 mr-2" /> : <MicOff className="h-4 w-4 mr-2" />}
+                  <span>{isMicOn ? 'Mic On' : 'Mic Off'}</span>
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem 
+                  onClick={joinQueue} 
+                  disabled={isInQueue || !!matchSession}
+                  className="cursor-pointer"
+                >
+                  <Gamepad2 className="h-4 w-4 mr-2" />
+                  <span>Find Player</span>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem onClick={() => setTipDialogOpen(true)} className="cursor-pointer">
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  <span>Tip Creator</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
             <Button
               variant="ghost"
-              size="icon"
+              size="sm"
               onClick={onClose}
-              className="hover:bg-destructive/20"
+              className="h-8 w-8 p-0 hover:bg-destructive/20"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </Button>
           </div>
         </div>

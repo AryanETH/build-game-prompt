@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Logo } from "@/components/Logo";
 import { GameCreationFlow } from "@/components/GameCreationFlow";
 import { AnimatedButton } from "@/components/AnimatedButton";
+import QRCode from "qrcode";
 
 const MOCK_GAMES = [
   { id: 1, title: "Space Adventure", username: "cosmic_dev", description: "Explore the galaxy in this epic space shooter 🚀", likes: 12340, comments: 856, thumbnail: "https://images.unsplash.com/photo-1614732414444-096e5f1122d5?w=400&h=800&fit=crop" },
@@ -29,11 +30,32 @@ const Index = () => {
   const [batteryLevel, setBatteryLevel] = useState(100);
   const [isCharging, setIsCharging] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
 
   // Toggle theme
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
   };
+
+  // Generate QR code for Android app
+  useEffect(() => {
+    const generateQR = async () => {
+      try {
+        const url = await QRCode.toDataURL('https://www.appcreator24.com/app3825715-wkm26q', {
+          width: 200,
+          margin: 2,
+          color: {
+            dark: isDarkMode ? '#FFFFFF' : '#000000',
+            light: isDarkMode ? '#000000' : '#FFFFFF'
+          }
+        });
+        setQrCodeUrl(url);
+      } catch (error) {
+        console.error('Failed to generate QR code:', error);
+      }
+    };
+    generateQR();
+  }, [isDarkMode]);
 
   // Update time every minute
   useEffect(() => {
@@ -180,6 +202,7 @@ const Index = () => {
             ? 'from-white/5 via-transparent to-white/5' 
             : 'from-black/5 via-transparent to-black/5'
         }`} />
+        
         <div className="container mx-auto px-6 text-center relative z-10">
           <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-xs uppercase tracking-widest mb-8 transition-colors duration-300 ${
             isDarkMode 
@@ -408,43 +431,233 @@ const Index = () => {
       <footer className={`border-t transition-colors duration-300 ${
         isDarkMode ? 'border-white/10 bg-black' : 'border-black/10 bg-white'
       }`}>
-        <div className="container mx-auto px-6 py-12">
-          {/* Social Links */}
-          <div className="flex justify-center gap-6 mb-8">
-            <a
-              href="https://www.instagram.com/oplus.ai/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`p-3 rounded-full transition-all hover:scale-110 ${
-                isDarkMode 
-                  ? 'text-white hover:text-pink-400' 
-                  : 'text-black hover:text-pink-600'
-              }`}
-              title="Follow us on Instagram"
-            >
-              <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-              </svg>
-            </a>
-            
-            <a
-              href="mailto:playgenofficial@gmail.com"
-              className={`p-3 rounded-full transition-all hover:scale-110 ${
-                isDarkMode 
-                  ? 'text-white hover:text-blue-400' 
-                  : 'text-black hover:text-blue-600'
-              }`}
-              title="Email us"
-            >
-              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-            </a>
+        <div className="max-w-7xl mx-auto px-8 py-16">
+          {/* 4-Column Flexbox Layout */}
+          <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-12 mb-12">
+            {/* Column 1: Company */}
+            <div className="flex-shrink-0">
+              <h3 className={`font-semibold text-xl mb-6 tracking-tight transition-colors duration-300 ${
+                isDarkMode ? 'text-white' : 'text-black'
+              }`}>
+                Company
+              </h3>
+              <ul className="space-y-4">
+                <li>
+                  <a 
+                    href="/about" 
+                    className={`text-base transition-colors duration-200 ${
+                      isDarkMode ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
+                    }`}
+                  >
+                    About Us
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href="mailto:playgenofficial@gmail.com" 
+                    className={`text-base transition-colors duration-200 ${
+                      isDarkMode ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
+                    }`}
+                  >
+                    Contact Us
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href="/blog" 
+                    className={`text-base transition-colors duration-200 ${
+                      isDarkMode ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
+                    }`}
+                  >
+                    Blog
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Column 2: Legal */}
+            <div className="flex-shrink-0">
+              <h3 className={`font-semibold text-xl mb-6 tracking-tight transition-colors duration-300 ${
+                isDarkMode ? 'text-white' : 'text-black'
+              }`}>
+                Legal
+              </h3>
+              <ul className="space-y-4">
+                <li>
+                  <a 
+                    href="#" 
+                    className={`text-base transition-colors duration-200 ${
+                      isDarkMode ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
+                    }`}
+                  >
+                    Privacy Policy
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href="#" 
+                    className={`text-base transition-colors duration-200 ${
+                      isDarkMode ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
+                    }`}
+                  >
+                    Terms & Conditions
+                  </a>
+                </li>
+                <li>
+                  <a 
+                    href="#" 
+                    className={`text-base transition-colors duration-200 ${
+                      isDarkMode ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
+                    }`}
+                  >
+                    Cookie Policy
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Column 3: Connect (Social Icons) */}
+            <div className="flex-shrink-0">
+              <h3 className={`font-semibold text-xl mb-6 tracking-tight transition-colors duration-300 ${
+                isDarkMode ? 'text-white' : 'text-black'
+              }`}>
+                Connect
+              </h3>
+              <div className="flex gap-4">
+                <a
+                  href="https://www.instagram.com/oplus.ai/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`p-3.5 rounded-full transition-all duration-200 hover:scale-105 ${
+                    isDarkMode 
+                      ? 'text-white hover:text-pink-400 bg-white/5 hover:bg-white/10' 
+                      : 'text-black hover:text-pink-600 bg-black/5 hover:bg-black/10'
+                  }`}
+                  title="Follow us on Instagram"
+                >
+                  <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                  </svg>
+                </a>
+                
+                <a
+                  href="mailto:playgenofficial@gmail.com"
+                  className={`p-3.5 rounded-full transition-all duration-200 hover:scale-105 ${
+                    isDarkMode 
+                      ? 'text-white hover:text-blue-400 bg-white/5 hover:bg-white/10' 
+                      : 'text-black hover:text-blue-600 bg-black/5 hover:bg-black/10'
+                  }`}
+                  title="Email us"
+                >
+                  <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </a>
+              </div>
+            </div>
+
+            {/* Divider Line */}
+            <div className={`hidden md:block w-px self-stretch transition-colors duration-300 ${
+              isDarkMode ? 'bg-white/10' : 'bg-black/10'
+            }`} />
+
+            {/* Column 4: App Download (Fixed Width) */}
+            {qrCodeUrl && (
+              <div className="flex-shrink-0 w-full md:w-[170px]">
+                <h3 className={`font-semibold text-xl mb-3 tracking-tight text-center transition-colors duration-300 ${
+                  isDarkMode ? 'text-white' : 'text-black'
+                }`}>
+                  Download
+                </h3>
+                <div className="flex flex-col items-center gap-4">
+                  {/* Logos Row */}
+                  <div className="flex items-center gap-2.5">
+                    <img 
+                      src="/Oplus full horizonatal.png" 
+                      alt="Oplus" 
+                      className={`h-5 w-auto transition-all duration-300 ${
+                        isDarkMode ? 'invert' : ''
+                      }`}
+                    />
+                    <span className={`text-base font-medium transition-colors duration-300 ${
+                      isDarkMode ? 'text-white/40' : 'text-black/40'
+                    }`}>×</span>
+                    <svg 
+                      className={`h-5 w-5 transition-colors duration-300`}
+                      xmlns="http://www.w3.org/2000/svg" 
+                      viewBox="0 0 256 256"
+                    >
+                      <rect width="256" height="256" fill="none"/>
+                      <circle cx="164" cy="156" r="16" fill={isDarkMode ? '#FFFFFF' : '#000000'}/>
+                      <circle cx="92" cy="156" r="16" fill={isDarkMode ? '#FFFFFF' : '#000000'}/>
+                      <path 
+                        d="M24,192V169.1C24,111.6,70.2,64.2,127.6,64A104,104,0,0,1,232,168v24a8,8,0,0,1-8,8H32A8,8,0,0,1,24,192Z" 
+                        fill="none" 
+                        stroke={isDarkMode ? '#FFFFFF' : '#000000'} 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth="24"
+                      />
+                      <line 
+                        x1="32" y1="56" x2="63.1" y2="87.1" 
+                        fill="none" 
+                        stroke={isDarkMode ? '#FFFFFF' : '#000000'} 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth="24"
+                      />
+                      <line 
+                        x1="224" y1="56" x2="193.1" y2="86.9" 
+                        fill="none" 
+                        stroke={isDarkMode ? '#FFFFFF' : '#000000'} 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth="24"
+                      />
+                    </svg>
+                  </div>
+
+                  {/* QR Code - Desktop Only */}
+                  <div className={`hidden md:block p-2.5 rounded-lg border transition-colors duration-300 ${
+                    isDarkMode 
+                      ? 'bg-white/5 border-white/10' 
+                      : 'bg-black/5 border-black/10'
+                  }`}>
+                    <img 
+                      src={qrCodeUrl} 
+                      alt="Download Oplus Android App" 
+                      className="w-28 h-28 rounded"
+                    />
+                  </div>
+
+                  {/* Get the App Button - Mobile/Tablet Only */}
+                  <a
+                    href="https://www.appcreator24.com/app3825715-wkm26q"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`md:hidden px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-200 hover:scale-105 ${
+                      isDarkMode 
+                        ? 'bg-white text-black hover:bg-white/90' 
+                        : 'bg-black text-white hover:bg-black/90'
+                    }`}
+                  >
+                    Get the App
+                  </a>
+
+                  {/* Text - Desktop Only */}
+                  <p className={`hidden md:block text-center text-xs font-medium leading-tight transition-colors duration-300 ${
+                    isDarkMode ? 'text-white/50' : 'text-black/50'
+                  }`}>
+                    Download Oplus — now available on Android for free.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Copyright */}
-          <div className={`text-center text-sm transition-colors duration-300 ${
-            isDarkMode ? 'text-white/50' : 'text-black/50'
+          <div className={`text-center text-sm pt-8 border-t mt-8 transition-colors duration-300 ${
+            isDarkMode ? 'text-white/50 border-white/10' : 'text-black/50 border-black/10'
           }`}>
             © 2025 Oplus. All rights reserved.
           </div>

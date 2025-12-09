@@ -152,6 +152,52 @@ export async function notifyCommentReply(
   });
 }
 
+export async function notifyCommentLike(
+  commentOwnerId: string,
+  likerUsername: string,
+  likerAvatar: string,
+  likerId: string,
+  gameId: string,
+  gameTitle: string,
+  commentId: string,
+  gameThumbnail?: string
+) {
+  return createNotification({
+    userId: commentOwnerId,
+    type: 'like',
+    content: 'liked your comment',
+    username: likerUsername,
+    avatarUrl: likerAvatar,
+    gameId,
+    gameTitle,
+    commentId,
+    gameThumbnail,
+  });
+}
+
+export async function notifyGameMention(
+  gameOwnerId: string,
+  mentionerUsername: string,
+  mentionerAvatar: string,
+  mentionerId: string,
+  gameId: string,
+  gameTitle: string,
+  commentId: string,
+  gameThumbnail?: string
+) {
+  return createNotification({
+    userId: gameOwnerId,
+    type: 'mention',
+    content: 'mentioned your game',
+    username: mentionerUsername,
+    avatarUrl: mentionerAvatar,
+    gameId,
+    gameTitle,
+    commentId,
+    gameThumbnail,
+  });
+}
+
 export async function notifyMention(
   mentionedUserId: string,
   mentionerUsername: string,

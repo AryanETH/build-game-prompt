@@ -321,70 +321,81 @@ export default function AuthPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
               <>
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-white">Full Name</Label>
+                {/* Full Name - Floating Label */}
+                <div className="relative">
                   <Input
                     id="name"
                     type="text"
-                    placeholder="eg. Valya Sharma"
+                    placeholder=" "
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
-                    className="bg-[#111111] border-[#333333] text-white placeholder:text-white/40 focus:border-purple-600 focus:ring-purple-600"
+                    className="bg-[#111111] border-[#333333] text-white placeholder:text-transparent focus:border-purple-600 focus:ring-purple-600 peer pt-6 pb-2"
                   />
-                  <p className="text-xs text-white/40">Your display name (can be changed later)</p>
+                  <Label 
+                    htmlFor="name" 
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 transition-all peer-focus:top-2 peer-focus:text-xs peer-focus:text-purple-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-xs pointer-events-none"
+                  >
+                    Full Name
+                  </Label>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="username" className="text-white">Username</Label>
+                {/* Username - Floating Label */}
+                <div className="relative">
                   <div className="relative">
                     <Input
                       id="username"
                       type="text"
-                      placeholder="eg. valya_sharma"
+                      placeholder=" "
                       value={formData.username}
                       onChange={(e) => setFormData({ ...formData, username: e.target.value.toLowerCase() })}
                       required
-                      className={`bg-[#111111] border-[#333333] text-white placeholder:text-white/40 focus:border-purple-600 focus:ring-purple-600 pr-10 ${
+                      className={`bg-[#111111] border-[#333333] text-white placeholder:text-transparent focus:border-purple-600 focus:ring-purple-600 pr-10 peer pt-6 pb-2 ${
                         formData.username && usernameStatus.available === false ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
                       } ${
                         formData.username && usernameStatus.available === true ? 'border-green-500 focus:border-green-500 focus:ring-green-500' : ''
                       }`}
                     />
+                    <Label 
+                      htmlFor="username" 
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 transition-all peer-focus:top-2 peer-focus:text-xs peer-focus:text-purple-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-xs pointer-events-none"
+                    >
+                      Username
+                    </Label>
                     {formData.username && (
                       <div className="absolute right-3 top-1/2 -translate-y-1/2">
                         {usernameStatus.checking ? (
-                          <Loader2 className="h-5 w-5 text-white/40 animate-spin" />
+                          <Loader2 className="h-4 w-4 text-white/40 animate-spin" />
                         ) : usernameStatus.available === true ? (
-                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
                         ) : usernameStatus.available === false ? (
-                          <XCircle className="h-5 w-5 text-red-500" />
+                          <XCircle className="h-4 w-4 text-red-500" />
                         ) : null}
                       </div>
                     )}
                   </div>
                   
-                  {/* Username feedback */}
-                  {formData.username && usernameStatus.message && (
-                    <p className={`text-xs ${usernameStatus.available ? 'text-green-500' : 'text-red-500'}`}>
+                  {/* Username validation errors - only show when there's an error */}
+                  {formData.username && usernameStatus.message && !usernameStatus.available && (
+                    <p className="text-xs text-red-500 mt-1">
                       {usernameStatus.message}
                     </p>
                   )}
                   
                   {/* Username suggestions */}
                   {usernameStatus.suggestions.length > 0 && (
-                    <div className="mt-2 space-y-2">
+                    <div className="mt-2 space-y-1">
                       <p className="text-xs text-white/60">Try these instead:</p>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-1.5">
                         {usernameStatus.suggestions.map((suggestion) => (
                           <button
                             key={suggestion}
                             type="button"
                             onClick={() => setFormData({ ...formData, username: suggestion })}
-                            className="px-3 py-1 text-xs bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded-full border border-purple-600/30 transition-colors"
+                            className="px-2.5 py-1 text-xs bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded-full border border-purple-600/30 transition-colors"
                           >
                             {suggestion}
                           </button>
@@ -392,56 +403,59 @@ export default function AuthPage() {
                       </div>
                     </div>
                   )}
-                  
-                  {!formData.username && (
-                    <p className="text-xs text-white/40">
-                      Lowercase letters, numbers, periods, and underscores only
-                    </p>
-                  )}
                 </div>
               </>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-white">
-                {isSignUp ? 'Email' : 'Email or Username'}
-              </Label>
+            {/* Email - Floating Label */}
+            <div className="relative">
               <Input
                 id="email"
                 type={isSignUp ? "email" : "text"}
-                placeholder={isSignUp ? "eg. Valya@gmail.com" : "eg. valya_sharma or valya@gmail.com"}
+                placeholder=" "
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
-                className="bg-[#111111] border-[#333333] text-white placeholder:text-white/40 focus:border-purple-600 focus:ring-purple-600"
+                className="bg-[#111111] border-[#333333] text-white placeholder:text-transparent focus:border-purple-600 focus:ring-purple-600 peer pt-6 pb-2"
               />
-              {!isSignUp && (
-                <p className="text-xs text-white/40">You can log in with either your email or username</p>
-              )}
+              <Label 
+                htmlFor="email" 
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 transition-all peer-focus:top-2 peer-focus:text-xs peer-focus:text-purple-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-xs pointer-events-none"
+              >
+                {isSignUp ? 'Email' : 'Email or Username'}
+              </Label>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-white">Password</Label>
+            {/* Password - Floating Label */}
+            <div className="relative">
               <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
+                  placeholder=" "
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
-                  className="bg-[#111111] border-[#333333] text-white placeholder:text-white/40 focus:border-purple-600 focus:ring-purple-600 pr-10"
+                  minLength={8}
+                  className="bg-[#111111] border-[#333333] text-white placeholder:text-transparent focus:border-purple-600 focus:ring-purple-600 pr-10 peer pt-6 pb-2"
                 />
+                <Label 
+                  htmlFor="password" 
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 transition-all peer-focus:top-2 peer-focus:text-xs peer-focus:text-purple-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-xs pointer-events-none"
+                >
+                  Password
+                </Label>
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60"
                 >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              {isSignUp && (
-                <p className="text-xs text-white/40">Must be at least 8 characters.</p>
+              {/* Password validation - only show error when user types less than 8 chars */}
+              {isSignUp && formData.password && formData.password.length < 8 && (
+                <p className="text-xs text-red-500 mt-1">Must be at least 8 characters</p>
               )}
             </div>
 

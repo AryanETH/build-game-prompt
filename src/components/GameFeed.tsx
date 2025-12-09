@@ -20,7 +20,7 @@ import { OnlineIndicator } from "./OnlineIndicator";
 import { MentionInput } from "./MentionInput";
 import { CommentText } from "./CommentText";
 import { GameCardSkeleton } from "./GameCardSkeleton";
-import { notifyGameLike, notifyGameComment, notifyCommentReply, notifyGamePlay, notifyNewFollower } from "@/lib/notificationSystem";
+import { notifyGameLike, notifyGameComment, notifyCommentReply, notifyGamePlay, notifyNewFollower, notifyCommentLike, notifyGameMention, notifyMention } from "@/lib/notificationSystem";
 import { LinkifiedText } from "./LinkifiedText";
 
 interface Game {
@@ -648,15 +648,16 @@ export const GameFeed = () => {
         refetchComments();
         queryClient.invalidateQueries({ queryKey: ['games'] });
         
-        // Send notification to game owner or comment owner
-        if (commentsOpenFor.creator_id !== uid) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('username, avatar_url')
-            .eq('id', uid)
-            .single();
-          
-          if (profile) {
+        // Get user profile for notifications
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('username, avatar_url')
+          .eq('id', uid)
+          .single();
+        
+        if (profile) {
+          // Send notification to game owner or comment owner
+          if (commentsOpenFor.creator_id !== uid) {
             if (replyingTo) {
               // Notify comment owner about reply
               if (replyingTo.user_id !== uid) {
@@ -682,6 +683,58 @@ export const GameFeed = () => {
                 '', // comment ID will be generated
                 commentsOpenFor.thumbnail_url || commentsOpenFor.cover_url || undefined
               );
+            }
+          }
+          
+          // Detect and notify user mentions (@username)
+          const userMentions = newComment.match(/@(\w+)/g);
+          if (userMentions) {
+            for (const mention of userMentions) {
+              const username = mention.substring(1);
+              const { data: mentionedUser } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('username', username)
+                .single();
+              
+              if (mentionedUser && mentionedUser.id !== uid) {
+                await notifyMention(
+                  mentionedUser.id,
+                  profile.username,
+                  profile.avatar_url || '',
+                  uid,
+                  commentsOpenFor.id,
+                  commentsOpenFor.title,
+                  '' // comment ID
+                );
+              }
+            }
+          }
+          
+          // Detect and notify game mentions (+game_title)
+          const gameMentions = newComment.match(/\+([^\s]+)/g);
+          if (gameMentions) {
+            for (const mention of gameMentions) {
+              const gameTitle = mention.substring(1);
+              const { data: mentionedGame } = await supabase
+                .from('games')
+                .select('id, title, creator_id, thumbnail_url, cover_url')
+                .ilike('title', `%${gameTitle}%`)
+                .limit(1)
+                .single();
+              
+              if (mentionedGame && mentionedGame.creator_id !== uid) {
+                await notifyGameMention(
+                  mentionedGame.creator_id,
+                  profile.username,
+                  profile.avatar_url || '',
+                  uid,
+                  mentionedGame.id,
+                  mentionedGame.title,
+                  '', // comment ID
+                  mentionedGame.thumbnail_url || mentionedGame.cover_url || undefined
+                );
+              }
             }
           }
         }
@@ -798,6 +851,36 @@ export const GameFeed = () => {
     
     // Show optimistic update
     toast.success(isLiked ? 'Unliked' : 'Liked!');
+    
+    // Send notification if liking (not unliking)
+    if (!isLiked && commentsOpenFor) {
+      try {
+        // Find the comment to get the owner
+        const comment = comments?.find(c => c.id === commentId);
+        if (comment && comment.user_id !== userId) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username, avatar_url')
+            .eq('id', userId)
+            .single();
+          
+          if (profile) {
+            await notifyCommentLike(
+              comment.user_id,
+              profile.username,
+              profile.avatar_url || '',
+              userId,
+              commentsOpenFor.id,
+              commentsOpenFor.title,
+              commentId,
+              commentsOpenFor.thumbnail_url || commentsOpenFor.cover_url || undefined
+            );
+          }
+        }
+      } catch (error) {
+        console.error('Failed to send comment like notification:', error);
+      }
+    }
   };
 
   const handleDeleteComment = async (commentId: string) => {
