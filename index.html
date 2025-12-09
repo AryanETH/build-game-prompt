@@ -3,6 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     
+    <!-- Theme initialization: Always default to light mode on every visit -->
+    <script>
+      // Always start with light mode - users can switch to dark if they want
+      (function() {
+        // Remove dark class to ensure light mode
+        document.documentElement.classList.remove('dark');
+        // Set light as the default theme
+        localStorage.setItem('theme', 'light');
+      })();
+    </script>
+    
     <!-- Conditional viewport: Desktop in iframe, responsive otherwise -->
     <script>
       // Check if site is embedded in an iframe

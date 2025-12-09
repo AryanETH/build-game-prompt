@@ -1011,13 +1011,15 @@ export default function Create() {
           {/* Lottie Animation */}
           <div className="mb-3 flex justify-center">
             {lottieAnimation ? (
-              <Lottie
-                loop
-                animationData={lottieAnimation}
-                play
-                style={{ width: 312, height: 312 }}
-                className="mx-auto"
-              />
+              <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
+                <Lottie
+                  loop
+                  animationData={lottieAnimation}
+                  play
+                  style={{ width: 312, height: 312 }}
+                  className="mx-auto"
+                />
+              </div>
             ) : (
               <Construction className="h-20 w-20 md:h-24 md:w-24 mx-auto text-yellow-500 dark:text-yellow-400 animate-pulse" />
             )}
