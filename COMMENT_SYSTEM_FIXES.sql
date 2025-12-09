@@ -75,17 +75,36 @@ CREATE TRIGGER trigger_update_comment_likes_count
 -- 9. Backfill existing likes_count (set to 0 if null)
 UPDATE game_comments SET likes_count = 0 WHERE likes_count IS NULL;
 
--- 10. Create realtime publication for comment_likes
-DROP PUBLICATION IF EXISTS supabase_realtime_comment_likes;
-CREATE PUBLICATION supabase_realtime_comment_likes FOR TABLE comment_likes;
+-- 10. Enable Realtime for comment_likes and game_comments
+-- Note: Supabase automatically handles realtime for tables with RLS enabled
+-- But we'll ensure it's explicitly enabled
+
+-- Enable realtime on comment_likes
+ALTER PUBLICATION supabase_realtime ADD TABLE comment_likes;
+
+-- Enable realtime on game_comments (if not already enabled)
+DO $$
+BEGIN
+  -- Check if game_comments is already in the publication
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND tablename = 'game_comments'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE game_comments;
+  END IF;
+END $$;
 
 -- Success message
 DO $$
 BEGIN
-  RAISE NOTICE 'Comment system fixes applied successfully!';
-  RAISE NOTICE '1. comment_likes table created';
-  RAISE NOTICE '2. likes_count column added to game_comments';
-  RAISE NOTICE '3. RLS policies configured';
-  RAISE NOTICE '4. Triggers for auto-updating likes_count created';
-  RAISE NOTICE '5. Realtime enabled for comment likes';
+  RAISE NOTICE '✅ Comment system fixes applied successfully!';
+  RAISE NOTICE '1. ✅ comment_likes table created';
+  RAISE NOTICE '2. ✅ likes_count column added to game_comments';
+  RAISE NOTICE '3. ✅ RLS policies configured';
+  RAISE NOTICE '4. ✅ Triggers for auto-updating likes_count created';
+  RAISE NOTICE '5. ✅ Realtime enabled for comment_likes and game_comments';
+  RAISE NOTICE '';
+  RAISE NOTICE '🎉 Real-time comments and likes are now live!';
+  RAISE NOTICE '📖 See REALTIME_COMMENTS_SETUP.md for testing guide';
 END $$;

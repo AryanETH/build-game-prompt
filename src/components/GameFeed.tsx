@@ -595,6 +595,8 @@ export const GameFeed = () => {
   const { data: comments = [], refetch: refetchComments } = useQuery({
     queryKey: ['comments', commentsOpenFor?.id],
     enabled: !!commentsOpenFor?.id,
+    refetchInterval: 3000, // Refetch every 3 seconds as backup to realtime
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
     queryFn: async () => {
       const gid = commentsOpenFor!.id;
       const { data, error } = await supabase
@@ -611,6 +613,8 @@ export const GameFeed = () => {
   const { data: userCommentLikes } = useQuery({
     queryKey: ['userCommentLikes', userId, commentsOpenFor?.id],
     enabled: !!userId && !!commentsOpenFor?.id,
+    refetchInterval: 3000, // Refetch every 3 seconds as backup to realtime
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
     queryFn: async () => {
       if (!userId) return [];
       const { data, error } = await supabase
@@ -633,17 +637,30 @@ export const GameFeed = () => {
     if (!commentsOpenFor) return;
     const channel = supabase
       .channel(`comments:${commentsOpenFor.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'game_comments', filter: `game_id=eq.${commentsOpenFor.id}` }, () => {
+      // Listen to all comment changes (INSERT, UPDATE, DELETE)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'game_comments', 
+        filter: `game_id=eq.${commentsOpenFor.id}` 
+      }, () => {
         refetchComments();
+        queryClient.invalidateQueries({ queryKey: ['games'] }); // Update comment counts
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'comment_likes' }, () => {
+      // Listen to all comment like changes
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'comment_likes' 
+      }, () => {
         refetchComments();
+        queryClient.invalidateQueries({ queryKey: ['userCommentLikes', userId, commentsOpenFor.id] });
       })
       .subscribe();
     return () => {
       channel.unsubscribe();
     };
-  }, [commentsOpenFor, refetchComments]);
+  }, [commentsOpenFor, refetchComments, queryClient, userId]);
 
   const handleSendComment = async () => {
     if (!newComment.trim() || !commentsOpenFor) return;
