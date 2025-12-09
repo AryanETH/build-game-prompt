@@ -383,7 +383,7 @@ export const GamePlayer = ({ game, onClose }: GamePlayerProps) => {
       }}>
         <DialogContent className="sm:max-w-md z-[200]">
           <DialogHeader>
-            <DialogTitle>Tip the Creator 💰</DialogTitle>
+            <DialogTitle>Tip the Creator</DialogTitle>
           </DialogHeader>
           
           {!showQrCode ? (
