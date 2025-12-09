@@ -1580,12 +1580,24 @@ export default function Admin() {
                     
                     {/* Preview */}
                     {thumbnailUrl && (
-                      <div className="mt-2">
+                      <div className="mt-2 relative inline-block">
                         <img 
                           src={thumbnailUrl} 
                           alt="Thumbnail preview" 
                           className="w-32 h-32 object-cover rounded-lg border-2 border-white/20"
                         />
+                        <Button
+                          onClick={() => {
+                            setThumbnailUrl("");
+                            setCoverUrl("");
+                            toast.success("Thumbnail removed");
+                          }}
+                          variant="destructive"
+                          size="icon"
+                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
                       </div>
                     )}
                     
@@ -1607,62 +1619,95 @@ export default function Admin() {
                     </p>
                   </div>
 
-                  <Button
-                    onClick={handleUploadGame}
-                    disabled={uploading || !title || !gameCode}
-                    className="w-full"
-                  >
-                    {uploading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        {editingGameId ? 'Updating...' : 'Uploading...'}
-                      </>
-                    ) : editingGameId ? (
-                      <>
-                        <Edit className="h-4 w-4 mr-2" />
-                        Save Changes
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload Game
-                      </>
-                    )}
-                  </Button>
+                  {/* Preview and Upload Buttons */}
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => {
+                        if (gameCode) {
+                          handleViewGame(gameCode);
+                        } else {
+                          toast.error("No game code to preview");
+                        }
+                      }}
+                      disabled={!gameCode}
+                      variant="outline"
+                      className={`flex-1 ${isDarkMode ? 'border-white/20 hover:bg-white/10' : ''}`}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Preview Game
+                    </Button>
+                    
+                    <Button
+                      onClick={handleUploadGame}
+                      disabled={uploading || !title || !gameCode}
+                      className="flex-1"
+                    >
+                      {uploading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          {editingGameId ? 'Updating...' : 'Uploading...'}
+                        </>
+                      ) : editingGameId ? (
+                        <>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Save Changes
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload Game
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </Card>
 
               <Card className={`p-6 ${isDarkMode ? 'bg-white/10 border-white/30' : 'bg-black/5 border-black/10'}`}>
-                <h3 className={`font-semibold text-lg mb-4 ${isDarkMode ? 'text-white' : 'text-black'}`}>Quick Template</h3>
-                <pre className={`text-xs p-4 rounded overflow-x-auto border ${
-                  isDarkMode ? 'bg-white/20 border-white/40 text-white' : 'bg-white border-black/10'
-                }`}>
-{`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
-    body {
-      margin: 0;
-      background: #000;
-      color: #fff;
-      font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'San Francisco', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
-  </style>
-</head>
-<body>
-  <h1>My Game</h1>
-  <script>
-    // Your game code here
-  </script>
-</body>
-</html>`}
-                </pre>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className={`font-semibold text-lg ${isDarkMode ? 'text-white' : 'text-black'}`}>Game Preview</h3>
+                  <Button
+                    onClick={() => {
+                      if (gameCode) {
+                        handleViewGame(gameCode);
+                      } else {
+                        toast.error("No game code to preview");
+                      }
+                    }}
+                    disabled={!gameCode}
+                    variant="outline"
+                    size="sm"
+                    className={isDarkMode ? 'border-white/20 hover:bg-white/10' : ''}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Open in New Tab
+                  </Button>
+                </div>
+                
+                {gameCode ? (
+                  <div className={`relative rounded-lg overflow-hidden border-2 ${
+                    isDarkMode ? 'border-white/20' : 'border-black/10'
+                  }`} style={{ height: '600px' }}>
+                    <iframe
+                      srcDoc={gameCode}
+                      className="w-full h-full"
+                      title="Game Preview"
+                      sandbox="allow-scripts allow-same-origin"
+                      style={{ border: 'none' }}
+                    />
+                  </div>
+                ) : (
+                  <div className={`flex items-center justify-center rounded-lg border-2 border-dashed ${
+                    isDarkMode ? 'border-white/20 bg-white/5' : 'border-black/10 bg-black/5'
+                  }`} style={{ height: '600px' }}>
+                    <div className="text-center">
+                      <Eye className={`h-12 w-12 mx-auto mb-3 ${isDarkMode ? 'text-white/40' : 'text-black/40'}`} />
+                      <p className={`text-sm ${isDarkMode ? 'text-white/60' : 'text-black/60'}`}>
+                        Enter game code to see preview
+                      </p>
+                    </div>
+                  </div>
+                )}
               </Card>
             </div>
           </TabsContent>
