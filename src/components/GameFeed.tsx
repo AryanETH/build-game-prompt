@@ -219,7 +219,7 @@ export const GameFeed = () => {
     mutationFn: async ({ gameId, isLiked }: { gameId: string; isLiked: boolean }) => {
       if (!userId) {
         toast.error("Please sign in to like games");
-        return;
+        throw new Error("Not authenticated");
       }
 
       if (isLiked) {
@@ -237,34 +237,37 @@ export const GameFeed = () => {
         
         if (error) throw error;
         
-        // Log like activity
-        await logActivity({ type: 'game_liked', gameId });
+        // Log like activity (async, don't wait)
+        logActivity({ type: 'game_liked', gameId });
         
-        // Send notification to game owner
+        // Send notification to game owner (async, don't wait)
         const game = hydratedGames.find(g => g.id === gameId);
         if (game && game.creator_id !== userId) {
-          const { data: userData } = await supabase.auth.getUser();
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('username, avatar_url')
-            .eq('id', userId)
-            .single();
-          
-          if (profile && userData.user) {
-            await notifyGameLike(
-              game.creator_id,
-              profile.username,
-              profile.avatar_url || '',
-              userId,
-              gameId,
-              game.title,
-              game.thumbnail_url || game.cover_url || undefined
-            );
-          }
+          supabase.auth.getUser().then(({ data: userData }) => {
+            supabase
+              .from('profiles')
+              .select('username, avatar_url')
+              .eq('id', userId)
+              .single()
+              .then(({ data: profile }) => {
+                if (profile && userData.user) {
+                  notifyGameLike(
+                    game.creator_id,
+                    profile.username,
+                    profile.avatar_url || '',
+                    userId,
+                    gameId,
+                    game.title,
+                    game.thumbnail_url || game.cover_url || undefined
+                  );
+                }
+              });
+          });
         }
       }
     },
-    onSuccess: (_, { gameId, isLiked }) => {
+    onMutate: async ({ gameId, isLiked }) => {
+      // OPTIMISTIC UPDATE: Update UI immediately
       setLikedGames(prev => {
         const newSet = new Set(prev);
         if (isLiked) {
@@ -274,6 +277,46 @@ export const GameFeed = () => {
         }
         return newSet;
       });
+      
+      // Optimistically update the game's likes_count
+      queryClient.setQueryData(['games', 'feed'], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page: any[]) =>
+            page.map((game: any) => {
+              if (game.id === gameId) {
+                return {
+                  ...game,
+                  likes_count: isLiked 
+                    ? Math.max((game.likes_count || 0) - 1, 0)
+                    : (game.likes_count || 0) + 1
+                };
+              }
+              return game;
+            })
+          )
+        };
+      });
+    },
+    onError: (error, { gameId, isLiked }) => {
+      // ROLLBACK: Revert optimistic update on error
+      setLikedGames(prev => {
+        const newSet = new Set(prev);
+        if (isLiked) {
+          newSet.add(gameId);
+        } else {
+          newSet.delete(gameId);
+        }
+        return newSet;
+      });
+      
+      // Refetch to get correct state
+      queryClient.invalidateQueries({ queryKey: ['games'] });
+      toast.error("Failed to update like");
+    },
+    onSuccess: () => {
+      // Refetch in background to sync with server
       queryClient.invalidateQueries({ queryKey: ['games'] });
     },
   });
@@ -595,8 +638,9 @@ export const GameFeed = () => {
   const { data: comments = [], refetch: refetchComments } = useQuery({
     queryKey: ['comments', commentsOpenFor?.id],
     enabled: !!commentsOpenFor?.id,
-    refetchInterval: 3000, // Refetch every 3 seconds as backup to realtime
+    refetchInterval: 1000, // Refetch every 1 second for faster updates
     refetchOnWindowFocus: true, // Refetch when user returns to tab
+    staleTime: 0, // Always consider data stale for instant updates
     queryFn: async () => {
       const gid = commentsOpenFor!.id;
       const { data, error } = await supabase
@@ -613,8 +657,9 @@ export const GameFeed = () => {
   const { data: userCommentLikes } = useQuery({
     queryKey: ['userCommentLikes', userId, commentsOpenFor?.id],
     enabled: !!userId && !!commentsOpenFor?.id,
-    refetchInterval: 3000, // Refetch every 3 seconds as backup to realtime
+    refetchInterval: 1000, // Refetch every 1 second for faster updates
     refetchOnWindowFocus: true, // Refetch when user returns to tab
+    staleTime: 0, // Always consider data stale for instant updates
     queryFn: async () => {
       if (!userId) return [];
       const { data, error } = await supabase
@@ -881,6 +926,33 @@ export const GameFeed = () => {
     
     const isLiked = likedComments.has(commentId);
     
+    // OPTIMISTIC UPDATE: Update UI immediately
+    setLikedComments(prev => {
+      const next = new Set(prev);
+      if (isLiked) {
+        next.delete(commentId);
+      } else {
+        next.add(commentId);
+      }
+      return next;
+    });
+    
+    // Optimistically update the comment's likes_count in the UI
+    queryClient.setQueryData(['comments', commentsOpenFor?.id], (oldData: any) => {
+      if (!oldData) return oldData;
+      return oldData.map((comment: CommentRow) => {
+        if (comment.id === commentId) {
+          return {
+            ...comment,
+            likes_count: isLiked 
+              ? Math.max((comment.likes_count || 0) - 1, 0)
+              : (comment.likes_count || 0) + 1
+          };
+        }
+        return comment;
+      });
+    });
+    
     try {
       if (isLiked) {
         // Unlike: Delete from database
@@ -891,13 +963,6 @@ export const GameFeed = () => {
           .eq('user_id', userId);
         
         if (error) throw error;
-        
-        // Update local state
-        setLikedComments(prev => {
-          const next = new Set(prev);
-          next.delete(commentId);
-          return next;
-        });
       } else {
         // Like: Insert into database
         const { error } = await supabase
@@ -906,40 +971,65 @@ export const GameFeed = () => {
         
         if (error) throw error;
         
-        // Update local state
-        setLikedComments(prev => new Set(prev).add(commentId));
-        
-        // Send notification to comment owner
+        // Send notification to comment owner (async, don't wait)
         if (commentsOpenFor) {
           const comment = comments?.find(c => c.id === commentId);
           if (comment && comment.user_id !== userId) {
-            const { data: profile } = await supabase
+            supabase
               .from('profiles')
               .select('username, avatar_url')
               .eq('id', userId)
-              .single();
-            
-            if (profile) {
-              await notifyCommentLike(
-                comment.user_id,
-                profile.username,
-                profile.avatar_url || '',
-                userId,
-                commentsOpenFor.id,
-                commentsOpenFor.title,
-                commentId,
-                commentsOpenFor.thumbnail_url || commentsOpenFor.cover_url || undefined
-              );
-            }
+              .single()
+              .then(({ data: profile }) => {
+                if (profile) {
+                  notifyCommentLike(
+                    comment.user_id,
+                    profile.username,
+                    profile.avatar_url || '',
+                    userId,
+                    commentsOpenFor.id,
+                    commentsOpenFor.title,
+                    commentId,
+                    commentsOpenFor.thumbnail_url || commentsOpenFor.cover_url || undefined
+                  );
+                }
+              });
           }
         }
       }
       
-      // Refetch comments to get updated likes_count
+      // Refetch in background to sync with server
       refetchComments();
     } catch (error) {
       console.error('Failed to like/unlike comment:', error);
       toast.error('Failed to update like');
+      
+      // ROLLBACK: Revert optimistic update on error
+      setLikedComments(prev => {
+        const next = new Set(prev);
+        if (isLiked) {
+          next.add(commentId);
+        } else {
+          next.delete(commentId);
+        }
+        return next;
+      });
+      
+      // Revert the count
+      queryClient.setQueryData(['comments', commentsOpenFor?.id], (oldData: any) => {
+        if (!oldData) return oldData;
+        return oldData.map((comment: CommentRow) => {
+          if (comment.id === commentId) {
+            return {
+              ...comment,
+              likes_count: isLiked 
+                ? (comment.likes_count || 0) + 1
+                : Math.max((comment.likes_count || 0) - 1, 0)
+            };
+          }
+          return comment;
+        });
+      });
     }
   };
 

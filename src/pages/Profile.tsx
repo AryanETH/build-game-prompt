@@ -127,7 +127,7 @@ export default function Profile() {
       })
       .subscribe();
 
-    // Realtime coin updates
+    // Realtime coin and follower count updates
     const profileChannel = supabase
       .channel('realtime:profile')
       .on('postgres_changes', { 
@@ -137,12 +137,14 @@ export default function Profile() {
         filter: `id=eq.${currentUserId}`
       }, (payload) => {
         console.log('Profile updated:', payload);
-        // Update profile with new coin count
+        // Update profile with new data
         if (payload.new) {
           setProfile((prev: any) => ({
             ...prev,
             coins: payload.new.coins,
-            is_plus_member: payload.new.is_plus_member
+            is_plus_member: payload.new.is_plus_member,
+            followers_count: payload.new.followers_count,
+            following_count: payload.new.following_count
           }));
           
           // Show toast notification if coins increased
@@ -151,6 +153,14 @@ export default function Profile() {
             toast.success(`🎉 ${coinsAdded} coins credited to your account!`, {
               description: "You're now a Plus member!"
             });
+          }
+          
+          // Reload followers/following lists if they're open
+          if (followersOpen) {
+            loadFollowers();
+          }
+          if (followingOpen) {
+            loadFollowing();
           }
         }
       })
@@ -177,6 +187,32 @@ export default function Profile() {
       likesChannel.unsubscribe();
     };
   }, []);
+
+  // Real-time updates for followers/following lists when dialogs are open
+  useEffect(() => {
+    if (!followersOpen && !followingOpen) return;
+    
+    const followsChannel = supabase
+      .channel('realtime:follows-lists')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'follows' 
+      }, () => {
+        // Reload the appropriate list
+        if (followersOpen) {
+          loadFollowers();
+        }
+        if (followingOpen) {
+          loadFollowing();
+        }
+      })
+      .subscribe();
+
+    return () => {
+      followsChannel.unsubscribe();
+    };
+  }, [followersOpen, followingOpen, profile?.id]);
 
 
   const checkFollowStatus = async () => {

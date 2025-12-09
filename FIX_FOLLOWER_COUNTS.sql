@@ -85,6 +85,22 @@ WHERE p.followers_count != (SELECT COUNT(*) FROM follows WHERE following_id = p.
    OR p.following_count != (SELECT COUNT(*) FROM follows WHERE follower_id = p.id)
 ORDER BY p.username;
 
+-- 5. Enable Realtime for follows and profiles tables
+-- Ensure realtime is enabled for instant updates
+ALTER PUBLICATION supabase_realtime ADD TABLE follows;
+
+-- Enable realtime on profiles (if not already enabled)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND tablename = 'profiles'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE profiles;
+  END IF;
+END $$;
+
 -- Success message
 DO $$
 DECLARE
@@ -101,6 +117,7 @@ BEGIN
   RAISE NOTICE 'Total profiles: %', total_profiles;
   RAISE NOTICE 'Profiles with correct counts: %', fixed_profiles;
   RAISE NOTICE 'Trigger recreated and active';
+  RAISE NOTICE 'Realtime enabled for follows and profiles tables';
   RAISE NOTICE '';
-  RAISE NOTICE '🎉 All follower/following counts are now accurate!';
+  RAISE NOTICE '🎉 All follower/following counts are now accurate and update in real-time!';
 END $$;
