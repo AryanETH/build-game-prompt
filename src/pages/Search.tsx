@@ -30,6 +30,8 @@ interface Game {
   likes_count: number;
   plays_count: number;
   creator_id: string;
+  media_type?: 'image' | 'video' | 'gif' | null;
+  media_url?: string | null;
 }
 
 export default function Search() {
@@ -44,7 +46,7 @@ export default function Search() {
     queryFn: async () => {
       let query = supabase
         .from('games')
-        .select('*');
+        .select('id, title, description, game_code, thumbnail_url, cover_url, likes_count, plays_count, creator_id, media_type, media_url');
 
       if (sortBy === 'popular') {
         query = query.order('plays_count', { ascending: false });
@@ -194,11 +196,23 @@ export default function Search() {
                   onClick={() => handlePlayGame(game)}
                 >
                   <div className="aspect-[4/5] relative overflow-hidden bg-gradient-to-br from-accent to-accent/50">
-                    <img
-                      src={game.thumbnail_url || game.cover_url || "/placeholder.svg"}
-                      alt={game.title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
+                    {game.media_type === 'video' && game.media_url ? (
+                      <video
+                        src={game.media_url}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        poster={game.thumbnail_url || game.cover_url || undefined}
+                      />
+                    ) : (
+                      <img
+                        src={game.thumbnail_url || game.cover_url || "/placeholder.svg"}
+                        alt={game.title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                     
                     {/* Category Badge */}
@@ -242,11 +256,23 @@ export default function Search() {
                   onClick={() => handlePlayGame(game)}
                 >
                   <div className="aspect-[4/5] relative overflow-hidden bg-gradient-to-br from-accent to-accent/50">
-                    <img
-                      src={game.thumbnail_url || game.cover_url || "/placeholder.svg"}
-                      alt={game.title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
+                    {game.media_type === 'video' && game.media_url ? (
+                      <video
+                        src={game.media_url}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        poster={game.thumbnail_url || game.cover_url || undefined}
+                      />
+                    ) : (
+                      <img
+                        src={game.thumbnail_url || game.cover_url || "/placeholder.svg"}
+                        alt={game.title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    )}
                   </div>
                   <div className="p-2 bg-card">
                     <h3 className="font-semibold text-xs line-clamp-2 mb-1 leading-tight">{game.title}</h3>
@@ -277,11 +303,23 @@ export default function Search() {
                   onClick={() => handlePlayGame(game)}
                 >
                   <div className="aspect-[4/5] relative overflow-hidden bg-gradient-to-br from-accent to-accent/50">
-                    <img
-                      src={game.thumbnail_url || game.cover_url || "/placeholder.svg"}
-                      alt={game.title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
+                    {game.media_type === 'video' && game.media_url ? (
+                      <video
+                        src={game.media_url}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        poster={game.thumbnail_url || game.cover_url || undefined}
+                      />
+                    ) : (
+                      <img
+                        src={game.thumbnail_url || game.cover_url || "/placeholder.svg"}
+                        alt={game.title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                     
                     <div className="absolute bottom-0 left-0 right-0 p-2 md:p-2.5">

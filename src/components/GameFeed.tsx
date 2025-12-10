@@ -83,12 +83,14 @@ export const GameFeed = () => {
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [preloadedVideos, setPreloadedVideos] = useState<Set<string>>(new Set());
   const [loadingVideos, setLoadingVideos] = useState<Set<string>>(new Set());
+  const [activeVideoId, setActiveVideoId] = useState<string | null>(null); // Track which video should have audio
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
   const queryClient = useQueryClient();
   const routerLocation = useRouterLocation();
   const navigate = useNavigate();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isNavigatingRef = useRef(false); // Flag to prevent observer interference during button navigation
+  const savedScrollPosition = useRef<number>(0); // Save scroll position when leaving feed
 
   // location UI removed per TikTok-style layout
 
@@ -337,6 +339,19 @@ export const GameFeed = () => {
 
   const handlePlay = async (game: Game) => {
     playClick();
+    
+    // Save scroll position before opening game
+    const scrollContainer = document.querySelector('.snap-y');
+    if (scrollContainer) {
+      savedScrollPosition.current = scrollContainer.scrollTop;
+    }
+    
+    // Pause all videos and mute them when leaving feed
+    videoRefs.current.forEach((video) => {
+      video.pause();
+      video.muted = true;
+    });
+    stopBackgroundSound();
 
     try {
       // Fetch full game data including game_code (only when needed)
@@ -713,11 +728,11 @@ export const GameFeed = () => {
     const videoElement = videoRefs.current.get(gameId);
     
     if (mutedGames.has(gameId)) {
-      // Unmute
+      // Unmute - only if this is the active video
       newMutedGames.delete(gameId);
       
-      // Unmute video's original sound
-      if (videoElement) {
+      // Unmute video's original sound only if it's the active video
+      if (videoElement && activeVideoId === gameId) {
         videoElement.muted = false;
       }
       
@@ -811,7 +826,7 @@ export const GameFeed = () => {
     return () => clearTimeout(timeoutId);
   }, [currentGameIndex, hydratedGames, preloadedVideos]);
 
-  // Simple video playback management - play when visible, pause when not
+  // Video sound management - videos autoplay muted, this controls which one has sound
   useEffect(() => {
     const videoElements = Array.from(videoRefs.current.values());
     if (videoElements.length === 0) return;
@@ -823,25 +838,34 @@ export const GameFeed = () => {
         
         entries.forEach((entry) => {
           const video = entry.target as HTMLVideoElement;
+          const gameId = video.dataset.gameId;
           
           if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
-            // Video is mostly in view - play it
-            if (video.paused && video.readyState >= 2) {
-              video.play().catch(() => {
-                // Silently ignore play errors
+            // This video is NOW on screen - give it SOUND
+            if (gameId) {
+              setActiveVideoId(gameId);
+              
+              // MUTE all OTHER videos (they keep autoplaying, just silent)
+              videoRefs.current.forEach((otherVideo, otherId) => {
+                if (otherId !== gameId) {
+                  otherVideo.muted = true;
+                }
               });
+              
+              // UNMUTE this video (unless user manually muted it)
+              if (!mutedGames.has(gameId)) {
+                video.muted = false;
+              }
             }
-          } else if (entry.intersectionRatio < 0.2) {
-            // Video is mostly out of view - pause it
-            if (!video.paused) {
-              video.pause();
-            }
+          } else if (entry.intersectionRatio < 0.3) {
+            // Video is off screen - mute it (but let it keep playing)
+            video.muted = true;
           }
         });
       },
       {
-        threshold: [0.2, 0.5], // Simplified thresholds
-        rootMargin: '50px 0px 50px 0px' // Larger margin for better preloading
+        threshold: [0.3, 0.5], // Trigger at 30% (mute) and 50% (unmute)
+        rootMargin: '0px'
       }
     );
 
@@ -854,7 +878,7 @@ export const GameFeed = () => {
         if (video) observer.unobserve(video);
       });
     };
-  }, [hydratedGames]);
+  }, [hydratedGames, mutedGames]);
 
   // Cleanup audio on unmount
   useEffect(() => {
@@ -865,6 +889,39 @@ export const GameFeed = () => {
       }
     };
   }, [currentAudio]);
+
+  // Give first video sound when feed loads (videos autoplay muted by default)
+  useEffect(() => {
+    if (!hydratedGames || hydratedGames.length === 0) return;
+    
+    const timer = setTimeout(() => {
+      // Find the first video game
+      const firstGame = hydratedGames[0];
+      const isFirstGameVideo = firstGame?.media_type === 'video' && firstGame?.media_url;
+      
+      if (isFirstGameVideo && !activeVideoId) {
+        const video = videoRefs.current.get(firstGame.id);
+        if (video) {
+          // Mute all other videos
+          videoRefs.current.forEach((v, id) => {
+            if (id !== firstGame.id) {
+              v.muted = true;
+            }
+          });
+          
+          // Set this as active and give it sound
+          setActiveVideoId(firstGame.id);
+          
+          // Unmute if user hasn't manually muted
+          if (!mutedGames.has(firstGame.id)) {
+            video.muted = false;
+          }
+        }
+      }
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [hydratedGames, activeVideoId, mutedGames]);
 
   // Realtime: refetch feed on any games change
   useEffect(() => {
@@ -1406,7 +1463,26 @@ export const GameFeed = () => {
     return (
       <GamePlayer
         game={selectedGame}
-        onClose={() => setSelectedGame(null)}
+        onClose={() => {
+          setSelectedGame(null);
+          // Restore scroll position after closing game
+          setTimeout(() => {
+            const scrollContainer = document.querySelector('.snap-y');
+            if (scrollContainer && savedScrollPosition.current > 0) {
+              scrollContainer.scrollTop = savedScrollPosition.current;
+            }
+            // Resume the active video
+            if (activeVideoId) {
+              const video = videoRefs.current.get(activeVideoId);
+              if (video) {
+                video.play().catch(() => {});
+                if (!mutedGames.has(activeVideoId)) {
+                  video.muted = false;
+                }
+              }
+            }
+          }, 100);
+        }}
       />
     );
   }
@@ -1455,110 +1531,22 @@ export const GameFeed = () => {
                               videoRefs.current.delete(game.id);
                             }
                           }}
+                          data-game-id={game.id}
                           key={game.id + '-video'}
                           className="absolute inset-0 w-full h-full object-cover"
                           autoPlay
                           loop
-                          muted={mutedGames.has(game.id)}
+                          muted
                           playsInline
-                          preload="metadata"
+                          preload="auto"
                           poster={game.thumbnail_url || game.cover_url || undefined}
-                          onLoadedMetadata={(e) => {
-                            // Video metadata loaded - remove loading state
-                            setLoadingVideos(prev => {
-                              const newSet = new Set(prev);
-                              newSet.delete(game.id);
-                              return newSet;
-                            });
-                            
-                            // Try to unmute after user interaction (browser policy)
-                            const video = e.currentTarget;
-                            if (!mutedGames.has(game.id)) {
-                              video.muted = false;
-                            }
-                          }}
-                          onLoadedData={(e) => {
-                            // Auto-play background sound when video loads (if not muted)
-                            if (game.background_sound_url && !mutedGames.has(game.id)) {
-                              playBackgroundSound(game.id, game.background_sound_url);
-                            }
-                            
-                            // Ensure smooth playback
-                            const video = e.currentTarget;
-                            video.playbackRate = 1.0;
-                            
-                            // Remove loading state
-                            setLoadingVideos(prev => {
-                              const newSet = new Set(prev);
-                              newSet.delete(game.id);
-                              return newSet;
-                            });
-                          }}
-                          onCanPlay={(e) => {
-                            // Only play if video is paused and visible
-                            const video = e.currentTarget;
-                            if (video.paused) {
-                              // Use a small delay to avoid AbortError from conflicting play/pause calls
-                              setTimeout(() => {
-                                if (video.paused) {
-                                  // Try to play with sound first
-                                  video.play().catch((err) => {
-                                    // If autoplay with sound fails (browser policy), mute and retry
-                                    if (err.name === 'NotAllowedError') {
-                                      video.muted = true;
-                                      video.play().catch(() => {});
-                                      // Add to muted games since browser forced mute
-                                      setMutedGames(prev => new Set(prev).add(game.id));
-                                    }
-                                  });
-                                }
-                              }, 50);
-                            }
-                          }}
-                          onLoadStart={() => {
-                            // Mark video as loading
-                            setLoadingVideos(prev => new Set(prev).add(game.id));
-                          }}
-                          onWaiting={() => {
-                            // Handle buffering
-                            setLoadingVideos(prev => new Set(prev).add(game.id));
-                          }}
-                          onPlaying={() => {
-                            // Video started playing successfully - remove loading state
-                            setLoadingVideos(prev => {
-                              const newSet = new Set(prev);
-                              newSet.delete(game.id);
-                              return newSet;
-                            });
-                          }}
-                          onCanPlayThrough={() => {
-                            // Video can play through without buffering
-                            setLoadingVideos(prev => {
-                              const newSet = new Set(prev);
-                              newSet.delete(game.id);
-                              return newSet;
-                            });
-                          }}
-                          onError={(e) => {
-                            console.error('Video playback error for game:', game.id, e);
-                            // Remove loading state on error
-                            setLoadingVideos(prev => {
-                              const newSet = new Set(prev);
-                              newSet.delete(game.id);
-                              return newSet;
-                            });
-                          }}
-                          style={{
-                            // Force hardware acceleration for smooth playback
-                            transform: 'translateZ(0)',
-                            willChange: 'transform',
-                            backfaceVisibility: 'hidden',
-                          }}
+                          onLoadStart={() => setLoadingVideos(prev => new Set(prev).add(game.id))}
+                          onCanPlay={() => setLoadingVideos(prev => { const s = new Set(prev); s.delete(game.id); return s; })}
+                          onPlaying={() => setLoadingVideos(prev => { const s = new Set(prev); s.delete(game.id); return s; })}
+                          onError={() => setLoadingVideos(prev => { const s = new Set(prev); s.delete(game.id); return s; })}
+                          style={{ transform: 'translateZ(0)', willChange: 'transform', backfaceVisibility: 'hidden' }}
                         >
-                          {/* Multiple source formats for better compatibility */}
                           <source src={game.media_url} type="video/mp4" />
-                          <source src={game.media_url} type="video/webm" />
-                          Your browser does not support the video tag.
                         </video>
                       ) : (
                         <img
