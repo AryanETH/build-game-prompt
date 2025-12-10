@@ -22,7 +22,6 @@ import { CommentText } from "./CommentText";
 import { GameCardSkeleton } from "./GameCardSkeleton";
 import { notifyGameLike, notifyGameComment, notifyCommentReply, notifyGamePlay, notifyNewFollower, notifyCommentLike, notifyGameMention, notifyMention } from "@/lib/notificationSystem";
 import { LinkifiedText } from "./LinkifiedText";
-import { isError } from "util";
 
 interface Game {
   id: string;
@@ -225,37 +224,20 @@ export const GameFeed = () => {
         throw new Error("Not authenticated");
       }
 
-      console.log('Like mutation:', { gameId, isLiked, userId });
+      if (isLiked) {
+        const { error } = await supabase
+          .from('game_likes')
+          .delete()
+          .eq('game_id', gameId)
+          .eq('user_id', userId);
 
-      try {
-        if (isLiked) {
-          const { error } = await supabase
-            .from('game_likes')
-            .delete()
-            .eq('game_id', gameId)
-            .eq('user_id', userId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('game_likes')
+          .insert({ game_id: gameId, user_id: userId });
 
-          if (error) {
-            console.error('Delete like error:', error);
-            throw error;
-          }
-        } else {
-          const { error } = await supabase
-            .from('game_likes')
-            .insert({ game_id: gameId, user_id: userId });
-
-          if (error) {
-            console.error('Insert like error:', error);
-            throw error;
-          }
-        }
-      } catch (error: any) {
-        // Check if it's a table not found error
-        if (error.code === 'PGRST116' || error.message?.includes('relation "game_likes" does not exist')) {
-          throw new Error('Game likes system not set up. Please run the database migration.');
-        }
-        throw error;
-      }
+        if (error) throw error;
 
         // Log like activity (async, don't wait)
         logActivity({ type: 'game_liked', gameId });
@@ -319,9 +301,7 @@ export const GameFeed = () => {
         };
       });
     },
-    onError: (error: any, { gameId, isLiked }) => {
-      console.error('Like mutation error:', error);
-      
+    onError: (error, { gameId, isLiked }) => {
       // ROLLBACK: Revert optimistic update on error
       setLikedGames(prev => {
         const newSet = new Set(prev);
@@ -335,10 +315,7 @@ export const GameFeed = () => {
 
       // Refetch to get correct state
       queryClient.invalidateQueries({ queryKey: ['games'] });
-      
-      // Show specific error message
-      const errorMessage = error?.message || "Failed to update like";
-      toast.error(`Failed to ${isLiked ? 'unlike' : 'like'} game: ${errorMessage}`);
+      toast.error("Failed to update like");
     },
     onSuccess: () => {
       // Refetch in background to sync with server
