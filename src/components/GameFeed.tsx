@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { OnlineIndicator } from "./OnlineIndicator";
 import { MentionInput } from "./MentionInput";
 import { CommentText } from "./CommentText";
-import { GameCardSkeleton } from "./GameCardSkeleton";
+import { GameCardSkeleton, MobileFeedSkeleton } from "./GameCardSkeleton";
 import { notifyGameLike, notifyGameComment, notifyCommentReply, notifyGamePlay, notifyNewFollower, notifyCommentLike, notifyGameMention, notifyMention } from "@/lib/notificationSystem";
 import { LinkifiedText } from "./LinkifiedText";
 
@@ -1430,21 +1430,29 @@ export const GameFeed = () => {
 
   if (isLoading) {
     return (
-      <div className="relative w-full bg-white dark:bg-black md:bg-[#F8F9FA]" style={{ height: '100dvh' }}>
-        <div className="h-full overflow-y-auto snap-y snap-mandatory md:snap-none no-scrollbar pb-16 md:pb-0">
-          <div className="md:flex md:flex-col md:items-start md:w-full md:max-w-[900px] md:mx-auto md:justify-start md:min-h-screen md:py-8 md:gap-8">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="w-full snap-start snap-always md:snap-align-none flex items-center justify-center" style={{ height: 'calc(100dvh - 120px)', minHeight: 'calc(100dvh - 120px)' }}>
-                <div className="relative w-full h-full md:w-auto md:h-auto md:flex md:items-center md:gap-6">
-                  <div className="relative w-full h-full md:w-[374px] md:h-[660px]">
-                    <GameCardSkeleton />
+      <>
+        {/* Mobile Loading - Full screen scroll-snap skeleton */}
+        <div className="md:hidden">
+          <MobileFeedSkeleton count={3} />
+        </div>
+        
+        {/* Desktop Loading - Existing layout */}
+        <div className="hidden md:block relative w-full bg-[#F8F9FA]" style={{ height: '100dvh' }}>
+          <div className="h-full overflow-y-auto no-scrollbar pb-16 md:pb-0">
+            <div className="flex flex-col items-start w-full max-w-[900px] mx-auto justify-start min-h-screen py-8 gap-8">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="w-full flex items-center justify-center">
+                  <div className="relative w-auto h-auto flex items-center gap-6">
+                    <div className="relative w-[374px] h-[660px]">
+                      <GameCardSkeleton />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 

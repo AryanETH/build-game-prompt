@@ -18,121 +18,62 @@ export const MobileFeed = ({
 }: FeedProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Enhanced re-snap hook: Maintain scroll snap across all interactions
+  // Scroll snap maintenance - especially after game interactions
   useEffect(() => {
     const reEngageScrollSnap = () => {
       if (containerRef.current) {
         const container = containerRef.current;
-        const currentScrollTop = container.scrollTop;
         
         // Force re-apply scroll snap styles
         container.style.scrollSnapType = 'y mandatory';
         container.style.overflowY = 'auto';
         
-        // Jolt the scroll by 1px to wake up the snap engine
-        container.scrollTop = currentScrollTop + 1;
+        // Find the closest snap point and snap to it
+        const containerHeight = container.clientHeight;
+        const currentScrollTop = container.scrollTop;
+        const snapIndex = Math.round(currentScrollTop / containerHeight);
+        const targetScrollTop = snapIndex * containerHeight;
         
-        // Immediately restore original position
-        requestAnimationFrame(() => {
-          container.scrollTop = currentScrollTop;
-          
-          // Double-check snap is still active after a brief delay
-          setTimeout(() => {
-            if (container.style.scrollSnapType !== 'y mandatory') {
-              container.style.scrollSnapType = 'y mandatory';
-            }
-          }, 50);
+        // Smooth scroll to the nearest snap point
+        container.scrollTo({
+          top: targetScrollTop,
+          behavior: 'smooth'
         });
       }
     };
 
-    // More aggressive re-engagement for various scenarios
+    // Handle game interactions that break snap alignment
+    const handleGameInteraction = () => {
+      // Delay to allow game modal/interaction to complete
+      setTimeout(reEngageScrollSnap, 300);
+    };
+
+    // Handle tab visibility changes
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         setTimeout(reEngageScrollSnap, 100);
       }
     };
 
+    // Handle window focus
     const handleFocus = () => {
       setTimeout(reEngageScrollSnap, 100);
     };
 
+    // Handle resize events
     const handleResize = () => {
       setTimeout(reEngageScrollSnap, 200);
     };
 
-    // Handle interactions that might break snap
-    const handleInteraction = () => {
-      // Delay to allow interaction to complete
-      setTimeout(reEngageScrollSnap, 300);
-    };
-
-    // Handle touchpad/wheel scrolling that breaks snap
-    const handleWheelEnd = () => {
-      setTimeout(reEngageScrollSnap, 100);
-    };
-
-    // Handle touch scrolling that breaks snap
-    const handleTouchEnd = () => {
-      setTimeout(reEngageScrollSnap, 200);
-    };
-
-    // Listen for various events that can break scroll snap
+    // Listen for events that can break scroll snap
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
     window.addEventListener('resize', handleResize);
     
-    // Listen for clicks and touches that might break snap
-    document.addEventListener('click', handleInteraction);
-    document.addEventListener('touchend', handleInteraction);
+    // Listen for clicks that might break snap (especially game interactions)
+    document.addEventListener('click', handleGameInteraction);
     
-    // Specific handling for touchpad and touch scrolling
-    if (containerRef.current) {
-      containerRef.current.addEventListener('wheel', handleWheelEnd, { passive: true });
-      containerRef.current.addEventListener('touchend', handleTouchEnd, { passive: true });
-      containerRef.current.addEventListener('touchcancel', handleTouchEnd, { passive: true });
-    }
-    
-    // Listen for modal/dialog events
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        setTimeout(reEngageScrollSnap, 200);
-      }
-    });
-
-    // Enhanced scroll handling for momentum scrolling
-    let scrollTimeout: NodeJS.Timeout;
-    let lastScrollTop = 0;
-    let scrollEndCheckCount = 0;
-    
-    const handleScroll = () => {
-      if (containerRef.current) {
-        const currentScrollTop = containerRef.current.scrollTop;
-        
-        clearTimeout(scrollTimeout);
-        
-        // For momentum scrolling, we need to detect when it truly stops
-        scrollTimeout = setTimeout(() => {
-          if (containerRef.current) {
-            const newScrollTop = containerRef.current.scrollTop;
-            
-            // If scroll position hasn't changed, momentum has stopped
-            if (Math.abs(newScrollTop - currentScrollTop) < 1) {
-              reEngageScrollSnap();
-              scrollEndCheckCount = 0;
-            } else if (scrollEndCheckCount < 5) {
-              // Check again if still scrolling (momentum)
-              scrollEndCheckCount++;
-              handleScroll();
-            }
-          }
-        }, 100);
-        
-        lastScrollTop = currentScrollTop;
-      }
-    };
-
-    // Periodic check to ensure snap stays active (every 2 seconds)
+    // Periodic check to ensure snap stays active
     const snapCheckInterval = setInterval(() => {
       if (containerRef.current && !document.hidden) {
         const container = containerRef.current;
@@ -143,24 +84,11 @@ export const MobileFeed = ({
       }
     }, 2000);
 
-    // Add scroll listener to container
-    if (containerRef.current) {
-      containerRef.current.addEventListener('scroll', handleScroll, { passive: true });
-    }
-
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('resize', handleResize);
-      document.removeEventListener('click', handleInteraction);
-      document.removeEventListener('touchend', handleInteraction);
-      if (containerRef.current) {
-        containerRef.current.removeEventListener('scroll', handleScroll);
-        containerRef.current.removeEventListener('wheel', handleWheelEnd);
-        containerRef.current.removeEventListener('touchend', handleTouchEnd);
-        containerRef.current.removeEventListener('touchcancel', handleTouchEnd);
-      }
-      clearTimeout(scrollTimeout);
+      document.removeEventListener('click', handleGameInteraction);
       clearInterval(snapCheckInterval);
     };
   }, []);
@@ -168,12 +96,12 @@ export const MobileFeed = ({
   return (
     <div 
       ref={containerRef}
-      className="force-snap-container w-full bg-white dark:bg-black no-scrollbar pb-16"
+      className="snap-feed-container w-full bg-white dark:bg-black no-scrollbar"
     >
       {games.map((game) => (
         <div 
-          key={game.id} 
-          className="w-full h-[92vh] snap-start flex items-center justify-center"
+          key={game.id}
+          className="w-full h-screen snap-start flex items-center justify-center"
         >
           <div className="relative w-full h-full">
             <GameCard

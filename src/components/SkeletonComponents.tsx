@@ -281,3 +281,57 @@ export const PublicProfileSkeleton = () => {
     </div>
   );
 };
+
+// Mobile Feed Skeleton - Full screen TikTok-style loading
+export const MobileFeedSkeleton = ({ count = 3 }: { count?: number }) => {
+  return (
+    <div className="snap-feed-container w-full bg-white dark:bg-black no-scrollbar">
+      {Array.from({ length: count }).map((_, i) => (
+        <div 
+          key={i}
+          className="w-full h-screen snap-start flex items-center justify-center"
+        >
+          <div className="relative w-full h-full">
+            {/* Full screen shimmer background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-400 via-gray-300 to-gray-400 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 animate-pulse" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent dark:from-black/95 dark:via-black/20" />
+            
+            {/* Center loading icon */}
+            <div className="absolute inset-0 flex items-center justify-center z-10 opacity-30">
+              <svg className="w-16 h-16 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+
+            {/* Game info skeleton - bottom left */}
+            <div className="absolute left-0 right-[70px] bottom-6 p-3 text-white z-20">
+              <div className="flex items-center gap-2 mb-2">
+                <Skeleton className="w-9 h-9 rounded-full bg-gray-400/70" />
+                <Skeleton className="h-4 w-24 bg-gray-400/70 rounded" />
+              </div>
+              <Skeleton className="h-5 w-3/4 bg-gray-400/70 rounded mb-2" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-3 w-full bg-gray-400/60 rounded" />
+                <Skeleton className="h-3 w-2/3 bg-gray-400/60 rounded" />
+              </div>
+            </div>
+
+            {/* Right action bar skeleton */}
+            <div className="absolute right-3 bottom-20 flex flex-col gap-3 items-center z-20">
+              <Skeleton className="h-12 w-12 rounded-full bg-gray-400/70" />
+              <div className="flex flex-col items-center gap-0.5">
+                <Skeleton className="h-12 w-12 rounded-full bg-gray-400/70" />
+                <Skeleton className="h-3 w-6 bg-gray-400/60 rounded mt-1" />
+              </div>
+              <div className="flex flex-col items-center gap-0.5">
+                <Skeleton className="h-12 w-12 rounded-full bg-gray-400/70" />
+                <Skeleton className="h-3 w-6 bg-gray-400/60 rounded mt-1" />
+              </div>
+              <Skeleton className="h-12 w-12 rounded-full bg-gray-400/70" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};

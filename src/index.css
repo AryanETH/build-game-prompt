@@ -509,47 +509,59 @@ All colors MUST be HSL.
     padding-top: env(safe-area-inset-top);
   }
 
-  /* Force scroll snap container - prevents browser from losing snap context */
-  .force-snap-container {
+  /* Perfect scroll snap container for TikTok-style feed */
+  .snap-feed-container {
+    /* Core scroll snap properties */
     scroll-snap-type: y mandatory !important;
     overflow-y: auto !important;
     height: 100vh !important;
-    /* Create new stacking context to prevent child interactions from bubbling up */
+    
+    /* Prevent layout shifts and maintain snap context */
     isolation: isolate !important;
-    /* Ensure scroll physics stay engaged */
     overscroll-behavior: none !important;
-    /* Force hardware acceleration for smooth scrolling */
+    
+    /* Hardware acceleration for smooth performance */
     transform: translateZ(0) !important;
     will-change: scroll-position !important;
-    /* Prevent any layout shifts that could break snap */
-    contain: layout style paint !important;
-    /* Ensure scroll container maintains its properties */
+    
+    /* Ensure container maintains properties */
     position: relative !important;
-    /* Critical for touchpad/touch momentum scrolling */
+    
+    /* Smooth scrolling behavior */
+    scroll-behavior: smooth !important;
+    
+    /* Touch optimization */
     -webkit-overflow-scrolling: touch !important;
-    /* Prevent momentum scrolling from breaking snap */
-    scroll-behavior: auto !important;
-    /* Ensure snap works with touch devices */
     touch-action: pan-y !important;
+    
+    /* Remove any padding/margin that could cause misalignment */
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
-  /* Ensure snap points are always respected */
-  .force-snap-container > * {
+  /* Ensure each game item snaps perfectly */
+  .snap-feed-container > div {
     scroll-snap-align: start !important;
-  }
-
-  /* Prevent child elements from interfering with scroll snap */
-  .force-snap-container * {
-    /* Prevent pointer events from bubbling up and breaking scroll context */
-    pointer-events: auto;
+    scroll-snap-stop: always !important;
+    /* Ensure full viewport coverage */
+    min-height: 100vh !important;
+    height: 100vh !important;
+    /* Remove any spacing */
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   /* Re-enforce snap on any state changes */
-  .force-snap-container:focus,
-  .force-snap-container:hover,
-  .force-snap-container:active {
+  .snap-feed-container:focus,
+  .snap-feed-container:hover,
+  .snap-feed-container:active {
     scroll-snap-type: y mandatory !important;
     overflow-y: auto !important;
+  }
+
+  /* Ensure snap works after interactions */
+  .snap-feed-container:focus-within {
+    scroll-snap-type: y mandatory !important;
   }
 
 }

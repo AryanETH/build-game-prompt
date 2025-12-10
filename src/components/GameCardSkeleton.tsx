@@ -68,3 +68,21 @@ export const GameGridSkeleton = ({ count = 6 }: { count?: number }) => {
     </div>
   );
 };
+
+// Mobile Feed Skeleton - Full screen scroll-snap compatible
+export const MobileFeedSkeleton = ({ count = 3 }: { count?: number }) => {
+  return (
+    <div className="snap-feed-container w-full bg-white dark:bg-black no-scrollbar">
+      {Array.from({ length: count }).map((_, i) => (
+        <div 
+          key={i}
+          className="w-full h-screen snap-start flex items-center justify-center"
+        >
+          <div className="relative w-full h-full">
+            <GameCardSkeleton />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
