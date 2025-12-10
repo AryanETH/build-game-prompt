@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { Loader2, Upload, LogOut, Trash2, Edit, Users, GamepadIcon, BarChart3, Search, Eye, Download, RefreshCw, Moon, Sun, Coins, CheckCircle, XCircle, ExternalLink, Bell, Send } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PushNotificationButton } from "@/components/PushNotificationButton";
+import { NotificationTester } from "@/components/NotificationTester";
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -1543,6 +1545,24 @@ export default function Admin() {
                         </div>
                       )}
                     </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Push Notifications Section */}
+              <div className="mt-8 pt-8 border-t border-white/20">
+                <h3 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                  Push Notifications
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className={`text-lg font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                      Enable/Disable
+                    </h4>
+                    <PushNotificationButton />
+                  </div>
+                  <div>
+                    <NotificationTester />
                   </div>
                 </div>
               </div>

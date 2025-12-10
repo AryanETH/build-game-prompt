@@ -112,7 +112,10 @@ export const GameFeed = () => {
         .select('id, username, avatar_url')
         .eq('id', userId)
         .single();
-      if (error) return null;
+      if (error) {
+        console.warn('Profile fetch error:', error);
+        return null;
+      }
       return data as Profile;
     },
   });
@@ -157,7 +160,10 @@ export const GameFeed = () => {
         .from('profiles')
         .select('id, username, avatar_url')
         .in('id', uniqueCreatorIds as string[]);
-      if (error) return [] as Profile[]; // fail-soft: keep feed rendering
+      if (error) {
+        console.warn('Creator profiles fetch error:', error);
+        return [] as Profile[];
+      }
       return (data || []) as Profile[];
     },
   });
@@ -265,11 +271,11 @@ export const GameFeed = () => {
               .select('username, avatar_url')
               .eq('id', userId)
               .single()
-              .then(({ data: profile }) => {
-                if (profile && userData.user) {
+              .then(({ data: profile, error: profileError }) => {
+                if (profile && !profileError && userData.user) {
                   notifyGameLike(
                     game.creator_id,
-                    profile.username,
+                    profile.username || 'User',
                     profile.avatar_url || '',
                     userId,
                     gameId,
@@ -362,34 +368,43 @@ export const GameFeed = () => {
         .single();
 
       if (error || !fullGame) {
+        console.error('Game fetch error:', error);
         toast.error("Failed to load game");
         playError();
         return;
       }
 
-      setSelectedGame(fullGame as Game);
+      setSelectedGame(fullGame as any); // Use any to avoid type issues with missing columns
 
       // Increment play count (optimistic update)
       if (userId) {
-        await supabase
-          .from('games')
-          .update({ plays_count: (game.plays_count || 0) + 1 })
-          .eq('id', game.id);
+        try {
+          await supabase
+            .from('games')
+            .update({ plays_count: (game.plays_count || 0) + 1 })
+            .eq('id', game.id);
+        } catch (updateError) {
+          console.warn('Failed to update play count:', updateError);
+        }
 
         // Log activity
-        await logActivity({ type: 'game_played', gameId: game.id });
+        try {
+          await logActivity({ type: 'game_played', gameId: game.id });
+        } catch (activityError) {
+          console.warn('Failed to log activity:', activityError);
+        }
 
         queryClient.invalidateQueries({ queryKey: ['games', 'feed'] });
 
         // Send notification to game owner (only if not playing own game)
         if (game.creator_id !== userId) {
-          const { data: profile } = await supabase
+          const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('username, avatar_url')
             .eq('id', userId)
             .single();
 
-          if (profile) {
+          if (profile && !profileError) {
             await notifyGamePlay(
               game.creator_id,
               profile.username,
@@ -1018,8 +1033,11 @@ export const GameFeed = () => {
         .select('comment_id')
         .eq('user_id', userId);
 
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.warn('Comment likes fetch error:', error);
+        return [];
+      }
+      return data || [];
     },
   });
 
@@ -1154,14 +1172,14 @@ export const GameFeed = () => {
           if (gameMentions) {
             for (const mention of gameMentions) {
               const gameTitle = mention.substring(1);
-              const { data: mentionedGame } = await supabase
+              const { data: mentionedGame, error: gameError } = await supabase
                 .from('games')
                 .select('id, title, creator_id, thumbnail_url, cover_url')
                 .ilike('title', `%${gameTitle}%`)
                 .limit(1)
                 .single();
 
-              if (mentionedGame && mentionedGame.creator_id !== uid) {
+              if (mentionedGame && !gameError && mentionedGame.creator_id !== uid) {
                 await notifyGameMention(
                   mentionedGame.creator_id,
                   profile.username,
@@ -1247,13 +1265,13 @@ export const GameFeed = () => {
         toast.success('Following!');
 
         // Send notification to followed user
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('username, avatar_url')
           .eq('id', userId)
           .single();
 
-        if (profile) {
+        if (profile && !profileError) {
           await notifyNewFollower(
             creatorId,
             profile.username,
@@ -1313,14 +1331,20 @@ export const GameFeed = () => {
           .eq('comment_id', commentId)
           .eq('user_id', userId);
 
-        if (error) throw error;
+        if (error) {
+          console.warn('Failed to unlike comment:', error);
+          throw error;
+        }
       } else {
         // Like: Insert into database
         const { error } = await supabase
           .from('comment_likes')
           .insert({ comment_id: commentId, user_id: userId });
 
-        if (error) throw error;
+        if (error) {
+          console.warn('Failed to like comment:', error);
+          throw error;
+        }
 
         // Send notification to comment owner (async, don't wait)
         if (commentsOpenFor) {
@@ -1331,8 +1355,8 @@ export const GameFeed = () => {
               .select('username, avatar_url')
               .eq('id', userId)
               .single()
-              .then(({ data: profile }) => {
-                if (profile) {
+              .then(({ data: profile, error: profileError }) => {
+                if (profile && !profileError) {
                   notifyCommentLike(
                     comment.user_id,
                     profile.username,
@@ -1519,11 +1543,11 @@ export const GameFeed = () => {
         </div>
 
         {/* Mobile: Snap scroll, Desktop: Normal scroll with centered content */}
-        <div className="h-full overflow-y-auto snap-y snap-mandatory md:snap-none no-scrollbar pb-16 md:pb-0" style={{ scrollSnapType: 'y mandatory', scrollBehavior: 'smooth' }}>
+        <div className="snap-feed-container md:h-full md:overflow-y-auto md:snap-none no-scrollbar pb-16 md:pb-0">
           {/* Desktop wrapper: flex column with centered items */}
           <div className="md:flex md:flex-col md:items-start md:w-full md:mx-auto md:justify-start md:min-h-screen md:py-8 md:gap-8">
             {hydratedGames?.map((game, index) => (
-              <div key={game.id} data-game-index={index} className="w-full snap-start snap-always md:snap-align-none flex items-center justify-center h-[calc(100vh-120px)] min-h-[calc(100dvh) sm:h-[calc(100vh)] sm:min-h-[calc(100dvh-120px)" style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
+              <div key={game.id} data-game-index={index} className="snap-item w-full flex items-center justify-center md:snap-align-none md:h-[760px]">
                 {/* Mobile: Full bleed, Desktop: Centered card with action buttons */}
                 <div className="relative w-full h-full md:w-auto md:h-[760px] md:flex md:items-end md:gap-6">
                   {/* Card container - Desktop: Fixed size with stacked effect */}
