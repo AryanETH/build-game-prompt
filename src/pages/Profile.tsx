@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Heart, Play, Loader2, Pencil, UserPlus, UserCheck, Star, Trash2, Coins, LogOut, Share2, Settings, Bookmark, Sparkles, Plus, HelpCircle, Crown, Trophy } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,6 +25,10 @@ import { ProfileHeaderSkeleton, GameGridSkeleton, TabsContentSkeleton, UserListS
 import { NotificationPanel } from "@/components/NotificationPanel";
 import { Bell } from "lucide-react";
 import { LinkifiedText } from "@/components/LinkifiedText";
+import { NotificationPermissionPrompt } from "@/components/NotificationPermissionPrompt";
+import { NotificationBanner } from "@/components/NotificationBanner";
+import { NotificationSettings } from "@/components/NotificationSettings";
+import { isSubscribed, isPushSupported } from "@/lib/pushNotifications";
 import { MentionTextarea } from "@/components/MentionTextarea";
 import { ImageCropper } from "@/components/ImageCropper";
 
@@ -60,6 +64,7 @@ export default function Profile() {
   const [totalLikes, setTotalLikes] = useState(0);
   const [coinPurchaseOpen, setCoinPurchaseOpen] = useState(false);
   const [claimCoinsOpen, setClaimCoinsOpen] = useState(false);
+  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
 
   // Game-related settings (persisted locally)
   const [autoplayFeed, setAutoplayFeed] = useState<boolean>(true);
@@ -80,6 +85,23 @@ export default function Profile() {
         if (typeof parsed.compactGridLayout === 'boolean') setCompactGridLayout(parsed.compactGridLayout);
       }
     } catch {}
+  }, []);
+
+  // Check notification subscription status
+  useEffect(() => {
+    const checkNotificationStatus = async () => {
+      if (!isPushSupported()) return;
+      
+      const subscribed = await isSubscribed();
+      if (!subscribed) {
+        // Show notification prompt after a delay
+        setTimeout(() => {
+          setShowNotificationPrompt(true);
+        }, 3000);
+      }
+    };
+    
+    checkNotificationStatus();
   }, []);
 
   useEffect(() => {
@@ -726,6 +748,11 @@ export default function Profile() {
     <div className="min-h-screen pb-16 md:pb-0">
       
       <div className="w-full">
+        {/* Notification Banner */}
+        <div className="px-3 md:px-8 pt-6">
+          <NotificationBanner />
+        </div>
+        
         {/* Profile Header - Redesigned Layout */}
         <div className="px-3 md:px-8 py-6 max-w-full overflow-x-hidden">
           {/* Top Row: Notifications, Name, and Coins/Logout */}
@@ -963,6 +990,16 @@ export default function Profile() {
           </DialogContent>
         </Dialog>
 
+        {/* Notification Prompt */}
+        {showNotificationPrompt && (
+          <div className="px-3 md:px-8 mb-6">
+            <NotificationPermissionPrompt 
+              variant="inline" 
+              onClose={() => setShowNotificationPrompt(false)} 
+            />
+          </div>
+        )}
+
         {/* Tabs - TikTok Style */}
         <Tabs defaultValue="created" className="w-full overflow-x-hidden">
           <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent overflow-x-auto">
@@ -993,6 +1030,13 @@ export default function Profile() {
             >
               <Trophy className="w-4 h-4 mr-1 md:mr-2" />
               Achievements
+            </TabsTrigger>
+            <TabsTrigger 
+              value="settings" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent px-4 md:px-6 py-3 text-sm md:text-base whitespace-nowrap"
+            >
+              <Settings className="w-4 h-4 mr-1 md:mr-2" />
+              Settings
             </TabsTrigger>
           </TabsList>
 
@@ -1135,6 +1179,65 @@ export default function Profile() {
 
           <TabsContent value="achievements" className="mt-6 px-0">
             <AchievementsPanel />
+          </TabsContent>
+
+          <TabsContent value="settings" className="mt-6 px-0">
+            <div className="space-y-6">
+              <NotificationSettings />
+              
+              {/* Game Settings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Play className="h-5 w-5" />
+                    Game Settings
+                  </CardTitle>
+                  <CardDescription>
+                    Customize your gaming experience
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <span className="font-medium">Autoplay Feed</span>
+                      <p className="text-sm text-muted-foreground">
+                        Automatically play games when scrolling
+                      </p>
+                    </div>
+                    <Switch
+                      checked={autoplayFeed}
+                      onCheckedChange={setAutoplayFeed}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <span className="font-medium">Enable Sound by Default</span>
+                      <p className="text-sm text-muted-foreground">
+                        Play game sounds automatically
+                      </p>
+                    </div>
+                    <Switch
+                      checked={enableSoundByDefault}
+                      onCheckedChange={setEnableSoundByDefault}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <span className="font-medium">High Graphics Quality</span>
+                      <p className="text-sm text-muted-foreground">
+                        Use higher quality graphics (may affect performance)
+                      </p>
+                    </div>
+                    <Switch
+                      checked={highGraphicsQuality}
+                      onCheckedChange={setHighGraphicsQuality}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

@@ -22,6 +22,7 @@ import { CommentText } from "./CommentText";
 import { GameCardSkeleton, MobileFeedSkeleton } from "./GameCardSkeleton";
 import { notifyGameLike, notifyGameComment, notifyCommentReply, notifyGamePlay, notifyNewFollower, notifyCommentLike, notifyGameMention, notifyMention } from "@/lib/notificationSystem";
 import { LinkifiedText } from "./LinkifiedText";
+import { useNotificationPrompt } from "./NotificationPermissionPrompt";
 
 interface Game {
   id: string;
@@ -91,6 +92,7 @@ export const GameFeed = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isNavigatingRef = useRef(false); // Flag to prevent observer interference during button navigation
   const savedScrollPosition = useRef<number>(0); // Save scroll position when leaving feed
+  const { triggerAfterAction, shouldPrompt, PromptComponent } = useNotificationPrompt();
 
   // location UI removed per TikTok-style layout
 
@@ -337,9 +339,14 @@ export const GameFeed = () => {
       queryClient.invalidateQueries({ queryKey: ['games'] });
       toast.error("Failed to update like");
     },
-    onSuccess: () => {
+    onSuccess: ({ gameId, isLiked }) => {
       // Refetch in background to sync with server
       queryClient.invalidateQueries({ queryKey: ['games'] });
+      
+      // Trigger notification prompt after like action
+      if (!isLiked) { // Only trigger on new likes, not unlikes
+        triggerAfterAction('like');
+      }
     },
   });
 
@@ -1103,6 +1110,9 @@ export const GameFeed = () => {
         toast.success('Comment added!');
         refetchComments();
         queryClient.invalidateQueries({ queryKey: ['games'] });
+        
+        // Trigger notification prompt after comment action
+        triggerAfterAction('comment');
 
         // Get user profile for notifications
         const { data: profile } = await supabase
@@ -1263,6 +1273,9 @@ export const GameFeed = () => {
         setFollowedUsers(prev => new Set(prev).add(creatorId));
         await logActivity({ type: 'user_followed', targetUserId: creatorId });
         toast.success('Following!');
+        
+        // Trigger notification prompt after follow action
+        triggerAfterAction('follow');
 
         // Send notification to followed user
         const { data: profile, error: profileError } = await supabase
@@ -1522,6 +1535,9 @@ export const GameFeed = () => {
   // TikTok-style vertical snap scroll with centered layout
   return (
     <>
+      {/* Notification Permission Prompt */}
+      {PromptComponent && <PromptComponent />}
+      
       {/* Snap scrolling feed - TikTok style on mobile, centered on desktop */}
       <div className="relative w-full bg-white dark:bg-black md:bg-[#F8F9FA]" style={{ height: '100' }}>
         {/* Desktop Navigation Buttons */}

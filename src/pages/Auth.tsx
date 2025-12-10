@@ -8,6 +8,7 @@ import { Eye, EyeOff, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { promptForNotificationsAfterSignup } from "@/lib/notificationSetup";
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -179,6 +180,8 @@ export default function AuthPage() {
             navigate("/admin");
           } else {
             navigate("/feed");
+            // Prompt for notifications after successful signup/login
+            promptForNotificationsAfterSignup();
           }
         }, 300);
       }

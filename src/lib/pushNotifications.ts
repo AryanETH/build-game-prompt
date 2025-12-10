@@ -118,6 +118,16 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
     // Save subscription to database
     await saveSubscriptionToDatabase(pushSubscription);
 
+    // Show welcome notification after a short delay
+    setTimeout(() => {
+      showLocalNotification('Welcome to Oplus! 🎮', {
+        body: 'You\'re all set! You\'ll now get notified about trending games and updates.',
+        icon: '/Oplus only.png',
+        image: '/Oplus full logo.png',
+        tag: 'welcome'
+      });
+    }, 1000);
+
     return pushSubscription;
   } catch (error) {
     console.error('Error subscribing to push:', error);

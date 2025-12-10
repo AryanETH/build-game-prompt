@@ -17,6 +17,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { logActivity } from "@/lib/activityLogger";
 import { playClick, playSuccess, playError } from "@/lib/sounds";
 import QRCode from "qrcode";
+import { useNotificationPrompt } from "@/components/NotificationPermissionPrompt";
 
 // Local fallback generator to ensure creation works even if the AI gateway is unavailable
 const buildFallbackGameCode = (title: string) => `<!DOCTYPE html>
@@ -333,6 +334,7 @@ const buildFallbackGameCode = (title: string) => `<!DOCTYPE html>
 </html>`;
 
 export default function Create() {
+  const { triggerAfterAction, shouldPrompt, PromptComponent } = useNotificationPrompt();
   const [prompt, setPrompt] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -877,6 +879,10 @@ export default function Create() {
 
       toast.success("Game published successfully!");
       playSuccess();
+      
+      // Trigger notification prompt after creating a game
+      triggerAfterAction('create');
+      
       navigate("/feed");
     } catch (error: any) {
       console.error('Publish error:', error);
@@ -1004,6 +1010,8 @@ export default function Create() {
 
   return (
     <div className="min-h-[100dvh] overflow-y-auto relative" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      {/* Notification Permission Prompt */}
+      {PromptComponent && <PromptComponent />}
       
       {/* Under Development Overlay - Theme Adaptive */}
       <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/60 dark:bg-black/40 backdrop-blur-md">

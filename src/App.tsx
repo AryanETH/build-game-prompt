@@ -15,6 +15,8 @@ import RocketCursor from "@/components/RocketCursor";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { OnboardingGuard } from "./components/OnboardingGuard";
 import { AppLayout } from "./components/AppLayout";
+import { GlobalNotificationPrompt } from "./components/GlobalNotificationPrompt";
+import { NotificationPermissionPrompt } from "./components/NotificationPermissionPrompt";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -159,6 +161,8 @@ const App = () => {
         >
           <LocationProvider>
             <RocketCursor />
+            <GlobalNotificationPrompt />
+            <NotificationPermissionPrompt variant="banner" trigger="after_time" />
             <ErrorBoundary>
               <Suspense fallback={<LoadingSpinner fullScreen />}>
                 <Routes>
