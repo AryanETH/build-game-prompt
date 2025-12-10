@@ -8,7 +8,8 @@ import {
   isSubscribed, 
   isPushSupported,
   getPushSupportDetails,
-  showLocalNotification 
+  showLocalNotification,
+  testDatabaseAccess 
 } from '@/lib/pushNotifications';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Switch } from './ui/switch';
@@ -55,6 +56,15 @@ export const NotificationSettings = () => {
           toast.error('Failed to disable notifications');
         }
       } else {
+        // Test database access first
+        console.log('Testing database access before subscription...');
+        const dbTest = await testDatabaseAccess();
+        if (!dbTest.success) {
+          console.error('Database access test failed:', dbTest.error);
+          toast.error(`Database error: ${dbTest.error}`);
+          return;
+        }
+
         // Subscribe
         const subscription = await subscribeToPush();
         if (subscription) {
@@ -70,12 +80,13 @@ export const NotificationSettings = () => {
             });
           }, 1000);
         } else {
-          toast.error('Failed to enable notifications');
+          toast.error('Failed to enable notifications. Check console for details.');
         }
       }
     } catch (error) {
       console.error('Notification toggle error:', error);
-      toast.error('Failed to update notification settings');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to update notification settings: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

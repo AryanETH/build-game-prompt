@@ -6,7 +6,8 @@ import {
   subscribeToPush, 
   isPushSupported,
   requestNotificationPermission,
-  isSubscribed 
+  isSubscribed,
+  testDatabaseAccess 
 } from '@/lib/pushNotifications';
 
 interface NotificationPermissionPromptProps {
@@ -45,17 +46,29 @@ export const NotificationPermissionPrompt = ({ onClose }: NotificationPermission
   const handleAllow = async () => {
     setLoading(true);
     try {
+      // First test database access
+      console.log('Testing database access before subscription...');
+      const dbTest = await testDatabaseAccess();
+      if (!dbTest.success) {
+        console.error('Database access test failed:', dbTest.error);
+        toast.error(`Database error: ${dbTest.error}`);
+        return;
+      }
+
+      console.log('Database access OK, proceeding with subscription...');
       const subscription = await subscribeToPush();
+      
       if (subscription) {
         toast.success('🔔 Notifications enabled! Stay updated with the latest games and updates.');
         setIsVisible(false);
         onClose?.();
       } else {
-        toast.error('Failed to enable notifications. Please try again.');
+        toast.error('Failed to enable notifications. Check console for details.');
       }
     } catch (error) {
       console.error('Permission error:', error);
-      toast.error('Failed to enable notifications. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to enable notifications: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

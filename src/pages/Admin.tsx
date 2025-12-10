@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PushNotificationButton } from "@/components/PushNotificationButton";
 import { NotificationTester } from "@/components/NotificationTester";
 import { NotificationStats } from "@/components/NotificationStats";
+import { NotificationDebugger } from "@/components/NotificationDebugger";
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -1150,6 +1151,9 @@ export default function Admin() {
 
           {/* Broadcast Notification Tab */}
           <TabsContent value="broadcast" className="space-y-4">
+            {/* Notification Debugger */}
+            <NotificationDebugger />
+            
             <Card className={`p-6 ${isDarkMode ? 'bg-white/10 border-white/30' : 'bg-white border-black/10'}`}>
               <h2 className={`text-2xl font-bold mb-6 flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
                 <Bell className="w-6 h-6" />

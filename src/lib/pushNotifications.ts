@@ -86,25 +86,40 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 // Subscribe to push notifications
 export async function subscribeToPush(): Promise<PushSubscription | null> {
   try {
+    console.log('Starting push subscription process...');
+    
     // Check if push is supported
     if (!isPushSupported()) {
-      throw new Error('Push messaging is not supported');
+      const details = getPushSupportDetails();
+      console.error('Push not supported:', details);
+      throw new Error(`Push messaging is not supported: ${details.issues.join(', ')}`);
     }
 
+    console.log('Push is supported, requesting permission...');
+    
     // Request permission
     const permission = await requestNotificationPermission();
+    console.log('Permission result:', permission);
+    
     if (permission !== 'granted') {
-      throw new Error('Permission not granted for notifications');
+      throw new Error(`Permission not granted for notifications. Status: ${permission}`);
     }
 
+    console.log('Permission granted, registering service worker...');
+    
     // Register service worker
     const registration = await registerServiceWorker();
+    console.log('Service worker registered:', registration);
 
+    console.log('Subscribing to push service...');
+    
     // Subscribe to push service
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
     });
+
+    console.log('Push subscription created:', subscription);
 
     // Convert to our format
     const pushSubscription: PushSubscription = {
@@ -115,8 +130,12 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
       }
     };
 
+    console.log('Saving subscription to database...');
+    
     // Save subscription to database
     await saveSubscriptionToDatabase(pushSubscription);
+
+    console.log('Subscription saved successfully!');
 
     // Show welcome notification after a short delay
     setTimeout(() => {
@@ -131,28 +150,62 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
     return pushSubscription;
   } catch (error) {
     console.error('Error subscribing to push:', error);
+    
+    // Provide more specific error messages
+    if (error instanceof Error) {
+      if (error.message.includes('Permission')) {
+        console.error('Permission denied or not granted');
+      } else if (error.message.includes('Service Worker')) {
+        console.error('Service Worker registration failed');
+      } else if (error.message.includes('supported')) {
+        console.error('Push notifications not supported in this browser/environment');
+      } else {
+        console.error('Unknown error during subscription:', error.message);
+      }
+    }
+    
     return null;
   }
 }
 
 // Save subscription to Supabase
 async function saveSubscriptionToDatabase(subscription: PushSubscription) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+  console.log('Getting user for database save...');
+  
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError) {
+    console.error('Error getting user:', userError);
+    throw new Error('Failed to get user information');
+  }
+  
+  if (!user) {
+    console.error('No user found');
+    throw new Error('User not authenticated');
+  }
+
+  console.log('User found, saving subscription for user:', user.id);
+
+  const subscriptionData = {
+    user_id: user.id,
+    endpoint: subscription.endpoint,
+    p256dh: subscription.keys.p256dh,
+    auth: subscription.keys.auth,
+    updated_at: new Date().toISOString()
+  };
+
+  console.log('Subscription data to save:', subscriptionData);
 
   const { error } = await supabase
     .from('push_subscriptions')
-    .upsert({
-      user_id: user.id,
-      endpoint: subscription.endpoint,
-      p256dh: subscription.keys.p256dh,
-      auth: subscription.keys.auth,
-      updated_at: new Date().toISOString()
-    });
+    .upsert(subscriptionData);
 
   if (error) {
-    console.error('Error saving subscription:', error);
+    console.error('Error saving subscription to database:', error);
+    throw new Error(`Failed to save subscription: ${error.message}`);
   }
+
+  console.log('Subscription saved to database successfully');
 }
 
 // Unsubscribe from push notifications
@@ -206,5 +259,41 @@ export function showLocalNotification(title: string, options?: NotificationOptio
       badge: '/Oplus only.png',
       ...options
     });
+  }
+}
+
+// Test database connection and table access
+export async function testDatabaseAccess(): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('Testing database access...');
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError) {
+      return { success: false, error: `User error: ${userError.message}` };
+    }
+    
+    if (!user) {
+      return { success: false, error: 'No authenticated user' };
+    }
+
+    console.log('User authenticated, testing table access...');
+
+    // Try to query the push_subscriptions table
+    const { data, error } = await supabase
+      .from('push_subscriptions')
+      .select('id')
+      .eq('user_id', user.id)
+      .limit(1);
+
+    if (error) {
+      return { success: false, error: `Database error: ${error.message}` };
+    }
+
+    console.log('Database access test successful');
+    return { success: true };
+  } catch (error) {
+    console.error('Database access test failed:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
