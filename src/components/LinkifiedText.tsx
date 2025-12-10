@@ -129,7 +129,7 @@ export const LinkifiedText = ({ text, className = "" }: LinkifiedTextProps) => {
         parts.push(
           <span
             key={`hashtag-${i}`}
-            className="text-primary hover:underline cursor-pointer font-semibold"
+            className="text-gray-300 hover:underline cursor-pointer font-semibold"
             onClick={(e) => {
               e.stopPropagation();
               navigate(`/search?q=${encodeURIComponent('#' + match.value)}`);
@@ -142,7 +142,7 @@ export const LinkifiedText = ({ text, className = "" }: LinkifiedTextProps) => {
         parts.push(
           <span
             key={`mention-${i}`}
-            className="text-primary hover:underline cursor-pointer font-semibold"
+            className="text-gray-300 hover:underline cursor-pointer font-semibold"
             onClick={(e) => {
               e.stopPropagation();
               navigate(`/u/${match.value}`);

@@ -73,9 +73,11 @@ export const GameFeed = () => {
   const [likedGames, setLikedGames] = useState<Set<string>>(new Set());
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
+  const [currentGameIndex, setCurrentGameIndex] = useState(0);
   const queryClient = useQueryClient();
   const routerLocation = useRouterLocation();
   const navigate = useNavigate();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // location UI removed per TikTok-style layout
 
@@ -181,7 +183,7 @@ export const GameFeed = () => {
         .from('game_likes')
         .select('game_id')
         .eq('user_id', userId);
-      
+
       if (error) throw error;
       return data;
     },
@@ -203,7 +205,7 @@ export const GameFeed = () => {
         .from('follows')
         .select('following_id')
         .eq('follower_id', userId);
-      
+
       if (error) throw error;
       return data;
     },
@@ -228,18 +230,18 @@ export const GameFeed = () => {
           .delete()
           .eq('game_id', gameId)
           .eq('user_id', userId);
-        
+
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('game_likes')
           .insert({ game_id: gameId, user_id: userId });
-        
+
         if (error) throw error;
-        
+
         // Log like activity (async, don't wait)
         logActivity({ type: 'game_liked', gameId });
-        
+
         // Send notification to game owner (async, don't wait)
         const game = hydratedGames.find(g => g.id === gameId);
         if (game && game.creator_id !== userId) {
@@ -277,7 +279,7 @@ export const GameFeed = () => {
         }
         return newSet;
       });
-      
+
       // Optimistically update the game's likes_count
       queryClient.setQueryData(['games', 'feed'], (oldData: any) => {
         if (!oldData) return oldData;
@@ -288,7 +290,7 @@ export const GameFeed = () => {
               if (game.id === gameId) {
                 return {
                   ...game,
-                  likes_count: isLiked 
+                  likes_count: isLiked
                     ? Math.max((game.likes_count || 0) - 1, 0)
                     : (game.likes_count || 0) + 1
                 };
@@ -310,7 +312,7 @@ export const GameFeed = () => {
         }
         return newSet;
       });
-      
+
       // Refetch to get correct state
       queryClient.invalidateQueries({ queryKey: ['games'] });
       toast.error("Failed to update like");
@@ -323,7 +325,7 @@ export const GameFeed = () => {
 
   const handlePlay = async (game: Game) => {
     playClick();
-    
+
     try {
       // Fetch full game data including game_code (only when needed)
       const { data: fullGame, error } = await supabase
@@ -331,27 +333,27 @@ export const GameFeed = () => {
         .select('*')
         .eq('id', game.id)
         .single();
-      
+
       if (error || !fullGame) {
         toast.error("Failed to load game");
         playError();
         return;
       }
-      
+
       setSelectedGame(fullGame as Game);
-      
+
       // Increment play count (optimistic update)
       if (userId) {
         await supabase
           .from('games')
           .update({ plays_count: (game.plays_count || 0) + 1 })
           .eq('id', game.id);
-        
+
         // Log activity
         await logActivity({ type: 'game_played', gameId: game.id });
-        
+
         queryClient.invalidateQueries({ queryKey: ['games', 'feed'] });
-        
+
         // Send notification to game owner (only if not playing own game)
         if (game.creator_id !== userId) {
           const { data: profile } = await supabase
@@ -359,7 +361,7 @@ export const GameFeed = () => {
             .select('username, avatar_url')
             .eq('id', userId)
             .single();
-          
+
           if (profile) {
             await notifyGamePlay(
               game.creator_id,
@@ -386,7 +388,7 @@ export const GameFeed = () => {
       canvas.width = 1200;
       canvas.height = 630;
       const ctx = canvas.getContext('2d');
-      
+
       if (!ctx) {
         reject(new Error('Canvas not supported'));
         return;
@@ -398,18 +400,18 @@ export const GameFeed = () => {
       gradient.addColorStop(1, '#8b5cf6');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, 1200, 630);
-      
+
       // Load and draw Oplus logo
       const logo = new Image();
       logo.src = '/Oplus full horizonatal.png';
-      
+
       const shareUrl = `${window.location.origin}/feed?game=${game.id}`;
-      
+
       const finishImage = () => {
         canvas.toBlob((blob) => {
           if (blob) {
-            const file = new File([blob], `${game.title.replace(/[^a-z0-9]/gi, '_')}-oplus.png`, { 
-              type: 'image/png' 
+            const file = new File([blob], `${game.title.replace(/[^a-z0-9]/gi, '_')}-oplus.png`, {
+              type: 'image/png'
             });
             resolve(file);
           } else {
@@ -417,13 +419,13 @@ export const GameFeed = () => {
           }
         }, 'image/png');
       };
-      
+
       logo.onload = () => {
         // Draw logo at top (centered)
         const logoHeight = 120;
         const logoWidth = (logo.width / logo.height) * logoHeight;
         ctx.drawImage(logo, (1200 - logoWidth) / 2, 40, logoWidth, logoHeight);
-        
+
         // Add game title (center)
         ctx.fillStyle = '#FFFFFF';
         ctx.font = 'bold 64px Montserrat, Arial, sans-serif';
@@ -432,12 +434,12 @@ export const GameFeed = () => {
         ctx.shadowBlur = 10;
         const title = game.title.length > 35 ? game.title.substring(0, 35) + '...' : game.title;
         ctx.fillText(title, 600, 300);
-        
+
         // Add tagline
         ctx.font = '32px Montserrat, Arial, sans-serif';
         ctx.fillStyle = '#FFFFFF';
         ctx.fillText("Hey! I'm waiting for you, let's play together!", 600, 380);
-        
+
         // Add URL at bottom (important - embedded in image)
         ctx.font = 'bold 28px Montserrat, Arial, sans-serif';
         ctx.fillStyle = '#FFFFFF';
@@ -445,36 +447,36 @@ export const GameFeed = () => {
         // Shorten URL for display if needed
         const displayUrl = shareUrl.replace('https://', '').replace('http://', '');
         ctx.fillText(displayUrl, 600, 560);
-        
+
         finishImage();
       };
-      
+
       logo.onerror = () => {
         // Fallback if logo doesn't load
         ctx.fillStyle = '#FFFFFF';
         ctx.font = 'bold 56px Montserrat, Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('OPLUS', 600, 100);
-        
+
         // Add game title (center)
         ctx.font = 'bold 64px Montserrat, Arial, sans-serif';
         ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
         ctx.shadowBlur = 10;
         const title = game.title.length > 35 ? game.title.substring(0, 35) + '...' : game.title;
         ctx.fillText(title, 600, 300);
-        
+
         // Add tagline
         ctx.font = '32px Montserrat, Arial, sans-serif';
         ctx.fillStyle = '#FFFFFF';
         ctx.fillText("Hey! I'm waiting for you, let's play together!", 600, 380);
-        
+
         // Add URL at bottom
         ctx.font = 'bold 28px Montserrat, Arial, sans-serif';
         ctx.fillStyle = '#FFFFFF';
         ctx.shadowBlur = 8;
         const displayUrl = shareUrl.replace('https://', '').replace('http://', '');
         ctx.fillText(displayUrl, 600, 560);
-        
+
         finishImage();
       };
     });
@@ -483,13 +485,13 @@ export const GameFeed = () => {
   const handleShare = async (game: Game) => {
     const shareUrl = `${window.location.origin}/feed?game=${game.id}`;
     const shareText = `Hey! I'm waiting for you, let's play ${game.title} on Oplus!\n\n${shareUrl}`;
-    
+
     toast.info("Preparing to share...");
-    
+
     try {
       // Generate the branded image first (now includes URL embedded in image)
       const imageFile = await generateShareImage(game);
-      
+
       // STRATEGY 1: Copy text to clipboard FIRST, then open share dialog
       // This ensures text is available even if share API doesn't pass it
       try {
@@ -497,7 +499,7 @@ export const GameFeed = () => {
       } catch (clipErr) {
         console.log('Pre-clipboard copy failed:', clipErr);
       }
-      
+
       // Check if Web Share API with files is supported (Windows 10+ with compatible apps)
       if (navigator.share && navigator.canShare) {
         const shareData = {
@@ -505,7 +507,7 @@ export const GameFeed = () => {
           text: shareText,
           files: [imageFile],
         };
-        
+
         // Check if this specific share data is supported
         if (navigator.canShare(shareData)) {
           try {
@@ -526,7 +528,7 @@ export const GameFeed = () => {
           }
         }
       }
-      
+
       // STRATEGY 2: Advanced Clipboard API (writes both image and text)
       try {
         const textBlob = new Blob([shareText], { type: 'text/plain' });
@@ -534,7 +536,7 @@ export const GameFeed = () => {
           [imageFile.type]: imageFile,
           'text/plain': textBlob,
         });
-        
+
         await navigator.clipboard.write([clipboardItem]);
         playSuccess();
         toast.success("Image & text copied to clipboard!", {
@@ -544,22 +546,22 @@ export const GameFeed = () => {
       } catch (clipboardError) {
         console.log('Advanced clipboard failed, trying text only:', clipboardError);
       }
-      
+
       // STRATEGY 3: Text only to clipboard (URL is embedded in image anyway)
       await navigator.clipboard.writeText(shareText);
       toast.success("Link copied to clipboard!", {
         description: "The URL is also visible in the image"
       });
       playSuccess();
-      
+
     } catch (error: any) {
       console.error('Share error:', error);
-      
+
       // User cancelled
       if (error.name === 'AbortError') {
         return;
       }
-      
+
       // Last resort fallback
       try {
         await navigator.clipboard.writeText(shareText);
@@ -572,6 +574,52 @@ export const GameFeed = () => {
     }
   };
 
+  // Desktop navigation functions
+  const navigateUp = () => {
+    if (!hydratedGames || hydratedGames.length === 0) return;
+    
+    const newIndex = currentGameIndex > 0 ? currentGameIndex - 1 : hydratedGames.length - 1;
+    setCurrentGameIndex(newIndex);
+    
+    // Scroll to the game card
+    const gameElement = document.querySelector(`[data-game-index="${newIndex}"]`);
+    if (gameElement) {
+      gameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  const navigateDown = () => {
+    if (!hydratedGames || hydratedGames.length === 0) return;
+    
+    const newIndex = currentGameIndex < hydratedGames.length - 1 ? currentGameIndex + 1 : 0;
+    setCurrentGameIndex(newIndex);
+    
+    // Scroll to the game card
+    const gameElement = document.querySelector(`[data-game-index="${newIndex}"]`);
+    if (gameElement) {
+      gameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  // Keyboard navigation for desktop
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only on desktop (md and up)
+      if (window.innerWidth < 768) return;
+      
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        navigateUp();
+      } else if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        navigateDown();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentGameIndex, hydratedGames]);
+
   // Realtime: refetch feed on any games change
   useEffect(() => {
     const gamesChannel = supabase
@@ -580,7 +628,7 @@ export const GameFeed = () => {
         queryClient.invalidateQueries({ queryKey: ['games'] });
       })
       .subscribe();
-    
+
     // Also listen to comment changes to update comment counts in real-time
     const commentsChannel = supabase
       .channel('realtime:game_comments_count')
@@ -588,8 +636,8 @@ export const GameFeed = () => {
         queryClient.invalidateQueries({ queryKey: ['games'] });
       })
       .subscribe();
-    
-    return () => { 
+
+    return () => {
       gamesChannel.unsubscribe();
       commentsChannel.unsubscribe();
     };
@@ -666,7 +714,7 @@ export const GameFeed = () => {
         .from('comment_likes')
         .select('comment_id')
         .eq('user_id', userId);
-      
+
       if (error) throw error;
       return data;
     },
@@ -683,20 +731,20 @@ export const GameFeed = () => {
     const channel = supabase
       .channel(`comments:${commentsOpenFor.id}`)
       // Listen to all comment changes (INSERT, UPDATE, DELETE)
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'game_comments', 
-        filter: `game_id=eq.${commentsOpenFor.id}` 
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'game_comments',
+        filter: `game_id=eq.${commentsOpenFor.id}`
       }, () => {
         refetchComments();
         queryClient.invalidateQueries({ queryKey: ['games'] }); // Update comment counts
       })
       // Listen to all comment like changes
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'comment_likes' 
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'comment_likes'
       }, () => {
         refetchComments();
         queryClient.invalidateQueries({ queryKey: ['userCommentLikes', userId, commentsOpenFor.id] });
@@ -714,7 +762,7 @@ export const GameFeed = () => {
       toast.error('Please sign in to comment');
       return;
     }
-    
+
     try {
       const { error } = await supabase
         .from('game_comments')
@@ -724,7 +772,7 @@ export const GameFeed = () => {
           content: newComment.trim(),
           parent_comment_id: replyingTo?.id || null,
         });
-      
+
       if (error) {
         console.error('Comment error:', error);
         toast.error('Failed to send comment');
@@ -734,14 +782,14 @@ export const GameFeed = () => {
         toast.success('Comment added!');
         refetchComments();
         queryClient.invalidateQueries({ queryKey: ['games'] });
-        
+
         // Get user profile for notifications
         const { data: profile } = await supabase
           .from('profiles')
           .select('username, avatar_url')
           .eq('id', uid)
           .single();
-        
+
         if (profile) {
           // Send notification to game owner or comment owner
           if (commentsOpenFor.creator_id !== uid) {
@@ -772,7 +820,7 @@ export const GameFeed = () => {
               );
             }
           }
-          
+
           // Detect and notify user mentions (@username)
           const userMentions = newComment.match(/@(\w+)/g);
           if (userMentions) {
@@ -783,7 +831,7 @@ export const GameFeed = () => {
                 .select('id')
                 .eq('username', username)
                 .single();
-              
+
               if (mentionedUser && mentionedUser.id !== uid) {
                 await notifyMention(
                   mentionedUser.id,
@@ -797,7 +845,7 @@ export const GameFeed = () => {
               }
             }
           }
-          
+
           // Detect and notify game mentions (+game_title)
           const gameMentions = newComment.match(/\+([^\s]+)/g);
           if (gameMentions) {
@@ -809,7 +857,7 @@ export const GameFeed = () => {
                 .ilike('title', `%${gameTitle}%`)
                 .limit(1)
                 .single();
-              
+
               if (mentionedGame && mentionedGame.creator_id !== uid) {
                 await notifyGameMention(
                   mentionedGame.creator_id,
@@ -839,7 +887,7 @@ export const GameFeed = () => {
       toast.error('Please sign in to comment');
       return;
     }
-    
+
     try {
       const { error } = await supabase
         .from('game_comments')
@@ -849,7 +897,7 @@ export const GameFeed = () => {
           content: `[GIF]${gifUrl}`,
           parent_comment_id: replyingTo?.id || null,
         });
-      
+
       if (error) {
         console.error('Comment error:', error);
         toast.error('Failed to send GIF');
@@ -894,14 +942,14 @@ export const GameFeed = () => {
         setFollowedUsers(prev => new Set(prev).add(creatorId));
         await logActivity({ type: 'user_followed', targetUserId: creatorId });
         toast.success('Following!');
-        
+
         // Send notification to followed user
         const { data: profile } = await supabase
           .from('profiles')
           .select('username, avatar_url')
           .eq('id', userId)
           .single();
-        
+
         if (profile) {
           await notifyNewFollower(
             creatorId,
@@ -923,9 +971,9 @@ export const GameFeed = () => {
       toast.error('Please sign in to like comments');
       return;
     }
-    
+
     const isLiked = likedComments.has(commentId);
-    
+
     // OPTIMISTIC UPDATE: Update UI immediately
     setLikedComments(prev => {
       const next = new Set(prev);
@@ -936,7 +984,7 @@ export const GameFeed = () => {
       }
       return next;
     });
-    
+
     // Optimistically update the comment's likes_count in the UI
     queryClient.setQueryData(['comments', commentsOpenFor?.id], (oldData: any) => {
       if (!oldData) return oldData;
@@ -944,7 +992,7 @@ export const GameFeed = () => {
         if (comment.id === commentId) {
           return {
             ...comment,
-            likes_count: isLiked 
+            likes_count: isLiked
               ? Math.max((comment.likes_count || 0) - 1, 0)
               : (comment.likes_count || 0) + 1
           };
@@ -952,7 +1000,7 @@ export const GameFeed = () => {
         return comment;
       });
     });
-    
+
     try {
       if (isLiked) {
         // Unlike: Delete from database
@@ -961,16 +1009,16 @@ export const GameFeed = () => {
           .delete()
           .eq('comment_id', commentId)
           .eq('user_id', userId);
-        
+
         if (error) throw error;
       } else {
         // Like: Insert into database
         const { error } = await supabase
           .from('comment_likes')
           .insert({ comment_id: commentId, user_id: userId });
-        
+
         if (error) throw error;
-        
+
         // Send notification to comment owner (async, don't wait)
         if (commentsOpenFor) {
           const comment = comments?.find(c => c.id === commentId);
@@ -997,13 +1045,13 @@ export const GameFeed = () => {
           }
         }
       }
-      
+
       // Refetch in background to sync with server
       refetchComments();
     } catch (error) {
       console.error('Failed to like/unlike comment:', error);
       toast.error('Failed to update like');
-      
+
       // ROLLBACK: Revert optimistic update on error
       setLikedComments(prev => {
         const next = new Set(prev);
@@ -1014,7 +1062,7 @@ export const GameFeed = () => {
         }
         return next;
       });
-      
+
       // Revert the count
       queryClient.setQueryData(['comments', commentsOpenFor?.id], (oldData: any) => {
         if (!oldData) return oldData;
@@ -1022,7 +1070,7 @@ export const GameFeed = () => {
           if (comment.id === commentId) {
             return {
               ...comment,
-              likes_count: isLiked 
+              likes_count: isLiked
                 ? (comment.likes_count || 0) + 1
                 : Math.max((comment.likes_count || 0) - 1, 0)
             };
@@ -1038,14 +1086,14 @@ export const GameFeed = () => {
       toast.error('Please sign in to delete comments');
       return;
     }
-    
+
     try {
       const { error } = await supabase
         .from('game_comments')
         .delete()
         .eq('id', commentId)
         .eq('user_id', userId);
-      
+
       if (error) {
         console.error('Delete comment error:', error);
         toast.error('Failed to delete comment');
@@ -1065,7 +1113,7 @@ export const GameFeed = () => {
     const now = new Date();
     const date = new Date(dateString);
     const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
+
     if (seconds < 60) return `${seconds}s`;
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes}m`;
@@ -1120,543 +1168,562 @@ export const GameFeed = () => {
   // TikTok-style vertical snap scroll with centered layout
   return (
     <>
-    {/* Snap scrolling feed - TikTok style on mobile, centered on desktop */}
-    <div className="relative w-full bg-white dark:bg-black md:bg-[#F8F9FA]" style={{ height: '100dvh' }}>
-      {/* Mobile: Snap scroll, Desktop: Normal scroll with centered content */}
-      <div className="h-full overflow-y-auto snap-y snap-mandatory md:snap-none no-scrollbar pb-16 md:pb-0" style={{ scrollSnapType: 'y mandatory', scrollBehavior: 'smooth' }}>
-        {/* Desktop wrapper: flex column with centered items */}
-       <div className="md:flex md:flex-col md:items-start md:w-full md:max-w-[900px] md:mx-auto md:justify-start md:min-h-screen md:py-8 md:gap-8">
-        {hydratedGames?.map((game, index) => (
-          <div key={game.id} className="w-full snap-start snap-always md:snap-align-none flex items-center justify-center" style={{ height: 'calc(100dvh - 120px)', minHeight: 'calc(100dvh - 120px)', scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
-            {/* Mobile: Full bleed, Desktop: Centered card with action buttons */}
-            <div className="relative w-full h-full md:w-auto md:h-auto md:flex md:items-center md:gap-6">
-              {/* Card container - Desktop: Fixed size with stacked effect */}
-              <div className="relative w-full h-full md:w-[374px] md:h-[660px]">
-              <Card className="relative w-full h-full overflow-visible md:overflow-hidden rounded-none md:rounded-3xl border-0 md:border md:border-gray-200 md:shadow-lg bg-black md:bg-gray-300">
-                <img
-                  src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
-                  alt={game.title}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent dark:from-black/95 dark:via-black/20 md:bg-gradient-to-b md:from-transparent md:via-transparent md:to-black/80" />
-
-                {/* Remix button - top right */}
-                <div className="absolute top-4 right-4 z-10">
-                  <button
-                    className="px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all duration-200"
-                    onClick={() => setRemixFor(game)}
-                  >
-                    <Sparkles className="w-4 h-4" strokeWidth={2} />
-                    Remix
-                  </button>
-                </div>
-
-                {/* Game info - bottom left - fixed position on mobile to avoid browser UI */}
-                <div className="absolute left-0 right-[70px] md:right-[80px] bottom-6 md:bottom-16 p-3 md:p-5 text-white z-10">
-                  <div className="flex items-center gap-2 mb-2">
-                    <button 
-                      className="flex items-center gap-2 hover:opacity-80 transition-opacity group"
-                      onClick={() => game.creator?.username && navigate(`/u/${game.creator.username}`)}
-                    >
-                      <div className="relative">
-                        <Avatar className="w-9 h-9 md:w-12 md:h-12 border-2 border-white/50 group-hover:border-white transition-colors">
-                          <AvatarImage src={game.creator?.avatar_url || undefined} className="object-cover" />
-                          <AvatarFallback className="gradient-primary text-white text-xs md:text-sm font-semibold">
-                            {game.creator?.username?.[0]?.toUpperCase() || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        {/* Plus icon for follow - only show if not following */}
-                        {game.creator_id !== userId && !followedUsers.has(game.creator_id) && (
-                          <button
-                            className="absolute -bottom-0.5 -right-0.5 w-5 h-5 md:w-6 md:h-6 rounded-full gradient-primary flex items-center justify-center text-white shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 border-2 border-white"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleFollowUser(game.creator_id);
-                            }}
-                          >
-                            <span className="text-xs md:text-sm font-bold leading-none">+</span>
-                          </button>
-                        )}
-                      </div>
-                      <span className="text-sm md:text-base font-bold drop-shadow-lg">@{game.creator?.username || 'creator'}</span>
-                    </button>
-                  </div>
-                  <div className="text-sm md:text-lg font-semibold leading-tight mb-1 drop-shadow-lg line-clamp-2">{game.title}</div>
-                  {game.description && (
-                    <div>
-                      <div className={`text-xs md:text-sm text-white/95 drop-shadow-md leading-snug ${expandedDescriptions.has(game.id) ? '' : 'line-clamp-2'}`}>
-                        <LinkifiedText text={game.description} />
-                      </div>
-                      {game.description.length > 80 && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setExpandedDescriptions(prev => {
-                              const next = new Set(prev);
-                              if (next.has(game.id)) {
-                                next.delete(game.id);
-                              } else {
-                                next.add(game.id);
-                              }
-                              return next;
-                            });
-                          }}
-                          className="text-xs md:text-sm font-semibold text-white/90 hover:text-white mt-1 drop-shadow-lg"
-                        >
-                          {expandedDescriptions.has(game.id) ? 'Less' : 'More'}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Right action bar - Mobile only (desktop buttons are on right outside card) */}
-                <div className="md:hidden absolute right-3 bottom-20 flex flex-col gap-3 items-center text-white z-30">
-                {/* Play button - Purple gradient on desktop, primary on mobile */}
-                <button
-                  aria-label="Play game"
-                  className="h-12 w-12 md:h-12 md:w-12 rounded-full flex items-center justify-center gradient-primary md:bg-[#5B4AF4] text-white hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
-                  onClick={() => handlePlay(game)}
-                >
-                  <Play className="h-5 w-5 md:h-5 md:w-5 fill-current md:ml-1" strokeWidth={2} />
-                </button>
-                
-                {/* Like button */}
-                <div className="flex flex-col items-center gap-0.5 md:gap-1">
-                  <button
-                    aria-label={likedGames.has(game.id) ? 'Unlike game' : 'Like game'}
-                    className={`h-12 w-12 md:h-12 md:w-12 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg ${
-                      likedGames.has(game.id) 
-                        ? 'bg-red-500 text-white' 
-                        : 'bg-gray-600/80 md:bg-[#FF4D4D] text-white hover:bg-gray-500'
-                    }`}
-                    onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
-                  >
-                    <Heart className={`h-5 w-5 md:h-6 md:w-6 fill-current`} strokeWidth={2} />
-                  </button>
-                  <span className="text-[10px] md:text-xs font-bold text-white md:text-gray-500 drop-shadow-lg md:drop-shadow-none md:mt-1">{game.likes_count ?? 0}</span>
-                </div>
-                
-                {/* Comments button */}
-                <div className="flex flex-col items-center gap-0.5 md:gap-1">
-                  <button
-                    aria-label="View comments"
-                    className="h-12 w-12 md:h-12 md:w-12 rounded-full flex items-center justify-center bg-gray-600/80 md:bg-gray-400/50 md:backdrop-blur-sm text-white hover:bg-gray-500 md:hover:bg-gray-400 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
-                    onClick={() => setCommentsOpenFor(game)}
-                  >
-                    <MessageCircle className="h-5 w-5 md:h-6 md:w-6 fill-white transform -scale-x-100" strokeWidth={2} />
-                  </button>
-                  <span className="text-[10px] md:text-xs font-bold text-white md:text-gray-500 drop-shadow-lg md:drop-shadow-none md:mt-1">
-                    {commentsOpenFor?.id === game.id ? comments.length : (game.comments_count || 0)}
-                  </span>
-                </div>
-                
-                {/* Share button */}
-                <div className="flex flex-col items-center">
-                  <button
-                    aria-label="Share game"
-                    className="h-12 w-12 md:h-12 md:w-12 rounded-full flex items-center justify-center bg-gray-600/80 md:bg-gray-400/50 md:backdrop-blur-sm text-white hover:bg-gray-500 md:hover:bg-gray-400 hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
-                    onClick={() => handleShare(game)}
-                  >
-                    <Share2 className="h-5 w-5 md:h-6 md:w-6 ml-[-2px]" strokeWidth={2} />
-                  </button>
-                </div>
-              </div>
-              </Card>
-              
-              {/* Next card peek - Desktop only */}
-              {index < hydratedGames.length - 1 && (
-                <div className="hidden md:block absolute bottom-[-20px] left-0 right-0 h-20 rounded-t-3xl bg-gray-300 border border-gray-200 border-b-0 shadow-sm pointer-events-none z-[-1]">
-                  <div className="absolute inset-0 rounded-t-3xl overflow-hidden">
-                    <img 
-                      src={hydratedGames[index + 1].cover_url || hydratedGames[index + 1].thumbnail_url || '/placeholder.svg'}
-                      alt=""
-                      className="w-full h-full object-cover opacity-40"
-                    />
-                  </div>
-                </div>
-              )}
-              </div>
-
-              {/* Desktop: Action buttons on RIGHT */}
-              <div className="hidden md:flex flex-col gap-4 items-center">
-                {/* Play button */}
-                <button
-                  aria-label="Play game"
-                  className="h-14 w-14 rounded-full flex items-center justify-center bg-gradient-to-br from-purple-600 to-blue-600 text-white hover:scale-110 active:scale-95 transition-all duration-200 shadow-xl hover:shadow-2xl"
-                  onClick={() => handlePlay(game)}
-                >
-                  <Play className="h-6 w-6 fill-white ml-0.5" strokeWidth={0} />
-                </button>
-                
-                {/* Like button */}
-                <div className="flex flex-col items-center gap-1">
-                  <button
-                    aria-label={likedGames.has(game.id) ? 'Unlike game' : 'Like game'}
-                    className={`h-14 w-14 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-xl hover:shadow-2xl ${
-                      likedGames.has(game.id) 
-                        ? 'bg-gradient-to-br from-red-500 to-pink-500 text-white' 
-                        : 'bg-white border-2 border-gray-300 text-gray-700 hover:border-red-400'
-                    }`}
-                    onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
-                  >
-                    <Heart className={`h-6 w-6 ${likedGames.has(game.id) ? 'fill-white' : ''}`} strokeWidth={2} />
-                  </button>
-                  <span className="text-sm font-bold text-gray-700">{game.likes_count ?? 0}</span>
-                </div>
-                
-                {/* Comments button */}
-                <div className="flex flex-col items-center gap-1">
-                  <button
-                    aria-label="View comments"
-                    className="h-14 w-14 rounded-full flex items-center justify-center bg-white border-2 border-gray-300 text-gray-700 hover:border-blue-400 hover:scale-110 active:scale-95 transition-all duration-200 shadow-xl hover:shadow-2xl"
-                    onClick={() => setCommentsOpenFor(game)}
-                  >
-                    <MessageCircle className="h-6 w-6" strokeWidth={2} />
-                  </button>
-                  <span className="text-sm font-bold text-gray-700">
-                    {commentsOpenFor?.id === game.id ? comments.length : (game.comments_count || 0)}
-                  </span>
-                </div>
-                
-                {/* Share button */}
-                <div className="flex flex-col items-center">
-                  <button
-                    aria-label="Share game"
-                    className="h-14 w-14 rounded-full flex items-center justify-center bg-white border-2 border-gray-300 text-gray-700 hover:border-green-400 hover:scale-110 active:scale-95 transition-all duration-200 shadow-xl hover:shadow-2xl"
-                    onClick={() => handleShare(game)}
-                  >
-                    <Share2 className="h-6 w-6" strokeWidth={2} />
-                  </button>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        ))}
-        </div>
-
-        {games?.length === 0 && (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center">
-              <h3 className="text-2xl font-bold mb-2 text-foreground">No games yet</h3>
-              <p className="text-muted-foreground">Be the first to create a game!</p>
-            </div>
-          </div>
-        )}
-        <div ref={sentinelRef} className="h-24 flex items-center justify-center">
-          {isFetchingNextPage && <Loader2 className="h-6 w-6 animate-spin text-purple-600 dark:text-purple-400" />}
-        </div>
-      </div>
-    </div>
-
-
-    {/* Comments Panel */}
-    <Sheet open={!!commentsOpenFor} onOpenChange={(o) => {
-      if (!o) {
-        setCommentsOpenFor(null);
-        setReplyingTo(null);
-      }
-    }}>
-      <SheetContent side="right" className="w-full sm:w-[420px] md:w-[480px] flex flex-col p-0 h-full">
-        {/* Mobile: Instagram/TikTok style with profile header */}
-        {/* Desktop: Simple header with just title */}
-        <div className="md:hidden px-4 py-3 border-b flex items-center gap-3 flex-shrink-0 bg-background">
-          <button 
-            onClick={() => commentsOpenFor?.creator?.username && navigate(`/u/${commentsOpenFor.creator.username}`)}
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+      {/* Snap scrolling feed - TikTok style on mobile, centered on desktop */}
+      <div className="relative w-full bg-white dark:bg-black md:bg-[#F8F9FA]" style={{ height: '100' }}>
+        {/* Desktop Navigation Buttons */}
+        <div className="hidden md:flex fixed right-8 top-1/2 -translate-y-1/2 flex-col gap-4 z-50">
+          <button
+            onClick={navigateUp}
+            className="h-12 w-12 rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg hover:shadow-xl"
+            aria-label="Previous game"
           >
-            <Avatar className="h-10 w-10 border-2 border-muted">
-              <AvatarImage src={commentsOpenFor?.creator?.avatar_url || undefined} className="object-cover" />
-              <AvatarFallback className="gradient-primary text-white text-sm font-semibold">
-                {commentsOpenFor?.creator?.username?.[0]?.toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col items-start">
-              <span className="text-sm font-bold">@{commentsOpenFor?.creator?.username || 'creator'}</span>
-              <span className="text-xs text-muted-foreground">{comments.length} {comments.length === 1 ? 'comment' : 'comments'}</span>
-            </div>
+            <ChevronUp className="h-6 w-6 text-gray-700 dark:text-gray-300" />
           </button>
-          {commentsOpenFor?.creator_id && commentsOpenFor.creator_id !== userId && (
-            <Button
-              size="sm"
-              variant={followedUsers.has(commentsOpenFor.creator_id) ? "outline" : "default"}
-              className={followedUsers.has(commentsOpenFor.creator_id) ? "" : "gradient-primary"}
-              onClick={() => handleFollowUser(commentsOpenFor.creator_id)}
-            >
-              {followedUsers.has(commentsOpenFor.creator_id) ? 'Following' : 'Follow'}
-            </Button>
-          )}
-          {/* Spacer to push close button to the right and prevent overlap */}
-          <div className="flex-1" />
+          <button
+            onClick={navigateDown}
+            className="h-12 w-12 rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg hover:shadow-xl"
+            aria-label="Next game"
+          >
+            <ChevronDown className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+          </button>
         </div>
-        
-        {/* Desktop: Simple header */}
-        <div className="hidden md:block px-6 py-4 border-b flex-shrink-0 bg-background">
-          <h3 className="text-lg font-semibold">Comments ({comments.length})</h3>
-        </div>
-        
-        {/* Scrollable comments area */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-4 smooth-scroll-mobile">
-          {comments.filter(c => !c.parent_comment_id).map((c) => {
-            const replies = comments.filter(r => r.parent_comment_id === c.id);
-            const isExpanded = expandedComments.has(c.id);
-            const isGif = c.content.startsWith('[GIF]');
-            const gifUrl = isGif ? c.content.substring(5) : null;
-            
-            return (
-              <div key={c.id} className="space-y-2">
-                <div className="flex items-start gap-3">
-                  <button onClick={() => c.user?.username && navigate(`/u/${c.user.username}`)} className="relative flex-shrink-0">
-                    <Avatar className="h-9 w-9 hover:opacity-80 transition-opacity">
-                      <AvatarImage src={c.user?.avatar_url || undefined} className="object-cover" />
-                      <AvatarFallback className="gradient-primary text-white text-xs">
-                        {c.user?.username?.[0]?.toUpperCase() || '?'}
-                      </AvatarFallback>
-                    </Avatar>
-                    {c.user_id && <OnlineIndicator userId={c.user_id} className="absolute bottom-0 right-0 w-2.5 h-2.5" />}
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <button 
-                        onClick={() => c.user?.username && navigate(`/u/${c.user.username}`)}
-                        className="text-sm font-semibold hover:underline"
-                      >
-                        {c.user?.username || 'User'}
-                      </button>
-                      <span className="text-xs text-muted-foreground">{formatTimeAgo(c.created_at)}</span>
-                    </div>
-                    {isGif ? (
-                      <img src={gifUrl!} alt="GIF" className="mt-2 rounded-lg max-w-[200px] max-h-[200px] object-cover" />
-                    ) : (
-                      <div className="text-sm text-foreground whitespace-pre-wrap break-words mt-1">
-                        <CommentText text={c.content} />
+
+        {/* Mobile: Snap scroll, Desktop: Normal scroll with centered content */}
+        <div className="h-full overflow-y-auto snap-y snap-mandatory md:snap-none no-scrollbar pb-16 md:pb-0" style={{ scrollSnapType: 'y mandatory', scrollBehavior: 'smooth' }}>
+          {/* Desktop wrapper: flex column with centered items */}
+          <div className="md:flex md:flex-col md:items-start md:w-full md:mx-auto md:justify-start md:min-h-screen md:py-8 md:gap-8">
+            {hydratedGames?.map((game, index) => (
+              <div key={game.id} data-game-index={index} className="w-full snap-start snap-always md:snap-align-none flex items-center justify-center h-[calc(100vh-120px)] min-h-[calc(100dvh) sm:h-[calc(100vh)] sm:min-h-[calc(100dvh-120px)" style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
+                {/* Mobile: Full bleed, Desktop: Centered card with action buttons */}
+                <div className="relative w-full h-full md:w-auto md:h-auto md:flex md:items-center md:gap-6">
+                  {/* Card container - Desktop: Fixed size with stacked effect */}
+                  <div className="relative w-full h-full md:w-[424px] md:h-[760px]">
+                    <Card className="relative w-full h-full overflow-visible md:overflow-hidden rounded-none md:rounded-2xl border-0 md:border md:border-gray-200 md:shadow-lg bg-black md:bg-gray-300">
+                      <img
+                        src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
+                        alt={game.title}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent dark:from-black/95 dark:via-black/20 md:bg-gradient-to-b md:from-transparent md:via-transparent md:to-black/80" />
+
+                      {/* Remix button - top right */}
+                      <div className="absolute top-4 right-4 z-10">
+                        <button
+                          className="px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all duration-200"
+                          onClick={() => setRemixFor(game)}
+                        >
+                          <Sparkles className="w-4 h-4" strokeWidth={2} />
+                          Remix
+                        </button>
                       </div>
-                    )}
-                    <div className="flex items-center gap-4 mt-2">
-                      <button
-                        onClick={() => handleLikeComment(c.id)}
-                        className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors group"
-                      >
-                        <span className={`text-lg font-bold transition-colors ${likedComments.has(c.id) ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'}`}>+</span>
-                        <span className="text-muted-foreground">{c.likes_count || 0}</span>
-                      </button>
-                      <button
-                        onClick={() => setReplyingTo(c)}
-                        className="text-xs text-muted-foreground hover:text-primary transition-colors font-medium"
-                      >
-                        Reply
-                      </button>
-                      {replies.length > 0 && (
-                        <button
-                          onClick={() => setExpandedComments(prev => {
-                            const next = new Set(prev);
-                            if (next.has(c.id)) next.delete(c.id);
-                            else next.add(c.id);
-                            return next;
-                          })}
-                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors font-medium"
-                        >
-                          {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                          {isExpanded ? 'Hide' : 'View'} {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
-                        </button>
-                      )}
-                      {c.user_id === userId && (
-                        <button
-                          onClick={() => handleDeleteComment(c.id)}
-                          className="flex items-center gap-1 text-xs text-red-500 hover:text-red-600 transition-colors font-medium ml-auto"
-                          title="Delete comment"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                          Delete
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Nested replies */}
-                {isExpanded && replies.length > 0 && (
-                  <div className="ml-12 space-y-3 border-l-2 border-muted pl-4">
-                    {replies.map((r) => {
-                      const isReplyGif = r.content.startsWith('[GIF]');
-                      const replyGifUrl = isReplyGif ? r.content.substring(5) : null;
-                      
-                      return (
-                        <div key={r.id} className="flex items-start gap-3">
-                          <button onClick={() => r.user?.username && navigate(`/u/${r.user.username}`)} className="relative flex-shrink-0">
-                            <Avatar className="h-8 w-8 hover:opacity-80 transition-opacity">
-                              <AvatarImage src={r.user?.avatar_url || undefined} className="object-cover" />
-                              <AvatarFallback className="gradient-primary text-white text-xs">
-                                {r.user?.username?.[0]?.toUpperCase() || '?'}
-                              </AvatarFallback>
-                            </Avatar>
-                            {r.user_id && <OnlineIndicator userId={r.user_id} className="absolute bottom-0 right-0 w-2.5 h-2.5" />}
-                          </button>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <button 
-                                onClick={() => r.user?.username && navigate(`/u/${r.user.username}`)}
-                                className="text-sm font-semibold hover:underline"
-                              >
-                                {r.user?.username || 'User'}
-                              </button>
-                              <span className="text-xs text-muted-foreground">{formatTimeAgo(r.created_at)}</span>
-                            </div>
-                            {isReplyGif ? (
-                              <img src={replyGifUrl!} alt="GIF" className="mt-2 rounded-lg max-w-[180px] max-h-[180px] object-cover" />
-                            ) : (
-                              <div className="text-sm text-foreground whitespace-pre-wrap break-words mt-1">{r.content}</div>
-                            )}
-                            <div className="flex items-center gap-4 mt-2">
-                              <button
-                                onClick={() => handleLikeComment(r.id)}
-                                className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors group"
-                              >
-                                <span className={`text-lg font-bold transition-colors ${likedComments.has(r.id) ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'}`}>+</span>
-                                <span className="text-muted-foreground">{r.likes_count || 0}</span>
-                              </button>
-                              <button
-                                onClick={() => setReplyingTo(r)}
-                                className="text-xs text-muted-foreground hover:text-primary transition-colors font-medium"
-                              >
-                                Reply
-                              </button>
-                              {r.user_id === userId && (
+
+                      {/* Game info - bottom left - fixed position on mobile to avoid browser UI */}
+                      <div className="absolute left-0 right-[70px] md:right-[80px] bottom-6 md:bottom-2 p-3 md:p-5 text-white z-10">
+                        <div className="flex items-center gap-2 mb-2">
+                          <button
+                            className="flex items-center gap-2 hover:opacity-80 transition-opacity group"
+                            onClick={() => game.creator?.username && navigate(`/u/${game.creator.username}`)}
+                          >
+                            <div className="relative">
+                              <Avatar className="w-9 h-9 md:w-12 md:h-12 border-2 border-white/50 group-hover:border-white transition-colors">
+                                <AvatarImage src={game.creator?.avatar_url || undefined} className="object-cover" />
+                                <AvatarFallback className="gradient-primary text-white text-xs md:text-sm font-semibold">
+                                  {game.creator?.username?.[0]?.toUpperCase() || 'U'}
+                                </AvatarFallback>
+                              </Avatar>
+                              {/* Plus icon for follow - only show if not following */}
+                              {game.creator_id !== userId && !followedUsers.has(game.creator_id) && (
                                 <button
-                                  onClick={() => handleDeleteComment(r.id)}
-                                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-600 transition-colors font-medium ml-auto"
-                                  title="Delete comment"
+                                  className="absolute -bottom-0.5 -right-0.5 w-5 h-5 md:w-6 md:h-6 rounded-full gradient-primary flex items-center justify-center text-white shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 border-2 border-white"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleFollowUser(game.creator_id);
+                                  }}
                                 >
-                                  <Trash2 className="h-3 w-3" />
-                                  Delete
+                                  <span className="text-xs md:text-sm font-bold leading-none">+</span>
                                 </button>
                               )}
                             </div>
-                          </div>
+                            <span className="text-sm md:text-base font-bold drop-shadow-lg">@{game.creator?.username || 'creator'}</span>
+                          </button>
                         </div>
-                      );
-                    })}
+                        <div className="text-sm md:text-lg font-semibold leading-tight mb-1 drop-shadow-lg line-clamp-2">{game.title}</div>
+                        {game.description && (
+                          <div>
+                            <div className={`text-xs md:text-sm text-white/95 drop-shadow-md leading-snug ${expandedDescriptions.has(game.id) ? '' : 'line-clamp-2'}`}>
+                              <LinkifiedText text={game.description} />
+                            </div>
+                            {game.description.length > 80 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedDescriptions(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(game.id)) {
+                                      next.delete(game.id);
+                                    } else {
+                                      next.add(game.id);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                                className="text-xs md:text-sm font-semibold text-white/90 hover:text-white mt-1 drop-shadow-lg"
+                              >
+                                {expandedDescriptions.has(game.id) ? 'Less' : 'More'}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right action bar - Mobile only (desktop buttons are on right outside card) */}
+                      <div className="md:hidden absolute right-3 bottom-20 flex flex-col gap-3 items-center text-white z-30">
+                        {/* Play button - Purple gradient on desktop, primary on mobile */}
+                        <button
+                          aria-label="Play game"
+                          className="h-10 w-10 md:h-10 md:w-10 mb-2 rounded-full flex items-center justify-center gradient-primary md:bg-[#5B4AF4] text-white hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
+                          onClick={() => handlePlay(game)}
+                        >
+                          <Play className="h-5 w-5 md:h-5 md:w-5 fill-current md:ml-1" strokeWidth={2} />
+                        </button>
+
+                        {/* Like button */}
+                        <div className="flex flex-col items-center gap-0.5 md:gap-1">
+                          <button
+                            aria-label={likedGames.has(game.id) ? 'Unlike game' : 'Like game'}
+                            className={`h-10 w-10 md:h-10 md:w-10 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 ${likedGames.has(game.id)
+                                ? 'bg-transparent text-white'
+                                : 'bg-transparent md:bg-transparent text-white hover:bg-transparent'
+                              }`}
+                            onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
+                          >
+                            <Heart className={`h-7 w-7 md:h-8 md:w-8 hover:scale-110 active:scale-95 transition-all duration-200 ${likedGames.has(game.id)
+                                ? 'fill-red-500 stroke-red-500'
+                                : 'fill-none '
+                              }`} strokeWidth={2} />
+                          </button>
+                          <span className="text-[12px] md:text-xs font-bold text-white md:text-gray-500 drop-shadow-lg md:drop-shadow-none md:mt-1">{game.likes_count ?? 0}</span>
+                        </div>
+
+                        {/* Comments button */}
+                        <div className="flex flex-col items-center gap-0.5 md:gap-1">
+                          <button
+                            aria-label="View comments"
+                            className="h-10 w-10 md:h-10 md:w-10 rounded-full flex items-center justify-center bg-transparent md:backdrop-blur-sm text-white hover:scale-110 active:scale-95 transition-all duration-200"
+                            onClick={() => setCommentsOpenFor(game)}
+                          >
+                            <MessageCircle className="h-7 w-7 md:h-8 md:w-8 fill-none transform -scale-x-100" strokeWidth={2} />
+                          </button>
+                          <span className="text-[12px] md:text-xs font-bold text-white md:text-gray-500 drop-shadow-lg md:drop-shadow-none md:mt-0">
+                            {commentsOpenFor?.id === game.id ? comments.length : (game.comments_count || 0)}
+                          </span>
+                        </div>
+
+                        {/* Share button */}
+                        <div className="flex flex-col items-center">
+                          <button
+                            aria-label="Share game"
+                            className="h-12 w-12 md:h-12 md:w-12 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200"
+                            onClick={() => handleShare(game)}
+                          >
+                            <Share2 className="h-7 w-7 md:h-8 md:w-8 ml-[-2px]" strokeWidth={2} />
+                          </button>
+                        </div>
+                      </div>
+                    </Card>
+
+                    {/* Next card peek - Desktop only */}
+                    {index < hydratedGames.length - 1 && (
+                      <div className="hidden md:block absolute bottom-[-20px] left-0 right-0 h-20 rounded-t-3xl bg-gray-300 border border-gray-200 border-b-0 shadow-sm pointer-events-none z-[-1]">
+                        <div className="absolute inset-0 rounded-t-3xl overflow-hidden">
+                          <img
+                            src={hydratedGames[index + 1].cover_url || hydratedGames[index + 1].thumbnail_url || '/placeholder.svg'}
+                            alt=""
+                            className="w-full h-full object-cover opacity-40"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
+
+                  {/* Desktop: Action buttons on RIGHT */}
+                  <div className="hidden md:flex flex-col gap-4 items-center justify-end h-[calc(100vh_-_120px)] min-h-[calc(100dvh_-_120px)">
+                    {/* Play button */}
+                    <button
+                      aria-label="Play game"
+                      className="h-14 w-14 rounded-full flex items-center justify-center bg-[#5B4AF4] text-white hover:scale-110 active:scale-95 transition-all duration-200 shadow-xl hover:shadow-2xl"
+                      onClick={() => handlePlay(game)}
+                    >
+                      <Play className="h-6 w-6 fill-white ml-0.5" strokeWidth={0} />
+                    </button>
+
+                    {/* Like button */}
+                    <div className="flex flex-col items-center gap-1">
+                      <button
+                        aria-label={likedGames.has(game.id) ? 'Unlike game' : 'Like game'}
+                        className="h-14 w-14 rounded-full flex items-center justify-center bg-transparent text-gray-700 dark:text-white hover:scale-110 active:scale-95 transition-all duration-200"
+                        onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
+                      >
+                        <Heart className={`h-6 w-6 ${likedGames.has(game.id)
+                            ? 'fill-red-500 stroke-red-500'
+                            : 'fill-none stroke-gray-700 dark:stroke-white'
+                          }`} strokeWidth={2} />
+                      </button>
+                      <span className="text-sm font-bold text-gray-500 dark:text-gray-400">{game.likes_count ?? 0}</span>
+                    </div>
+
+                    {/* Comments button */}
+                    <div className="flex flex-col items-center gap-1">
+                      <button
+                        aria-label="View comments"
+                        className="h-14 w-14 rounded-full flex items-center justify-center bg-transparent text-gray-700 dark:text-white hover:scale-110 active:scale-95 transition-all duration-200"
+                        onClick={() => setCommentsOpenFor(game)}
+                      >
+                        <MessageCircle className="h-6 w-6 fill-none transform -scale-x-100 stroke-gray-700 dark:stroke-white" strokeWidth={2} />
+                      </button>
+                      <span className="text-sm font-bold text-gray-500 dark:text-gray-400">
+                        {commentsOpenFor?.id === game.id ? comments.length : (game.comments_count || 0)}
+                      </span>
+                    </div>
+
+                    {/* Share button */}
+                    <div className="flex flex-col items-center">
+                      <button
+                        aria-label="Share game"
+                        className="h-14 w-14 rounded-full flex items-center justify-center bg-transparent text-gray-700 dark:text-white hover:scale-110 active:scale-95 transition-all duration-200"
+                        onClick={() => handleShare(game)}
+                      >
+                        <Share2 className="h-6 w-6 ml-[-2px] stroke-gray-700 dark:stroke-white" strokeWidth={2} />
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
               </div>
-            );
-          })}
-          {comments.length === 0 && (
-            <div className="text-center py-12">
-              <MessageCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-              <div className="text-sm font-medium text-muted-foreground">No comments yet</div>
-              <div className="text-xs text-muted-foreground mt-1">Be the first to comment!</div>
+            ))}
+          </div>
+
+          {games?.length === 0 && (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center">
+                <h3 className="text-2xl font-bold mb-2 text-foreground">No games yet</h3>
+                <p className="text-muted-foreground">Be the first to create a game!</p>
+              </div>
             </div>
           )}
-        </div>
-        
-        {/* Unified input for both Mobile and Desktop */}
-        <div className="border-t px-4 md:px-6 py-3 md:py-4 pb-20 md:pb-4 bg-background flex-shrink-0">
-          {replyingTo && (
-            <div className="mb-2 flex items-center gap-2 text-xs bg-muted/50 md:bg-transparent px-3 md:px-0 py-2 md:py-0 rounded-lg md:rounded-none text-muted-foreground">
-              <span className="md:hidden">Replying to <span className="font-semibold text-foreground">@{replyingTo.user?.username}</span></span>
-              <span className="hidden md:inline">Replying to @{replyingTo.user?.username}</span>
-              <button onClick={() => setReplyingTo(null)} className="ml-auto text-primary hover:underline font-medium">
-                Cancel
-              </button>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            {/* Mobile: Show avatar */}
-            {userId && (
-              <Avatar className="h-8 w-8 flex-shrink-0 md:hidden">
-                <AvatarImage src={currentUserProfile?.avatar_url || undefined} className="object-cover" />
-                <AvatarFallback className="gradient-primary text-white text-xs">
-                  {currentUserProfile?.username?.[0]?.toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-            )}
-            
-            {/* Single GIF Picker Popover - button position changes based on screen size */}
-            <Popover open={gifPickerOpen} onOpenChange={setGifPickerOpen} modal={false}>
-              <PopoverTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  className="flex-shrink-0 md:order-first h-9 w-9 md:h-10 md:w-10"
-                  type="button"
-                >
-                  <Smile className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent 
-                className="w-[320px] p-0 max-h-[60vh] overflow-hidden" 
-                align="start" 
-                side="top" 
-                sideOffset={8}
-                onInteractOutside={(e) => {
-                  const target = e.target as HTMLElement;
-                  if (target.closest('[role="dialog"]')) {
-                    e.preventDefault();
-                  }
-                }}
-              >
-                <GifPicker onSelect={handleGifSelect} />
-              </PopoverContent>
-            </Popover>
-            
-            {/* Input field */}
-            <MentionInput
-              placeholder={replyingTo ? "Write a reply... (@ for users, + for games)" : "Add a comment... (@ for users, + for games)"}
-              value={newComment}
-              onChange={setNewComment}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey && newComment.trim()) {
-                  e.preventDefault();
-                  handleSendComment();
-                }
-              }}
-              className="flex-1 order-first md:order-none"
-            />
-            
-            {/* Send button */}
-            <Button 
-              onClick={handleSendComment} 
-              disabled={!newComment.trim()}
-              size="sm"
-              className="gradient-primary font-semibold md:font-normal"
-            >
-              {replyingTo ? 'Reply' : (
-                <span className="md:hidden">Post</span>
-              )}
-              <span className="hidden md:inline">{replyingTo ? 'Reply' : 'Send'}</span>
-            </Button>
+          <div ref={sentinelRef} className="h-24 flex items-center justify-center">
+            {isFetchingNextPage && <Loader2 className="h-6 w-6 animate-spin text-purple-600 dark:text-purple-400" />}
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
-    {/* Remix Dialog */}
-    <Dialog open={!!remixFor} onOpenChange={(o) => !o && setRemixFor(null)}>
-      <DialogContent className="sm:max-w-[520px]">
-        <DialogHeader>
-          <DialogTitle>Remix game{remixFor ? `: ${remixFor.title}` : ''}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <Input
-            placeholder="New title (optional)"
-            value={remixTitle}
-            onChange={(e) => setRemixTitle(e.target.value)}
-          />
-          <Input
-            placeholder="Describe your remix idea (prompt)"
-            value={remixPrompt}
-            onChange={(e) => setRemixPrompt(e.target.value)}
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setRemixFor(null)} disabled={isRemixing}>Cancel</Button>
-          <Button onClick={handleSubmitRemix} disabled={!remixPrompt.trim() || isRemixing}>
-            {isRemixing ? (<><Loader2 className="h-4 w-4 animate-spin mr-2"/>Publishing...</>) : 'Publish Remix'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+
+
+      {/* Comments Panel */}
+      <Sheet open={!!commentsOpenFor} onOpenChange={(o) => {
+        if (!o) {
+          setCommentsOpenFor(null);
+          setReplyingTo(null);
+        }
+      }}>
+        <SheetContent side="right" className="w-full sm:w-[420px] md:w-[480px] flex flex-col p-0 h-full">
+          {/* Mobile: Instagram/TikTok style with profile header */}
+          {/* Desktop: Simple header with just title */}
+          <div className="md:hidden px-4 py-3 border-b flex items-center gap-3 flex-shrink-0 bg-background">
+            <button
+              onClick={() => commentsOpenFor?.creator?.username && navigate(`/u/${commentsOpenFor.creator.username}`)}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
+              <Avatar className="h-10 w-10 border-2 border-muted">
+                <AvatarImage src={commentsOpenFor?.creator?.avatar_url || undefined} className="object-cover" />
+                <AvatarFallback className="gradient-primary text-white text-sm font-semibold">
+                  {commentsOpenFor?.creator?.username?.[0]?.toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col items-start">
+                <span className="text-sm font-bold">@{commentsOpenFor?.creator?.username || 'creator'}</span>
+                <span className="text-xs text-muted-foreground">{comments.length} {comments.length === 1 ? 'comment' : 'comments'}</span>
+              </div>
+            </button>
+            {commentsOpenFor?.creator_id && commentsOpenFor.creator_id !== userId && (
+              <Button
+                size="sm"
+                variant={followedUsers.has(commentsOpenFor.creator_id) ? "outline" : "default"}
+                className={followedUsers.has(commentsOpenFor.creator_id) ? "" : "gradient-primary"}
+                onClick={() => handleFollowUser(commentsOpenFor.creator_id)}
+              >
+                {followedUsers.has(commentsOpenFor.creator_id) ? 'Following' : 'Follow'}
+              </Button>
+            )}
+            {/* Spacer to push close button to the right and prevent overlap */}
+            <div className="flex-1" />
+          </div>
+
+          {/* Desktop: Simple header */}
+          <div className="hidden md:block px-6 py-4 border-b flex-shrink-0 bg-background">
+            <h3 className="text-lg font-semibold">Comments ({comments.length})</h3>
+          </div>
+
+          {/* Scrollable comments area */}
+          <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 space-y-4 smooth-scroll-mobile">
+            {comments.filter(c => !c.parent_comment_id).map((c) => {
+              const replies = comments.filter(r => r.parent_comment_id === c.id);
+              const isExpanded = expandedComments.has(c.id);
+              const isGif = c.content.startsWith('[GIF]');
+              const gifUrl = isGif ? c.content.substring(5) : null;
+
+              return (
+                <div key={c.id} className="space-y-2">
+                  <div className="flex items-start gap-3">
+                    <button onClick={() => c.user?.username && navigate(`/u/${c.user.username}`)} className="relative flex-shrink-0">
+                      <Avatar className="h-9 w-9 hover:opacity-80 transition-opacity">
+                        <AvatarImage src={c.user?.avatar_url || undefined} className="object-cover" />
+                        <AvatarFallback className="gradient-primary text-white text-xs">
+                          {c.user?.username?.[0]?.toUpperCase() || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      {c.user_id && <OnlineIndicator userId={c.user_id} className="absolute bottom-0 right-0 w-2.5 h-2.5" />}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => c.user?.username && navigate(`/u/${c.user.username}`)}
+                          className="text-sm font-semibold hover:underline"
+                        >
+                          {c.user?.username || 'User'}
+                        </button>
+                        <span className="text-xs text-muted-foreground">{formatTimeAgo(c.created_at)}</span>
+                      </div>
+                      {isGif ? (
+                        <img src={gifUrl!} alt="GIF" className="mt-2 rounded-lg max-w-[200px] max-h-[200px] object-cover" />
+                      ) : (
+                        <div className="text-sm text-foreground whitespace-pre-wrap break-words mt-1">
+                          <CommentText text={c.content} />
+                        </div>
+                      )}
+                      <div className="flex items-center gap-4 mt-2">
+                        <button
+                          onClick={() => handleLikeComment(c.id)}
+                          className="flex items-center gap-1.5 text-xs hover:text-white transition-colors group"
+                        >
+                          <span className={`text-lg font-bold transition-colors ${likedComments.has(c.id) ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'}`}>+</span>
+                          <span className="text-muted-foreground">{c.likes_count || 0}</span>
+                        </button>
+                        <button
+                          onClick={() => setReplyingTo(c)}
+                          className="text-xs text-muted-foreground hover:text-primary transition-colors font-medium"
+                        >
+                          Reply
+                        </button>
+                        {replies.length > 0 && (
+                          <button
+                            onClick={() => setExpandedComments(prev => {
+                              const next = new Set(prev);
+                              if (next.has(c.id)) next.delete(c.id);
+                              else next.add(c.id);
+                              return next;
+                            })}
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors font-medium"
+                          >
+                            {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                            {isExpanded ? 'Hide' : 'View'} {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
+                          </button>
+                        )}
+                        {c.user_id === userId && (
+                          <button
+                            onClick={() => handleDeleteComment(c.id)}
+                            className="flex items-center gap-1 text-xs text-red-500 hover:text-red-600 transition-colors font-medium ml-auto"
+                            title="Delete comment"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Nested replies */}
+                  {isExpanded && replies.length > 0 && (
+                    <div className="ml-12 space-y-3 border-l-2 border-muted pl-4">
+                      {replies.map((r) => {
+                        const isReplyGif = r.content.startsWith('[GIF]');
+                        const replyGifUrl = isReplyGif ? r.content.substring(5) : null;
+
+                        return (
+                          <div key={r.id} className="flex items-start gap-3">
+                            <button onClick={() => r.user?.username && navigate(`/u/${r.user.username}`)} className="relative flex-shrink-0">
+                              <Avatar className="h-8 w-8 hover:opacity-80 transition-opacity">
+                                <AvatarImage src={r.user?.avatar_url || undefined} className="object-cover" />
+                                <AvatarFallback className="gradient-primary text-white text-xs">
+                                  {r.user?.username?.[0]?.toUpperCase() || '?'}
+                                </AvatarFallback>
+                              </Avatar>
+                              {r.user_id && <OnlineIndicator userId={r.user_id} className="absolute bottom-0 right-0 w-2.5 h-2.5" />}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => r.user?.username && navigate(`/u/${r.user.username}`)}
+                                  className="text-sm font-semibold hover:underline"
+                                >
+                                  {r.user?.username || 'User'}
+                                </button>
+                                <span className="text-xs text-muted-foreground">{formatTimeAgo(r.created_at)}</span>
+                              </div>
+                              {isReplyGif ? (
+                                <img src={replyGifUrl!} alt="GIF" className="mt-2 rounded-lg max-w-[180px] max-h-[180px] object-cover" />
+                              ) : (
+                                <div className="text-sm text-foreground whitespace-pre-wrap break-words mt-1">{r.content}</div>
+                              )}
+                              <div className="flex items-center gap-4 mt-2">
+                                <button
+                                  onClick={() => handleLikeComment(r.id)}
+                                  className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors group"
+                                >
+                                  <span className={`text-lg font-bold transition-colors ${likedComments.has(r.id) ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'}`}>+</span>
+                                  <span className="text-muted-foreground">{r.likes_count || 0}</span>
+                                </button>
+                                <button
+                                  onClick={() => setReplyingTo(r)}
+                                  className="text-xs text-muted-foreground hover:text-primary transition-colors font-medium"
+                                >
+                                  Reply
+                                </button>
+                                {r.user_id === userId && (
+                                  <button
+                                    onClick={() => handleDeleteComment(r.id)}
+                                    className="flex items-center gap-1 text-xs text-red-500 hover:text-red-600 transition-colors font-medium ml-auto"
+                                    title="Delete comment"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                    Delete
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {comments.length === 0 && (
+              <div className="text-center py-12">
+                <MessageCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                <div className="text-sm font-medium text-muted-foreground">No comments yet</div>
+                <div className="text-xs text-muted-foreground mt-1">Be the first to comment!</div>
+              </div>
+            )}
+          </div>
+
+          {/* Unified input for both Mobile and Desktop */}
+          <div className="border-t px-4 md:px-6 py-3 md:py-4 pb-20 md:pb-4 bg-background flex-shrink-0">
+            {replyingTo && (
+              <div className="mb-2 flex items-center gap-2 text-xs bg-muted/50 md:bg-transparent px-3 md:px-0 py-2 md:py-0 rounded-lg md:rounded-none text-muted-foreground">
+                <span className="md:hidden">Replying to <span className="font-semibold text-foreground">@{replyingTo.user?.username}</span></span>
+                <span className="hidden md:inline">Replying to @{replyingTo.user?.username}</span>
+                <button onClick={() => setReplyingTo(null)} className="ml-auto text-primary hover:underline font-medium">
+                  Cancel
+                </button>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              {/* Mobile: Show avatar */}
+              {userId && (
+                <Avatar className="h-8 w-8 flex-shrink-0 md:hidden">
+                  <AvatarImage src={currentUserProfile?.avatar_url || undefined} className="object-cover" />
+                  <AvatarFallback className="gradient-primary text-white text-xs">
+                    {currentUserProfile?.username?.[0]?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+
+              {/* Single GIF Picker Popover - button position changes based on screen size */}
+              <Popover open={gifPickerOpen} onOpenChange={setGifPickerOpen} modal={false}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="flex-shrink-0 md:order-first h-9 w-9 md:h-10 md:w-10"
+                    type="button"
+                  >
+                    <Smile className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-[320px] p-0 max-h-[60vh] overflow-hidden"
+                  align="start"
+                  side="top"
+                  sideOffset={8}
+                  onInteractOutside={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (target.closest('[role="dialog"]')) {
+                      e.preventDefault();
+                    }
+                  }}
+                >
+                  <GifPicker onSelect={handleGifSelect} />
+                </PopoverContent>
+              </Popover>
+
+              {/* Input field */}
+              <MentionInput
+                placeholder={replyingTo ? "Write a reply... (@ for users, + for games)" : "Add a comment... (@ for users, + for games)"}
+                value={newComment}
+                onChange={setNewComment}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && newComment.trim()) {
+                    e.preventDefault();
+                    handleSendComment();
+                  }
+                }}
+                className="flex-1 order-first md:order-none"
+              />
+
+              {/* Send button */}
+              <Button
+                onClick={handleSendComment}
+                disabled={!newComment.trim()}
+                size="sm"
+                className="gradient-primary font-semibold md:font-normal"
+              >
+                {replyingTo ? 'Reply' : (
+                  <span className="md:hidden">Post</span>
+                )}
+                <span className="hidden md:inline">{replyingTo ? 'Reply' : 'Send'}</span>
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+      {/* Remix Dialog */}
+      <Dialog open={!!remixFor} onOpenChange={(o) => !o && setRemixFor(null)}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Remix game{remixFor ? `: ${remixFor.title}` : ''}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              placeholder="New title (optional)"
+              value={remixTitle}
+              onChange={(e) => setRemixTitle(e.target.value)}
+            />
+            <Input
+              placeholder="Describe your remix idea (prompt)"
+              value={remixPrompt}
+              onChange={(e) => setRemixPrompt(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRemixFor(null)} disabled={isRemixing}>Cancel</Button>
+            <Button onClick={handleSubmitRemix} disabled={!remixPrompt.trim() || isRemixing}>
+              {isRemixing ? (<><Loader2 className="h-4 w-4 animate-spin mr-2" />Publishing...</>) : 'Publish Remix'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
