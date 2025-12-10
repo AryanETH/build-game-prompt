@@ -192,8 +192,8 @@ export async function isSubscribed(): Promise<boolean> {
 export function showLocalNotification(title: string, options?: NotificationOptions) {
   if ('Notification' in window && Notification.permission === 'granted') {
     new Notification(title, {
-      icon: '/notification-icon.svg',
-      badge: '/icon-192x192.png',
+      icon: '/Oplus only.png',
+      badge: '/Oplus only.png',
       ...options
     });
   }

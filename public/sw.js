@@ -5,10 +5,12 @@ self.addEventListener('push', function(event) {
   let notificationData = {
     title: 'New Notification',
     body: 'You have a new notification',
-    icon: '/notification-icon.svg',
-    badge: '/notification-icon.svg',
+    icon: '/Oplus only.png',
+    badge: '/Oplus only.png',
+    image: null,
     tag: 'default',
-    data: {}
+    data: {},
+    actions: []
   };
 
   if (event.data) {
@@ -19,8 +21,10 @@ self.addEventListener('push', function(event) {
         body: data.body || notificationData.body,
         icon: data.icon || notificationData.icon,
         badge: data.badge || notificationData.badge,
+        image: data.image || notificationData.image,
         tag: data.tag || notificationData.tag,
-        data: data.data || {}
+        data: data.data || {},
+        actions: data.actions || notificationData.actions
       };
     } catch (e) {
       console.error('Error parsing push data:', e);
@@ -33,17 +37,18 @@ self.addEventListener('push', function(event) {
       body: notificationData.body,
       icon: notificationData.icon,
       badge: notificationData.badge,
+      image: notificationData.image,
       tag: notificationData.tag,
       data: notificationData.data,
       requireInteraction: true,
-      actions: [
+      actions: notificationData.actions.length > 0 ? notificationData.actions : [
         {
           action: 'open',
-          title: 'Open App'
+          title: '🚀 Open App'
         },
         {
           action: 'close',
-          title: 'Close'
+          title: '✕ Close'
         }
       ]
     }

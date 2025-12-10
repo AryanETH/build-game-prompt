@@ -4,13 +4,17 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { toast } from 'sonner';
-import { sendPushToAllUsers, NotificationTemplates } from '@/lib/sendPushNotification';
+import { sendPushToAllUsers, sendPushToSelectedUsers, NotificationTemplates } from '@/lib/sendPushNotification';
 import { showLocalNotification } from '@/lib/pushNotifications';
+import { UserSelector } from './UserSelector';
 
 export const NotificationTester = () => {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
   const [loading, setLoading] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [sendMode, setSendMode] = useState<'all' | 'selected'>('all');
 
   const handleSendCustom = async () => {
     if (!title.trim() || !body.trim()) {
@@ -18,14 +22,39 @@ export const NotificationTester = () => {
       return;
     }
 
+    if (sendMode === 'selected' && selectedUsers.length === 0) {
+      toast.error('Please select at least one user');
+      return;
+    }
+
     setLoading(true);
     try {
-      // For now, just show local notification
-      showLocalNotification(title, { body });
-      toast.success('Test notification sent!');
-      
-      // In production, you would call:
-      // await sendPushToAllUsers(NotificationTemplates.custom(title, body));
+      // Show local notification for testing
+      showLocalNotification(title, { 
+        body,
+        icon: '/Oplus only.png',
+        image: imageUrl || undefined
+      });
+
+      // Send to selected users or all users
+      const payload = NotificationTemplates.custom(title, body, { image: imageUrl });
+      let result;
+
+      if (sendMode === 'all') {
+        result = await sendPushToAllUsers(payload);
+        if (result.success) {
+          toast.success(`Notification sent to ${result.sent}/${result.total} users!`);
+        } else {
+          toast.error('Failed to send notifications');
+        }
+      } else {
+        result = await sendPushToSelectedUsers(selectedUsers, payload);
+        if (result.success) {
+          toast.success(`Notification sent to ${result.sent}/${result.total} subscribed users (${result.selectedCount} selected)!`);
+        } else {
+          toast.error(result.message || 'Failed to send notifications');
+        }
+      }
     } catch (error) {
       console.error('Error sending notification:', error);
       toast.error('Failed to send notification');
@@ -37,17 +66,29 @@ export const NotificationTester = () => {
   const handleSendTemplate = (template: any) => {
     showLocalNotification(template.title, { 
       body: template.body,
+      icon: template.icon,
+      image: template.image,
       tag: template.tag 
     });
     toast.success('Template notification sent!');
   };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>🔔 Notification Tester</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-4">
+      {/* User Selector */}
+      <UserSelector
+        selectedUsers={selectedUsers}
+        onSelectionChange={setSelectedUsers}
+        sendMode={sendMode}
+        onSendModeChange={setSendMode}
+      />
+
+      {/* Notification Tester */}
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>🔔 Notification Tester</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
         {/* Custom Notification */}
         <div className="space-y-2">
           <h3 className="font-semibold">Custom Notification</h3>
@@ -61,6 +102,11 @@ export const NotificationTester = () => {
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={3}
+          />
+          <Input
+            placeholder="Image URL (optional)"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
           />
           <Button 
             onClick={handleSendCustom}
@@ -79,7 +125,7 @@ export const NotificationTester = () => {
               variant="outline"
               size="sm"
               onClick={() => handleSendTemplate(
-                NotificationTemplates.newLike('John', 'Space Adventure')
+                NotificationTemplates.newLike('John', 'Space Adventure', '/placeholder.svg')
               )}
             >
               Test Like Notification
@@ -88,7 +134,7 @@ export const NotificationTester = () => {
               variant="outline"
               size="sm"
               onClick={() => handleSendTemplate(
-                NotificationTemplates.newComment('Sarah', 'Racing Game')
+                NotificationTemplates.newComment('Sarah', 'Racing Game', '/placeholder.svg')
               )}
             >
               Test Comment Notification
@@ -97,7 +143,7 @@ export const NotificationTester = () => {
               variant="outline"
               size="sm"
               onClick={() => handleSendTemplate(
-                NotificationTemplates.newFollower('Mike')
+                NotificationTemplates.newFollower('Mike', '/placeholder.svg')
               )}
             >
               Test Follow Notification
@@ -106,14 +152,24 @@ export const NotificationTester = () => {
               variant="outline"
               size="sm"
               onClick={() => handleSendTemplate(
-                NotificationTemplates.gamePublished('My Awesome Game')
+                NotificationTemplates.gamePublished('My Awesome Game', '/placeholder.svg')
               )}
             >
               Test Publish Notification
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleSendTemplate(
+                NotificationTemplates.broadcast('Welcome to Oplus!', 'Start creating amazing games today', '/Oplus full logo.png')
+              )}
+            >
+              Test Broadcast Notification
             </Button>
           </div>
         </div>
       </CardContent>
     </Card>
+    </div>
   );
 };

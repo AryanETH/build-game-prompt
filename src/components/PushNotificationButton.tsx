@@ -38,9 +38,10 @@ export const PushNotificationButton = () => {
         toast.success('Push notifications enabled!');
         
         // Show a test notification
-        showLocalNotification('Welcome!', {
+        showLocalNotification('Welcome to Oplus!', {
           body: 'You will now receive push notifications',
-          icon: '/notification-icon.svg'
+          icon: '/Oplus only.png',
+          image: '/Oplus full logo.png'
         });
       } else {
         toast.error('Failed to enable notifications');
@@ -72,9 +73,10 @@ export const PushNotificationButton = () => {
   };
 
   const handleTestNotification = () => {
-    showLocalNotification('Test Notification', {
+    showLocalNotification('🎮 Test from Oplus!', {
       body: 'This is a test notification from your game app!',
-      icon: '/notification-icon.svg',
+      icon: '/Oplus only.png',
+      image: '/Oplus full logo.png',
       tag: 'test'
     });
   };

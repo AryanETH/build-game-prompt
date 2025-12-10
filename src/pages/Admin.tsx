@@ -11,6 +11,7 @@ import { Logo } from "@/components/Logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PushNotificationButton } from "@/components/PushNotificationButton";
 import { NotificationTester } from "@/components/NotificationTester";
+import { NotificationStats } from "@/components/NotificationStats";
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -1554,12 +1555,17 @@ export default function Admin() {
                 <h3 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-black'}`}>
                   Push Notifications
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h4 className={`text-lg font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
-                      Enable/Disable
-                    </h4>
-                    <PushNotificationButton />
+                <div className="space-y-6">
+                  {/* Notification Statistics */}
+                  <NotificationStats />
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className={`text-lg font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                        Enable/Disable
+                      </h4>
+                      <PushNotificationButton />
+                    </div>
                   </div>
                   <div>
                     <NotificationTester />
