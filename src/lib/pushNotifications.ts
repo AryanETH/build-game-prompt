@@ -30,7 +30,37 @@ function urlBase64ToUint8Array(base64String: string) {
 
 // Check if push notifications are supported
 export function isPushSupported(): boolean {
-  return 'serviceWorker' in navigator && 'PushManager' in window;
+  // Check for HTTPS (required for push notifications)
+  const isSecure = location.protocol === 'https:' || location.hostname === 'localhost';
+  
+  // Check for required APIs
+  const hasServiceWorker = 'serviceWorker' in navigator;
+  const hasPushManager = 'PushManager' in window;
+  const hasNotification = 'Notification' in window;
+  
+  return isSecure && hasServiceWorker && hasPushManager && hasNotification;
+}
+
+// Get detailed support information
+export function getPushSupportDetails() {
+  const isSecure = location.protocol === 'https:' || location.hostname === 'localhost';
+  const hasServiceWorker = 'serviceWorker' in navigator;
+  const hasPushManager = 'PushManager' in window;
+  const hasNotification = 'Notification' in window;
+  
+  return {
+    isSecure,
+    hasServiceWorker,
+    hasPushManager,
+    hasNotification,
+    isSupported: isSecure && hasServiceWorker && hasPushManager && hasNotification,
+    issues: [
+      !isSecure && 'Requires HTTPS (or localhost)',
+      !hasServiceWorker && 'Service Worker not supported',
+      !hasPushManager && 'Push Manager not supported',
+      !hasNotification && 'Notifications not supported'
+    ].filter(Boolean)
+  };
 }
 
 // Request notification permission

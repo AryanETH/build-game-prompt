@@ -7,6 +7,7 @@ import {
   unsubscribeFromPush, 
   isSubscribed, 
   isPushSupported,
+  getPushSupportDetails,
   showLocalNotification 
 } from '@/lib/pushNotifications';
 
@@ -14,13 +15,16 @@ export const PushNotificationButton = () => {
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [supported, setSupported] = useState(false);
+  const [supportDetails, setSupportDetails] = useState<any>(null);
 
   useEffect(() => {
     // Check if push notifications are supported
-    setSupported(isPushSupported());
+    const details = getPushSupportDetails();
+    setSupported(details.isSupported);
+    setSupportDetails(details);
     
     // Check current subscription status
-    if (isPushSupported()) {
+    if (details.isSupported) {
       isSubscribed().then(setSubscribed);
     }
   }, []);
@@ -77,8 +81,18 @@ export const PushNotificationButton = () => {
 
   if (!supported) {
     return (
-      <div className="text-sm text-muted-foreground">
-        Push notifications not supported in this browser
+      <div className="space-y-2">
+        <div className="text-sm text-red-500 font-medium">
+          Push notifications not supported
+        </div>
+        {supportDetails?.issues && (
+          <div className="text-xs text-muted-foreground">
+            Issues: {supportDetails.issues.join(', ')}
+          </div>
+        )}
+        <div className="text-xs text-muted-foreground">
+          Try using Chrome, Firefox, or Safari on HTTPS
+        </div>
       </div>
     );
   }
