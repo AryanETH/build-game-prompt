@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,44 @@ export const MobileSidebar = ({ hideButton = false }: { hideButton?: boolean }) 
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const [userProfile, setUserProfile] = useState<any>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      
+      // Fetch user profile for avatar
+      if (data.user?.id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('avatar_url, username, name')
+          .eq('id', data.user.id)
+          .single();
+        setUserProfile(profile);
+        
+        // Subscribe to profile changes for real-time updates
+        const profileChannel = supabase
+          .channel('mobile-profile-changes')
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'profiles',
+              filter: `id=eq.${data.user.id}`,
+            },
+            (payload) => {
+              setUserProfile(payload.new);
+            }
+          )
+          .subscribe();
+
+        return () => {
+          profileChannel.unsubscribe();
+        };
+      }
+    })();
+  }, []);
 
   const navItems = [
     { icon: Play, label: "Play Feed", path: "/feed" },
@@ -85,6 +123,8 @@ export const MobileSidebar = ({ hideButton = false }: { hideButton?: boolean }) 
           <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
             {navItems.map(({ icon: Icon, label, path }) => {
               const active = isActive(path);
+              const isProfileItem = path === "/profile";
+              
               return (
                 <button
                   key={path}
@@ -95,12 +135,26 @@ export const MobileSidebar = ({ hideButton = false }: { hideButton?: boolean }) 
                       : "text-foreground hover:bg-muted/50 hover:text-primary dark:hover:text-primary"
                   }`}
                 >
-                  <Icon 
-                    className={`h-5 w-5 transition-transform duration-200 ${
+                  {isProfileItem && userProfile ? (
+                    <Avatar className={`h-6 w-6 transition-all duration-200 ${
                       active ? "scale-110" : "group-hover:scale-110"
-                    }`} 
-                    strokeWidth={active ? 2.5 : 2}
-                  />
+                    } ${active ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "group-hover:ring-1 group-hover:ring-primary/50 group-hover:ring-offset-1 group-hover:ring-offset-background"}`}>
+                      <AvatarImage 
+                        className="object-cover" 
+                        src={userProfile.avatar_url || undefined} 
+                      />
+                      <AvatarFallback className="gradient-primary text-white text-xs font-semibold">
+                        {userProfile.name?.[0]?.toUpperCase() || userProfile.username?.[0]?.toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <Icon 
+                      className={`h-5 w-5 transition-transform duration-200 ${
+                        active ? "scale-110" : "group-hover:scale-110"
+                      }`} 
+                      strokeWidth={active ? 2.5 : 2}
+                    />
+                  )}
                   <span className="text-sm">{label}</span>
                 </button>
               );

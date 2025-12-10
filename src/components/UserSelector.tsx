@@ -7,7 +7,7 @@ import { Checkbox } from './ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { Badge } from './ui/badge';
-import { Search, Users, UserCheck, UserX } from 'lucide-react';
+import { Search, Users, UserCheck, UserX, Bell, BellOff, RefreshCw } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 
 interface User {
@@ -17,6 +17,7 @@ interface User {
   created_at: string;
   total_plays?: number;
   total_likes?: number;
+  isSubscribed?: boolean;
 }
 
 interface UserSelectorProps {
@@ -33,28 +34,71 @@ export const UserSelector = ({
   sendMode 
 }: UserSelectorProps) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [showOnlySubscribed, setShowOnlySubscribed] = useState(false);
 
-  // Fetch all users
-  const { data: users = [], isLoading } = useQuery({
+  // Fetch all users with subscription status
+  const { data: users = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ['users', 'all'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First get all users
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, username, avatar_url, created_at, total_plays, total_likes')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching users:', error);
+      if (profilesError) {
+        console.error('Error fetching users:', profilesError);
         return [];
       }
-      return data as User[];
+
+      // Then get subscription status
+      const { data: subscriptions, error: subscriptionsError } = await supabase
+        .from('push_subscriptions')
+        .select('user_id');
+
+      if (subscriptionsError) {
+        console.error('Error fetching subscriptions:', subscriptionsError);
+      }
+
+      const subscribedUserIds = new Set(subscriptions?.map(s => s.user_id) || []);
+
+      return profiles.map(user => ({
+        ...user,
+        isSubscribed: subscribedUserIds.has(user.id)
+      })) as (User & { isSubscribed: boolean })[];
     },
+    refetchInterval: 5000, // Refetch every 5 seconds to keep data fresh
   });
 
-  // Filter users based on search term
-  const filteredUsers = users.filter(user =>
-    user.username.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Subscribe to real-time changes in push subscriptions
+  useEffect(() => {
+    const subscriptionChannel = supabase
+      .channel('push-subscriptions-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'push_subscriptions',
+        },
+        () => {
+          // Refetch users data when subscriptions change
+          refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscriptionChannel.unsubscribe();
+    };
+  }, [refetch]);
+
+  // Filter users based on search term and subscription status
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.username.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSubscription = showOnlySubscribed ? user.isSubscribed : true;
+    return matchesSearch && matchesSubscription;
+  });
 
   const handleUserToggle = (userId: string) => {
     const newSelection = selectedUsers.includes(userId)
@@ -71,19 +115,8 @@ export const UserSelector = ({
     onSelectionChange([]);
   };
 
-  const getSubscribedUsersCount = async () => {
-    const { data, error } = await supabase
-      .from('push_subscriptions')
-      .select('user_id', { count: 'exact' });
-    
-    return error ? 0 : (data?.length || 0);
-  };
-
-  const [subscribedCount, setSubscribedCount] = useState(0);
-
-  useEffect(() => {
-    getSubscribedUsersCount().then(setSubscribedCount);
-  }, []);
+  // Calculate subscribed count from users data
+  const subscribedCount = users.filter(user => user.isSubscribed).length;
 
   return (
     <Card className="w-full">
@@ -91,6 +124,9 @@ export const UserSelector = ({
         <CardTitle className="flex items-center gap-2">
           <Users className="h-5 w-5" />
           Select Recipients
+          {isFetching && (
+            <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+          )}
         </CardTitle>
         <div className="flex gap-2">
           <Button
@@ -116,15 +152,32 @@ export const UserSelector = ({
 
       {sendMode === 'selected' && (
         <CardContent className="space-y-4">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search users..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+          {/* Search and Filters */}
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search users..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant={showOnlySubscribed ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setShowOnlySubscribed(!showOnlySubscribed)}
+                className="flex items-center gap-2"
+              >
+                <Bell className="h-4 w-4" />
+                {showOnlySubscribed ? 'Showing Subscribed Only' : 'Show Subscribed Only'}
+              </Button>
+              <div className="text-xs text-muted-foreground">
+                {subscribedCount} of {users.length} users subscribed
+              </div>
+            </div>
           </div>
 
           {/* Bulk Actions */}
@@ -189,7 +242,9 @@ export const UserSelector = ({
                 {filteredUsers.map((user) => (
                   <div
                     key={user.id}
-                    className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer"
+                    className={`flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer ${
+                      !user.isSubscribed ? 'opacity-60' : ''
+                    }`}
                     onClick={() => handleUserToggle(user.id)}
                   >
                     <Checkbox
@@ -203,11 +258,23 @@ export const UserSelector = ({
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">
-                        @{user.username}
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-medium truncate">
+                          @{user.username}
+                        </div>
+                        {user.isSubscribed ? (
+                          <Bell className="h-3 w-3 text-green-500" title="Subscribed to notifications" />
+                        ) : (
+                          <BellOff className="h-3 w-3 text-gray-400" title="Not subscribed to notifications" />
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {user.total_plays || 0} plays • {user.total_likes || 0} likes
+                        {user.isSubscribed ? (
+                          <span className="text-green-600 ml-2">• Will receive notifications</span>
+                        ) : (
+                          <span className="text-gray-500 ml-2">• Won't receive notifications</span>
+                        )}
                       </div>
                     </div>
                     <div className="text-xs text-muted-foreground">

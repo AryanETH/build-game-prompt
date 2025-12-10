@@ -19,11 +19,32 @@ export const MobileBottomNav = () => {
 
     const { data } = await supabase
       .from('profiles')
-      .select('avatar_url, username')
+      .select('avatar_url, username, name')
       .eq('id', user.id)
       .single();
 
     setProfile(data);
+
+    // Subscribe to profile changes for real-time updates
+    const profileChannel = supabase
+      .channel('bottom-nav-profile-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          setProfile(payload.new);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      profileChannel.unsubscribe();
+    };
   };
 
   const navItems = [
@@ -57,10 +78,12 @@ export const MobileBottomNav = () => {
               }`}
             >
               {isProfile && profile ? (
-                <Avatar className={`h-6 w-6 ${active ? 'ring-2 ring-primary scale-110' : ''}`}>
+                <Avatar className={`h-6 w-6 transition-all duration-200 ${
+                  active ? 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-110' : 'hover:scale-105'
+                }`}>
                   <AvatarImage src={profile.avatar_url || undefined} className="object-cover" />
-                  <AvatarFallback className="text-xs">
-                    {profile.username?.[0]?.toUpperCase() || 'U'}
+                  <AvatarFallback className="gradient-primary text-white text-xs font-semibold">
+                    {profile.name?.[0]?.toUpperCase() || profile.username?.[0]?.toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
               ) : (
