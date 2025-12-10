@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { GamePlayer } from "./GamePlayer";
-import { Loader2, Heart, MessageCircle, Share2, Play, Sparkles, Smile, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { Loader2, Heart, MessageCircle, Share2, Play, Sparkles, Smile, ChevronDown, ChevronUp, Trash2, Volume2, VolumeX } from "lucide-react";
 import { playClick, playSuccess, playError } from "@/lib/sounds";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/activityLogger";
@@ -41,6 +41,11 @@ interface Game {
   original_game_id?: string | null;
   country?: string | null;
   city?: string | null;
+  // Immersive media fields
+  background_sound_url?: string | null;
+  media_type?: 'image' | 'video' | 'gif' | null;
+  media_url?: string | null;
+  media_duration?: number | null;
 }
 
 type GameWithCreator = Game & {
@@ -74,10 +79,16 @@ export const GameFeed = () => {
   const [followedUsers, setFollowedUsers] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
   const [currentGameIndex, setCurrentGameIndex] = useState(0);
+  const [mutedGames, setMutedGames] = useState<Set<string>>(new Set());
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+  const [preloadedVideos, setPreloadedVideos] = useState<Set<string>>(new Set());
+  const [loadingVideos, setLoadingVideos] = useState<Set<string>>(new Set());
+  const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
   const queryClient = useQueryClient();
   const routerLocation = useRouterLocation();
   const navigate = useNavigate();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isNavigatingRef = useRef(false); // Flag to prevent observer interference during button navigation
 
   // location UI removed per TikTok-style layout
 
@@ -112,9 +123,10 @@ export const GameFeed = () => {
       const to = from + pageSize - 1;
 
       // Optimized: Exclude game_code from list query (fetch only when playing)
+      // Include immersive media fields for video/audio playback
       const { data, error } = await supabase
         .from('games')
-        .select('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, comments_count, creator_id')
+        .select('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, comments_count, creator_id, media_type, media_url, background_sound_url, media_duration')
         .order('created_at', { ascending: false })
         .range(from, to);
 
@@ -578,27 +590,77 @@ export const GameFeed = () => {
   const navigateUp = () => {
     if (!hydratedGames || hydratedGames.length === 0) return;
     
+    // Set flag to prevent observer interference during programmatic scroll
+    isNavigatingRef.current = true;
+    
     const newIndex = currentGameIndex > 0 ? currentGameIndex - 1 : hydratedGames.length - 1;
+    const prevGame = hydratedGames[currentGameIndex];
+    const nextGame = hydratedGames[newIndex];
+    
+    // Pause current video before scrolling
+    if (prevGame?.media_type === 'video') {
+      const prevVideo = videoRefs.current.get(prevGame.id);
+      if (prevVideo && !prevVideo.paused) {
+        prevVideo.pause();
+      }
+    }
+    
     setCurrentGameIndex(newIndex);
     
-    // Scroll to the game card
+    // Scroll to the game card with start alignment for snap scroll compatibility
     const gameElement = document.querySelector(`[data-game-index="${newIndex}"]`);
     if (gameElement) {
-      gameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      gameElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+    
+    // Play new video and reset flag after scroll animation completes
+    setTimeout(() => {
+      if (nextGame?.media_type === 'video') {
+        const nextVideo = videoRefs.current.get(nextGame.id);
+        if (nextVideo && nextVideo.paused && nextVideo.readyState >= 2) {
+          nextVideo.play().catch(() => {});
+        }
+      }
+      isNavigatingRef.current = false;
+    }, 500);
   };
 
   const navigateDown = () => {
     if (!hydratedGames || hydratedGames.length === 0) return;
     
+    // Set flag to prevent observer interference during programmatic scroll
+    isNavigatingRef.current = true;
+    
     const newIndex = currentGameIndex < hydratedGames.length - 1 ? currentGameIndex + 1 : 0;
+    const prevGame = hydratedGames[currentGameIndex];
+    const nextGame = hydratedGames[newIndex];
+    
+    // Pause current video before scrolling
+    if (prevGame?.media_type === 'video') {
+      const prevVideo = videoRefs.current.get(prevGame.id);
+      if (prevVideo && !prevVideo.paused) {
+        prevVideo.pause();
+      }
+    }
+    
     setCurrentGameIndex(newIndex);
     
-    // Scroll to the game card
+    // Scroll to the game card with start alignment for snap scroll compatibility
     const gameElement = document.querySelector(`[data-game-index="${newIndex}"]`);
     if (gameElement) {
-      gameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      gameElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+    
+    // Play new video and reset flag after scroll animation completes
+    setTimeout(() => {
+      if (nextGame?.media_type === 'video') {
+        const nextVideo = videoRefs.current.get(nextGame.id);
+        if (nextVideo && nextVideo.paused && nextVideo.readyState >= 2) {
+          nextVideo.play().catch(() => {});
+        }
+      }
+      isNavigatingRef.current = false;
+    }, 500);
   };
 
   // Keyboard navigation for desktop
@@ -619,6 +681,190 @@ export const GameFeed = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentGameIndex, hydratedGames]);
+
+  // Audio management functions
+  const playBackgroundSound = (gameId: string, soundUrl: string) => {
+    if (mutedGames.has(gameId)) return;
+    
+    // Stop current audio if playing
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    }
+    
+    // Create and play new audio
+    const audio = new Audio(soundUrl);
+    audio.loop = true;
+    audio.volume = 0.3; // Lower volume for background
+    audio.play().catch(console.error);
+    setCurrentAudio(audio);
+  };
+
+  const stopBackgroundSound = () => {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      setCurrentAudio(null);
+    }
+  };
+
+  const toggleGameMute = (gameId: string) => {
+    const newMutedGames = new Set(mutedGames);
+    const videoElement = videoRefs.current.get(gameId);
+    
+    if (mutedGames.has(gameId)) {
+      // Unmute
+      newMutedGames.delete(gameId);
+      
+      // Unmute video's original sound
+      if (videoElement) {
+        videoElement.muted = false;
+      }
+      
+      // If this game has background sound, play it
+      const game = hydratedGames?.find(g => g.id === gameId);
+      if (game?.background_sound_url) {
+        playBackgroundSound(gameId, game.background_sound_url);
+      }
+    } else {
+      // Mute
+      newMutedGames.add(gameId);
+      
+      // Mute video's original sound
+      if (videoElement) {
+        videoElement.muted = true;
+      }
+      
+      // Stop background sound if playing
+      if (currentAudio) {
+        stopBackgroundSound();
+      }
+    }
+    setMutedGames(newMutedGames);
+  };
+
+  // Aggressive video preloading system for Instagram-style instant loading
+  useEffect(() => {
+    if (!hydratedGames || hydratedGames.length === 0) return;
+
+    const preloadVideos = () => {
+      // Preload current + next 3 + previous 1 videos for smooth scrolling
+      const startIndex = Math.max(0, currentGameIndex - 1);
+      const endIndex = Math.min(hydratedGames.length, currentGameIndex + 4);
+      
+      const videosToPreload = hydratedGames
+        .slice(startIndex, endIndex)
+        .filter(game => game.media_type === 'video' && game.media_url)
+        .map(game => ({ url: game.media_url!, id: game.id }))
+        .filter(({ url }) => !preloadedVideos.has(url));
+
+      videosToPreload.forEach(({ url, id }) => {
+        if (!preloadedVideos.has(url)) {
+          const video = document.createElement('video');
+          video.preload = 'metadata'; // Use metadata for faster initial load
+          video.muted = true;
+          video.playsInline = true;
+          video.loop = true;
+          
+          // Set mobile-friendly attributes
+          video.setAttribute('webkit-playsinline', 'true');
+          video.setAttribute('x5-playsinline', 'true');
+          video.setAttribute('playsinline', 'true');
+          
+          // Add source element for better compatibility
+          const source = document.createElement('source');
+          source.src = url;
+          source.type = 'video/mp4';
+          video.appendChild(source);
+          
+          // Force immediate loading
+          video.load();
+          
+          // Start loading data immediately
+          const onCanPlay = () => {
+            setPreloadedVideos(prev => new Set(prev).add(url));
+          };
+          
+          video.addEventListener('canplaythrough', onCanPlay, { once: true });
+          video.addEventListener('loadeddata', onCanPlay, { once: true });
+          video.addEventListener('loadedmetadata', () => {
+            // Metadata loaded - video is ready to play
+            setPreloadedVideos(prev => new Set(prev).add(url));
+          }, { once: true });
+          
+          // Fallback timeout
+          setTimeout(() => {
+            if (video.readyState >= 1) { // HAVE_METADATA
+              onCanPlay();
+            }
+          }, 3000);
+
+          video.addEventListener('error', (e) => {
+            console.warn('Failed to preload video:', url, e);
+          }, { once: true });
+        }
+      });
+    };
+
+    // Debounce preloading to avoid excessive calls
+    const timeoutId = setTimeout(preloadVideos, 100);
+    return () => clearTimeout(timeoutId);
+  }, [currentGameIndex, hydratedGames, preloadedVideos]);
+
+  // Simple video playback management - play when visible, pause when not
+  useEffect(() => {
+    const videoElements = Array.from(videoRefs.current.values());
+    if (videoElements.length === 0) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Skip observer actions during programmatic navigation to prevent glitches
+        if (isNavigatingRef.current) return;
+        
+        entries.forEach((entry) => {
+          const video = entry.target as HTMLVideoElement;
+          
+          if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+            // Video is mostly in view - play it
+            if (video.paused && video.readyState >= 2) {
+              video.play().catch(() => {
+                // Silently ignore play errors
+              });
+            }
+          } else if (entry.intersectionRatio < 0.2) {
+            // Video is mostly out of view - pause it
+            if (!video.paused) {
+              video.pause();
+            }
+          }
+        });
+      },
+      {
+        threshold: [0.2, 0.5], // Simplified thresholds
+        rootMargin: '50px 0px 50px 0px' // Larger margin for better preloading
+      }
+    );
+
+    videoElements.forEach(video => {
+      if (video) observer.observe(video);
+    });
+
+    return () => {
+      videoElements.forEach(video => {
+        if (video) observer.unobserve(video);
+      });
+    };
+  }, [hydratedGames]);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+      }
+    };
+  }, [currentAudio]);
 
   // Realtime: refetch feed on any games change
   useEffect(() => {
@@ -822,7 +1068,7 @@ export const GameFeed = () => {
           }
 
           // Detect and notify user mentions (@username)
-          const userMentions = newComment.match(/@(\w+)/g);
+          const userMentions = newComment.match(/@([a-zA-Z0-9._]+)(?![a-zA-Z0-9._])/g);
           if (userMentions) {
             for (const mention of userMentions) {
               const username = mention.substring(1);
@@ -846,8 +1092,8 @@ export const GameFeed = () => {
             }
           }
 
-          // Detect and notify game mentions (+game_title)
-          const gameMentions = newComment.match(/\+([^\s]+)/g);
+          // Detect and notify game mentions (+gamename)
+          const gameMentions = newComment.match(/\+([a-zA-Z0-9._\s]+)(?![a-zA-Z0-9._])/g);
           if (gameMentions) {
             for (const mention of gameMentions) {
               const gameTitle = mention.substring(1);
@@ -1195,15 +1441,149 @@ export const GameFeed = () => {
             {hydratedGames?.map((game, index) => (
               <div key={game.id} data-game-index={index} className="w-full snap-start snap-always md:snap-align-none flex items-center justify-center h-[calc(100vh-120px)] min-h-[calc(100dvh) sm:h-[calc(100vh)] sm:min-h-[calc(100dvh-120px)" style={{ scrollSnapAlign: 'start', scrollSnapStop: 'always' }}>
                 {/* Mobile: Full bleed, Desktop: Centered card with action buttons */}
-                <div className="relative w-full h-full md:w-auto md:h-auto md:flex md:items-center md:gap-6">
+                <div className="relative w-full h-full md:w-auto md:h-[760px] md:flex md:items-end md:gap-6">
                   {/* Card container - Desktop: Fixed size with stacked effect */}
                   <div className="relative w-full h-full md:w-[424px] md:h-[760px]">
                     <Card className="relative w-full h-full overflow-visible md:overflow-hidden rounded-none md:rounded-2xl border-0 md:border md:border-gray-200 md:shadow-lg bg-black md:bg-gray-300">
-                      <img
-                        src={game.cover_url || game.thumbnail_url || '/placeholder.svg'}
-                        alt={game.title}
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
+                      {/* Conditional Media Rendering */}
+                      {game.media_type === 'video' && game.media_url ? (
+                        <video
+                          ref={(el) => {
+                            if (el) {
+                              videoRefs.current.set(game.id, el);
+                            } else {
+                              videoRefs.current.delete(game.id);
+                            }
+                          }}
+                          key={game.id + '-video'}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          autoPlay
+                          loop
+                          muted={mutedGames.has(game.id)}
+                          playsInline
+                          preload="metadata"
+                          poster={game.thumbnail_url || game.cover_url || undefined}
+                          onLoadedMetadata={(e) => {
+                            // Video metadata loaded - remove loading state
+                            setLoadingVideos(prev => {
+                              const newSet = new Set(prev);
+                              newSet.delete(game.id);
+                              return newSet;
+                            });
+                            
+                            // Try to unmute after user interaction (browser policy)
+                            const video = e.currentTarget;
+                            if (!mutedGames.has(game.id)) {
+                              video.muted = false;
+                            }
+                          }}
+                          onLoadedData={(e) => {
+                            // Auto-play background sound when video loads (if not muted)
+                            if (game.background_sound_url && !mutedGames.has(game.id)) {
+                              playBackgroundSound(game.id, game.background_sound_url);
+                            }
+                            
+                            // Ensure smooth playback
+                            const video = e.currentTarget;
+                            video.playbackRate = 1.0;
+                            
+                            // Remove loading state
+                            setLoadingVideos(prev => {
+                              const newSet = new Set(prev);
+                              newSet.delete(game.id);
+                              return newSet;
+                            });
+                          }}
+                          onCanPlay={(e) => {
+                            // Only play if video is paused and visible
+                            const video = e.currentTarget;
+                            if (video.paused) {
+                              // Use a small delay to avoid AbortError from conflicting play/pause calls
+                              setTimeout(() => {
+                                if (video.paused) {
+                                  // Try to play with sound first
+                                  video.play().catch((err) => {
+                                    // If autoplay with sound fails (browser policy), mute and retry
+                                    if (err.name === 'NotAllowedError') {
+                                      video.muted = true;
+                                      video.play().catch(() => {});
+                                      // Add to muted games since browser forced mute
+                                      setMutedGames(prev => new Set(prev).add(game.id));
+                                    }
+                                  });
+                                }
+                              }, 50);
+                            }
+                          }}
+                          onLoadStart={() => {
+                            // Mark video as loading
+                            setLoadingVideos(prev => new Set(prev).add(game.id));
+                          }}
+                          onWaiting={() => {
+                            // Handle buffering
+                            setLoadingVideos(prev => new Set(prev).add(game.id));
+                          }}
+                          onPlaying={() => {
+                            // Video started playing successfully - remove loading state
+                            setLoadingVideos(prev => {
+                              const newSet = new Set(prev);
+                              newSet.delete(game.id);
+                              return newSet;
+                            });
+                          }}
+                          onCanPlayThrough={() => {
+                            // Video can play through without buffering
+                            setLoadingVideos(prev => {
+                              const newSet = new Set(prev);
+                              newSet.delete(game.id);
+                              return newSet;
+                            });
+                          }}
+                          onError={(e) => {
+                            console.error('Video playback error for game:', game.id, e);
+                            // Remove loading state on error
+                            setLoadingVideos(prev => {
+                              const newSet = new Set(prev);
+                              newSet.delete(game.id);
+                              return newSet;
+                            });
+                          }}
+                          style={{
+                            // Force hardware acceleration for smooth playback
+                            transform: 'translateZ(0)',
+                            willChange: 'transform',
+                            backfaceVisibility: 'hidden',
+                          }}
+                        >
+                          {/* Multiple source formats for better compatibility */}
+                          <source src={game.media_url} type="video/mp4" />
+                          <source src={game.media_url} type="video/webm" />
+                          Your browser does not support the video tag.
+                        </video>
+                      ) : (
+                        <img
+                          src={game.media_url || game.cover_url || game.thumbnail_url || '/placeholder.svg'}
+                          alt={game.title}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          onLoad={() => {
+                            // Auto-play background sound when image loads (if not muted)
+                            if (game.background_sound_url && !mutedGames.has(game.id)) {
+                              playBackgroundSound(game.id, game.background_sound_url);
+                            }
+                          }}
+                        />
+                      )}
+                      
+                      {/* Video Loading Indicator */}
+                      {game.media_type === 'video' && loadingVideos.has(game.id) && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm z-20">
+                          <div className="flex flex-col items-center gap-2">
+                            <Loader2 className="w-8 h-8 animate-spin text-white" />
+                            <span className="text-white text-sm font-medium">Loading video...</span>
+                          </div>
+                        </div>
+                      )}
+                      
                       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent dark:from-black/95 dark:via-black/20 md:bg-gradient-to-b md:from-transparent md:via-transparent md:to-black/80" />
 
                       {/* Remix button - top right */}
@@ -1216,6 +1596,8 @@ export const GameFeed = () => {
                           Remix
                         </button>
                       </div>
+
+
 
                       {/* Game info - bottom left - fixed position on mobile to avoid browser UI */}
                       <div className="absolute left-0 right-[70px] md:right-[80px] bottom-6 md:bottom-2 p-3 md:p-5 text-white z-10">
@@ -1329,6 +1711,30 @@ export const GameFeed = () => {
                             <Share2 className="h-7 w-7 md:h-8 md:w-8 ml-[-2px]" strokeWidth={2} />
                           </button>
                         </div>
+
+                        {/* Mute/Unmute button - show for videos or games with background sound */}
+                        {(game.media_type === 'video' || game.background_sound_url) && (
+                          <div className="flex flex-col items-center">
+                            <button
+                              aria-label={mutedGames.has(game.id) ? 'Unmute sound' : 'Mute sound'}
+                              className={`h-12 w-12 md:h-12 md:w-12 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 ${
+                                mutedGames.has(game.id)
+                                  ? 'text-red-500'
+                                  : 'text-white'
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleGameMute(game.id);
+                              }}
+                            >
+                              {mutedGames.has(game.id) ? (
+                                <VolumeX className="h-7 w-7 md:h-8 md:w-8" strokeWidth={2} />
+                              ) : (
+                                <Volume2 className="h-7 w-7 md:h-8 md:w-8" strokeWidth={2} />
+                              )}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </Card>
 
@@ -1346,8 +1752,8 @@ export const GameFeed = () => {
                     )}
                   </div>
 
-                  {/* Desktop: Action buttons on RIGHT */}
-                  <div className="hidden md:flex flex-col gap-4 items-center justify-end h-[calc(100vh_-_120px)] min-h-[calc(100dvh_-_120px)">
+                  {/* Desktop: Action buttons on RIGHT - positioned at bottom */}
+                  <div className="hidden md:flex flex-col gap-4 items-center self-end mb-8">
                     {/* Play button */}
                     <button
                       aria-label="Play game"
@@ -1396,6 +1802,30 @@ export const GameFeed = () => {
                         <Share2 className="h-6 w-6 ml-[-2px] stroke-gray-700 dark:stroke-white" strokeWidth={2} />
                       </button>
                     </div>
+
+                    {/* Mute/Unmute button - show for videos or games with background sound */}
+                    {(game.media_type === 'video' || game.background_sound_url) && (
+                      <div className="flex flex-col items-center">
+                        <button
+                          aria-label={mutedGames.has(game.id) ? 'Unmute sound' : 'Mute sound'}
+                          className={`h-14 w-14 rounded-full flex items-center justify-center bg-transparent hover:scale-110 active:scale-95 transition-all duration-200 ${
+                            mutedGames.has(game.id)
+                              ? 'text-red-500'
+                              : 'text-gray-700 dark:text-white'
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleGameMute(game.id);
+                          }}
+                        >
+                          {mutedGames.has(game.id) ? (
+                            <VolumeX className="h-6 w-6 stroke-current" strokeWidth={2} />
+                          ) : (
+                            <Volume2 className="h-6 w-6 stroke-gray-700 dark:stroke-white" strokeWidth={2} />
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                 </div>

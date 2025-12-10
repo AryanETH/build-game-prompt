@@ -21,10 +21,14 @@ export default function Admin() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [gameCode, setGameCode] = useState("");
-  const [thumbnailUrl, setThumbnailUrl] = useState("");
-  const [coverUrl, setCoverUrl] = useState("");
   const [editingGameId, setEditingGameId] = useState<string | null>(null);
-  const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
+  
+  // Immersive media state
+  const [backgroundSoundUrl, setBackgroundSoundUrl] = useState("");
+  const [mediaType, setMediaType] = useState<"image" | "video" | "gif">("image");
+  const [mediaUrl, setMediaUrl] = useState("");
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [uploadingSound, setUploadingSound] = useState(false);
   
   // Broadcast form state
   const [broadcastMessage, setBroadcastMessage] = useState("");
@@ -268,31 +272,37 @@ export default function Admin() {
     };
   };
 
-  const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+
+
+  // Media upload function (video/image/gif)
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file');
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+    
+    if (!isVideo && !isImage) {
+      toast.error('Please upload a video, image, or GIF file');
       return;
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size must be less than 5MB');
+    // Size limits: 50MB for video, 10MB for images
+    const maxSize = isVideo ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error(`File size must be less than ${isVideo ? '50MB' : '10MB'}`);
       return;
     }
 
-    setUploadingThumbnail(true);
+    setUploadingMedia(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Upload to Supabase Storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-      const filePath = `thumbnails/${fileName}`;
+      const filePath = `game-media/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('thumbnails')
@@ -300,18 +310,71 @@ export default function Admin() {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data } = supabase.storage
         .from('thumbnails')
         .getPublicUrl(filePath);
 
-      setThumbnailUrl(data.publicUrl);
-      toast.success('Thumbnail uploaded successfully!');
+      setMediaUrl(data.publicUrl);
+      
+      // Auto-detect media type
+      if (isVideo) {
+        setMediaType('video');
+      } else if (file.type === 'image/gif') {
+        setMediaType('gif');
+      } else {
+        setMediaType('image');
+      }
+      
+      toast.success('Media uploaded successfully!');
     } catch (error: any) {
       console.error('Upload error:', error);
-      toast.error(error.message || 'Failed to upload thumbnail');
+      toast.error(error.message || 'Failed to upload media');
     } finally {
-      setUploadingThumbnail(false);
+      setUploadingMedia(false);
+    }
+  };
+
+  // Background sound upload function
+  const handleSoundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('audio/')) {
+      toast.error('Please upload an audio file');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Audio file size must be less than 10MB');
+      return;
+    }
+
+    setUploadingSound(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `game-sounds/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('thumbnails')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('thumbnails')
+        .getPublicUrl(filePath);
+
+      setBackgroundSoundUrl(data.publicUrl);
+      toast.success('Background sound uploaded successfully!');
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error(error.message || 'Failed to upload sound');
+    } finally {
+      setUploadingSound(false);
     }
   };
 
@@ -476,8 +539,8 @@ export default function Admin() {
 
       // Generate images based on title if not provided
       const images = generateGameImage(title);
-      const finalThumbnail = thumbnailUrl || images.thumbnail;
-      const finalCover = coverUrl || thumbnailUrl || images.cover;
+      const finalThumbnail = mediaUrl || images.thumbnail;
+      const finalCover = mediaUrl || images.cover;
 
       if (editingGameId) {
         const { error } = await supabase
@@ -488,6 +551,9 @@ export default function Admin() {
             game_code: gameCode,
             thumbnail_url: finalThumbnail,
             cover_url: finalCover,
+            background_sound_url: backgroundSoundUrl || null,
+            media_type: mediaType,
+            media_url: mediaUrl || finalThumbnail,
           })
           .eq('id', editingGameId);
 
@@ -501,6 +567,9 @@ export default function Admin() {
           creator_id: user.id,
           thumbnail_url: finalThumbnail,
           cover_url: finalCover,
+          background_sound_url: backgroundSoundUrl || null,
+          media_type: mediaType,
+          media_url: mediaUrl || finalThumbnail,
           likes_count: 0,
           plays_count: 0,
           comments_count: 0,
@@ -513,8 +582,9 @@ export default function Admin() {
       setTitle("");
       setDescription("");
       setGameCode("");
-      setThumbnailUrl("");
-      setCoverUrl("");
+      setBackgroundSoundUrl("");
+      setMediaType("image");
+      setMediaUrl("");
       setEditingGameId(null);
       
       loadGames();
@@ -531,8 +601,9 @@ export default function Admin() {
     setTitle(game.title);
     setDescription(game.description || "");
     setGameCode(game.game_code);
-    setThumbnailUrl(game.thumbnail_url || "");
-    setCoverUrl(game.cover_url || "");
+    setBackgroundSoundUrl(game.background_sound_url || "");
+    setMediaType(game.media_type || "image");
+    setMediaUrl(game.media_url || "");
     setEditingGameId(game.id);
     
     // Switch to upload tab
@@ -553,8 +624,9 @@ export default function Admin() {
     setTitle("");
     setDescription("");
     setGameCode("");
-    setThumbnailUrl("");
-    setCoverUrl("");
+    setBackgroundSoundUrl("");
+    setMediaType("image");
+    setMediaUrl("");
     setEditingGameId(null);
     toast.info("Edit cancelled");
   };
@@ -1537,85 +1609,174 @@ export default function Admin() {
                     />
                   </div>
 
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>Thumbnail</label>
-                    
-                    {/* File Upload Button */}
-                    <div className="flex gap-2 mb-2">
-                      <label className="flex-1">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleThumbnailUpload}
-                          className="hidden"
-                          disabled={uploadingThumbnail}
-                        />
-                        <div className={`flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-                          isDarkMode 
-                            ? 'border-white/40 hover:border-white/60 bg-white/10 hover:bg-white/20' 
-                            : 'border-gray-300 hover:border-gray-400 bg-gray-50 hover:bg-gray-100'
-                        } ${uploadingThumbnail ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                          {uploadingThumbnail ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              <span className="text-sm">Uploading...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-4 w-4" />
-                              <span className="text-sm">Upload from Device</span>
-                            </>
-                          )}
-                        </div>
-                      </label>
-                    </div>
-                    
-                    {/* URL Input */}
-                    <Input
-                      value={thumbnailUrl}
-                      onChange={(e) => setThumbnailUrl(e.target.value)}
-                      placeholder="Or paste URL (optional - auto-generated)"
-                      className={isDarkMode ? 'bg-white/20 border-white/40 text-white placeholder:text-white/50' : ''}
-                    />
-                    
-                    {/* Preview */}
-                    {thumbnailUrl && (
-                      <div className="mt-2 relative inline-block">
-                        <img 
-                          src={thumbnailUrl} 
-                          alt="Thumbnail preview" 
-                          className="w-32 h-32 object-cover rounded-lg border-2 border-white/20"
-                        />
-                        <Button
-                          onClick={() => {
-                            setThumbnailUrl("");
-                            setCoverUrl("");
-                            toast.success("Thumbnail removed");
-                          }}
-                          variant="destructive"
-                          size="icon"
-                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    )}
-                    
-                    <p className={`text-xs mt-1 ${isDarkMode ? 'text-white/60' : 'text-black/60'}`}>
-                      Upload image, paste URL, or leave empty to auto-generate
-                    </p>
-                  </div>
 
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>Cover URL</label>
-                    <Input
-                      value={coverUrl}
-                      onChange={(e) => setCoverUrl(e.target.value)}
-                      placeholder="https://images.unsplash.com/... (optional - auto-generated)"
-                      className={isDarkMode ? 'bg-white/20 border-white/40 text-white placeholder:text-white/50' : ''}
-                    />
-                    <p className={`text-xs mt-1 ${isDarkMode ? 'text-white/60' : 'text-black/60'}`}>
-                      Leave empty to auto-generate from thumbnail or title
+
+                  {/* Immersive Media Section */}
+                  <div className="space-y-4 p-4 border rounded-lg bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/20">
+                    <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                      🎬 Immersive Media (Admin Only)
+                    </h3>
+                    
+                    {/* Media Type Selection */}
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>Media Type</label>
+                      <select
+                        value={mediaType}
+                        onChange={(e) => setMediaType(e.target.value as "image" | "video" | "gif")}
+                        className={`w-full px-3 py-2 rounded-md border ${isDarkMode ? 'bg-white/20 border-white/40 text-white' : 'bg-white border-gray-300'}`}
+                      >
+                        <option value="image">📷 Image</option>
+                        <option value="video">🎥 Video (auto-trimmed to 10s)</option>
+                        <option value="gif">🎞️ GIF</option>
+                      </select>
+                    </div>
+
+                    {/* Media Upload */}
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                        {mediaType === 'video' ? 'Video File (max 50MB)' : 
+                         mediaType === 'gif' ? 'GIF File (max 10MB)' : 
+                         'Image File (max 10MB)'}
+                      </label>
+                      
+                      <div className="flex gap-2 mb-2">
+                        <label className="flex-1">
+                          <input
+                            type="file"
+                            accept={mediaType === 'video' ? 'video/*' : mediaType === 'gif' ? 'image/gif' : 'image/*'}
+                            onChange={handleMediaUpload}
+                            className="hidden"
+                            disabled={uploadingMedia}
+                          />
+                          <div className={`flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                            isDarkMode 
+                              ? 'border-purple-400/40 hover:border-purple-400/60 bg-purple-500/10 hover:bg-purple-500/20' 
+                              : 'border-purple-300 hover:border-purple-400 bg-purple-50 hover:bg-purple-100'
+                          } ${uploadingMedia ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            {uploadingMedia ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span className="text-sm">Uploading...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-4 w-4" />
+                                <span className="text-sm">Upload {mediaType === 'video' ? 'Video' : mediaType === 'gif' ? 'GIF' : 'Image'}</span>
+                              </>
+                            )}
+                          </div>
+                        </label>
+                      </div>
+
+                      {/* Media URL Input */}
+                      <Input
+                        value={mediaUrl}
+                        onChange={(e) => setMediaUrl(e.target.value)}
+                        placeholder={`Or paste ${mediaType} URL`}
+                        className={isDarkMode ? 'bg-white/20 border-white/40 text-white placeholder:text-white/50' : ''}
+                      />
+
+                      {/* Media Preview */}
+                      {mediaUrl && (
+                        <div className="mt-2 relative inline-block">
+                          {mediaType === 'video' ? (
+                            <video 
+                              src={mediaUrl} 
+                              className="w-32 h-32 object-cover rounded-lg border-2 border-purple-400/20"
+                              muted
+                              loop
+                              autoPlay
+                            />
+                          ) : (
+                            <img 
+                              src={mediaUrl} 
+                              alt="Media preview" 
+                              className="w-32 h-32 object-cover rounded-lg border-2 border-purple-400/20"
+                            />
+                          )}
+                          <Button
+                            onClick={() => {
+                              setMediaUrl("");
+                              toast.success("Media removed");
+                            }}
+                            variant="destructive"
+                            size="icon"
+                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Background Sound Upload */}
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                        🔊 Background Sound (max 10MB)
+                      </label>
+                      
+                      <div className="flex gap-2 mb-2">
+                        <label className="flex-1">
+                          <input
+                            type="file"
+                            accept="audio/*"
+                            onChange={handleSoundUpload}
+                            className="hidden"
+                            disabled={uploadingSound}
+                          />
+                          <div className={`flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                            isDarkMode 
+                              ? 'border-green-400/40 hover:border-green-400/60 bg-green-500/10 hover:bg-green-500/20' 
+                              : 'border-green-300 hover:border-green-400 bg-green-50 hover:bg-green-100'
+                          } ${uploadingSound ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            {uploadingSound ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span className="text-sm">Uploading...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-4 w-4" />
+                                <span className="text-sm">Upload Audio</span>
+                              </>
+                            )}
+                          </div>
+                        </label>
+                      </div>
+
+                      {/* Sound URL Input */}
+                      <Input
+                        value={backgroundSoundUrl}
+                        onChange={(e) => setBackgroundSoundUrl(e.target.value)}
+                        placeholder="Or paste audio URL"
+                        className={isDarkMode ? 'bg-white/20 border-white/40 text-white placeholder:text-white/50' : ''}
+                      />
+
+                      {/* Sound Preview */}
+                      {backgroundSoundUrl && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <audio 
+                            src={backgroundSoundUrl} 
+                            controls
+                            className="flex-1"
+                          />
+                          <Button
+                            onClick={() => {
+                              setBackgroundSoundUrl("");
+                              toast.success("Sound removed");
+                            }}
+                            variant="destructive"
+                            size="icon"
+                            className="h-8 w-8"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    <p className={`text-xs ${isDarkMode ? 'text-white/60' : 'text-black/60'}`}>
+                      💡 Videos will auto-loop and be trimmed to 10 seconds. Background sound plays when game card is in view.
                     </p>
                   </div>
 

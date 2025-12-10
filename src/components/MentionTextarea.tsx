@@ -143,8 +143,8 @@ export const MentionTextarea = ({ value, onChange, placeholder, className, maxLe
       mentionText = `@${suggestion.data.username} `;
     } else {
       lastIndex = textBeforeCursor.lastIndexOf('+');
-      // Use brackets for multi-word game titles to make parsing easier
-      mentionText = `+[${suggestion.data.title}] `;
+      // Simple format like usernames
+      mentionText = `+${suggestion.data.title} `;
     }
 
     if (lastIndex !== -1) {

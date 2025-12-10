@@ -13,8 +13,8 @@ export const LinkifiedText = ({ text, className = "" }: LinkifiedTextProps) => {
 
   // Extract game titles from text and fetch their IDs
   useEffect(() => {
-    // Match +[Game Title] format (with brackets)
-    const gameMentionPattern = /\+\[([^\]]+)\]/g;
+    // Match +gamename format (simple, like usernames)
+    const gameMentionPattern = /\+([a-zA-Z0-9._\s]+)(?![a-zA-Z0-9._])/g;
     const gameTitles: string[] = [];
     let match;
     
@@ -74,11 +74,14 @@ export const LinkifiedText = ({ text, className = "" }: LinkifiedTextProps) => {
   };
 
   const linkify = (text: string) => {
-    // Regex patterns
-    const hashtagPattern = /#(\w+)/g;
-    const mentionPattern = /@(\w+)/g;
-    // Match +[Game Title] format (with brackets)
-    const gameMentionPattern = /\+\[([^\]]+)\]/g;
+    
+    // Regex patterns - made more specific to avoid conflicts
+    const hashtagPattern = /#([a-zA-Z0-9_]+)(?![a-zA-Z0-9._])/g;
+    // Updated mention pattern to support dots, underscores, and alphanumeric characters
+    // Added negative lookahead to ensure we capture the complete username
+    const mentionPattern = /@([a-zA-Z0-9._]+)(?![a-zA-Z0-9._])/g;
+    // Match +gamename format (simple, like usernames)
+    const gameMentionPattern = /\+([a-zA-Z0-9._\s]+)(?![a-zA-Z0-9._])/g;
     
     const parts: (string | JSX.Element)[] = [];
     let lastIndex = 0;
@@ -86,7 +89,14 @@ export const LinkifiedText = ({ text, className = "" }: LinkifiedTextProps) => {
     // Find all hashtags, mentions, and game mentions
     const matches: Array<{ index: number; length: number; type: 'hashtag' | 'mention' | 'game'; value: string }> = [];
     
+    // Reset regex lastIndex to ensure clean matching
+    hashtagPattern.lastIndex = 0;
+    mentionPattern.lastIndex = 0;
+    gameMentionPattern.lastIndex = 0;
+    
     let match;
+    
+    // Find hashtags
     while ((match = hashtagPattern.exec(text)) !== null) {
       matches.push({
         index: match.index,
@@ -96,6 +106,7 @@ export const LinkifiedText = ({ text, className = "" }: LinkifiedTextProps) => {
       });
     }
     
+    // Find mentions
     while ((match = mentionPattern.exec(text)) !== null) {
       matches.push({
         index: match.index,
@@ -105,6 +116,7 @@ export const LinkifiedText = ({ text, className = "" }: LinkifiedTextProps) => {
       });
     }
     
+    // Find game mentions
     while ((match = gameMentionPattern.exec(text)) !== null) {
       matches.push({
         index: match.index,
@@ -117,8 +129,18 @@ export const LinkifiedText = ({ text, className = "" }: LinkifiedTextProps) => {
     // Sort by index
     matches.sort((a, b) => a.index - b.index);
     
+    // Remove overlapping matches (keep the first one found)
+    const filteredMatches = matches.filter((match, i) => {
+      if (i === 0) return true;
+      const prevMatch = matches[i - 1];
+      const prevEnd = prevMatch.index + prevMatch.length;
+      return match.index >= prevEnd;
+    });
+    
+
+    
     // Build the result
-    matches.forEach((match, i) => {
+    filteredMatches.forEach((match, i) => {
       // Add text before this match
       if (match.index > lastIndex) {
         parts.push(text.substring(lastIndex, match.index));
@@ -168,7 +190,7 @@ export const LinkifiedText = ({ text, className = "" }: LinkifiedTextProps) => {
               }
             }}
           >
-            +[{match.value}]
+            +{match.value}
           </span>
         );
       }

@@ -12,8 +12,8 @@ export const CommentText = ({ text }: CommentTextProps) => {
 
   // Extract game titles from text and fetch their IDs
   useEffect(() => {
-    // Match +[Game Title] format (with brackets)
-    const gameMentionPattern = /\+\[([^\]]+)\]/g;
+    // Match +gamename format (simple, like usernames)
+    const gameMentionPattern = /\+([a-zA-Z0-9._\s]+)(?![a-zA-Z0-9._])/g;
     const gameTitles: string[] = [];
     let match;
     
@@ -74,9 +74,9 @@ export const CommentText = ({ text }: CommentTextProps) => {
 
   // Parse text and make @mentions and +game mentions clickable
   const parseText = (content: string) => {
-    const mentionRegex = /@(\w+)/g;
-    // Match +[Game Title] format (with brackets)
-    const gameMentionRegex = /\+\[([^\]]+)\]/g;
+    const mentionRegex = /@([a-zA-Z0-9._]+)(?![a-zA-Z0-9._])/g;
+    // Match +gamename format (simple, like usernames)
+    const gameMentionRegex = /\+([a-zA-Z0-9._\s]+)(?![a-zA-Z0-9._])/g;
     
     const matches: Array<{ index: number; length: number; type: 'user' | 'game'; value: string }> = [];
     let match;
@@ -144,7 +144,7 @@ export const CommentText = ({ text }: CommentTextProps) => {
             }}
             className="text-purple-600 dark:text-purple-400 font-semibold cursor-pointer hover:underline"
           >
-            +[{m.value}]
+            +{m.value}
           </span>
         );
       }

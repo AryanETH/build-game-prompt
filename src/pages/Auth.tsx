@@ -436,7 +436,7 @@ export default function AuthPage() {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
-                  minLength={8}
+                  minLength={6}
                   className="bg-[#111111] border-[#333333] text-white placeholder:text-transparent focus:border-purple-600 focus:ring-purple-600 pr-10 peer pt-6 pb-2"
                 />
                 <Label 
@@ -453,9 +453,9 @@ export default function AuthPage() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              {/* Password validation - only show error when user types less than 8 chars */}
-              {isSignUp && formData.password && formData.password.length < 8 && (
-                <p className="text-xs text-red-500 mt-1">Must be at least 8 characters</p>
+              {/* Password validation - only show error when user types less than 6 chars */}
+              {isSignUp && formData.password && formData.password.length < 6 && (
+                <p className="text-xs text-red-500 mt-1">Must be at least 6 characters</p>
               )}
             </div>
 
