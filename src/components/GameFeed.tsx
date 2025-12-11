@@ -644,10 +644,10 @@ export const GameFeed = () => {
     
     setCurrentGameIndex(newIndex);
     
-    // Scroll to the game card with start alignment for snap scroll compatibility
+    // Scroll to the game card with center alignment for desktop snap scroll
     const gameElement = document.querySelector(`[data-game-index="${newIndex}"]`);
     if (gameElement) {
-      gameElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      gameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
     
     // Play new video and reset flag after scroll animation completes
@@ -682,10 +682,10 @@ export const GameFeed = () => {
     
     setCurrentGameIndex(newIndex);
     
-    // Scroll to the game card with start alignment for snap scroll compatibility
+    // Scroll to the game card with center alignment for desktop snap scroll
     const gameElement = document.querySelector(`[data-game-index="${newIndex}"]`);
     if (gameElement) {
-      gameElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      gameElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
     
     // Play new video and reset flag after scroll animation completes
@@ -1558,17 +1558,15 @@ export const GameFeed = () => {
           </button>
         </div>
 
-        {/* Mobile: Snap scroll, Desktop: Normal scroll with centered content */}
-        <div className="snap-feed-container md:h-full md:overflow-y-auto md:snap-none no-scrollbar pb-16 md:pb-0">
-          {/* Desktop wrapper: flex column with centered items */}
-          <div className="md:flex md:flex-col md:items-start md:w-full md:mx-auto md:justify-start md:min-h-screen md:py-8 md:gap-8">
-            {hydratedGames?.map((game, index) => (
-              <div key={game.id} data-game-index={index} className="snap-item w-full flex items-center justify-center md:snap-align-none md:h-[760px]">
-                {/* Mobile: Full bleed, Desktop: Centered card with action buttons */}
-                <div className="relative w-full h-full md:w-auto md:h-[760px] md:flex md:items-end md:gap-6">
+        {/* Snap scroll for both Mobile and Desktop */}
+        <div className="snap-feed-container no-scrollbar">
+          {hydratedGames?.map((game, index) => (
+            <div key={game.id} data-game-index={index} className="snap-item">
+              {/* Mobile: Full bleed, Desktop: Centered card with action buttons */}
+              <div className="relative w-full h-full md:w-auto md:h-[760px] md:flex md:items-end md:gap-6">
                   {/* Card container - Desktop: Fixed size with stacked effect */}
-                  <div className="relative w-full h-full md:w-[424px] md:h-[760px]">
-                    <Card className="relative w-full h-full overflow-visible md:overflow-hidden rounded-none md:rounded-2xl border-0 md:border md:border-gray-200 md:shadow-lg bg-black md:bg-gray-300">
+                  <div className="relative w-full h-full md:w-[424px] md:h-[760px] ">
+                    <Card className="relative w-full h-full overflow-hidden md:overflow-hidden rounded-none md:rounded-2xl border-0 md:border md:border-gray-200 md:shadow-lg bg-black md:bg-gray-300">
                       {/* Conditional Media Rendering */}
                       {game.media_type === 'video' && game.media_url ? (
                         <video
@@ -1620,7 +1618,6 @@ export const GameFeed = () => {
                         </div>
                       )}
                       
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent dark:from-black/95 dark:via-black/20 md:bg-gradient-to-b md:from-transparent md:via-transparent md:to-black/80" />
 
                       {/* Remix button - top right */}
                       <div className="absolute top-4 right-4 z-10">
@@ -1636,7 +1633,7 @@ export const GameFeed = () => {
 
 
                       {/* Game info - bottom left - fixed position on mobile to avoid browser UI */}
-                      <div className="absolute left-0 right-[70px] md:right-[80px] bottom-6 md:bottom-2 p-3 md:p-5 text-white z-10">
+                      <div className="absolute left-0 right-[70px] md:right-[80px] bottom-20 md:bottom-2 p-3 md:p-5 pb-4 md:pb-[130px] text-white z-10">
                         <div className="flex items-center gap-2 mb-2">
                           <button
                             className="flex items-center gap-2 hover:opacity-80 transition-opacity group"
@@ -1695,7 +1692,7 @@ export const GameFeed = () => {
                       </div>
 
                       {/* Right action bar - Mobile only (desktop buttons are on right outside card) */}
-                      <div className="md:hidden absolute right-3 bottom-20 flex flex-col gap-3 items-center text-white z-30">
+                      <div className="md:hidden absolute right-3 bottom-32 flex flex-col gap-3 items-center text-white z-30">
                         {/* Play button - Purple gradient on desktop, primary on mobile */}
                         <button
                           aria-label="Play game"
@@ -1774,18 +1771,7 @@ export const GameFeed = () => {
                       </div>
                     </Card>
 
-                    {/* Next card peek - Desktop only */}
-                    {index < hydratedGames.length - 1 && (
-                      <div className="hidden md:block absolute bottom-[-20px] left-0 right-0 h-20 rounded-t-3xl bg-gray-300 border border-gray-200 border-b-0 shadow-sm pointer-events-none z-[-1]">
-                        <div className="absolute inset-0 rounded-t-3xl overflow-hidden">
-                          <img
-                            src={hydratedGames[index + 1].cover_url || hydratedGames[index + 1].thumbnail_url || '/placeholder.svg'}
-                            alt=""
-                            className="w-full h-full object-cover opacity-40"
-                          />
-                        </div>
-                      </div>
-                    )}
+
                   </div>
 
                   {/* Desktop: Action buttons on RIGHT - positioned at bottom */}
@@ -1867,7 +1853,6 @@ export const GameFeed = () => {
                 </div>
               </div>
             ))}
-          </div>
 
           {games?.length === 0 && (
             <div className="h-full flex items-center justify-center">

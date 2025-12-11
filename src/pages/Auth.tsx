@@ -283,7 +283,7 @@ export default function AuthPage() {
                   imageRendering: "-webkit-optimize-contrast"
                 }}
               />
-              <div className="absolute inset-0 blur-3xl bg-white/10 animate-fade-slow -z-10"></div>
+              <div className="absolute inset-0 blur-3xl animate-fade-slow -z-10"></div>
             </div>
           </div>
           
