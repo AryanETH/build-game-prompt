@@ -1009,27 +1009,28 @@ export default function Create() {
   };
 
   return (
-    <div className="min-h-[100dvh] overflow-y-auto relative no-scrollbar" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+    <div className="h-screen md:h-[100dvh] flex flex-col relative" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       {/* Notification Permission Prompt */}
       {PromptComponent && <PromptComponent />}
       
       {/* Under Development Overlay - Theme Adaptive */}
-      <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/60 dark:bg-black/40 backdrop-blur-md">
-        <div className="text-center px-6 py-8 max-w-md mx-auto">
+      <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/60 dark:bg-black/40 backdrop-blur-md overflow-y-auto">
+        <div className="text-center px-4 md:px-6 py-4 md:py-8 max-w-md mx-auto w-full min-h-full flex flex-col justify-center">
           {/* Lottie Animation */}
           <div className="mb-3 flex justify-center">
             {lottieAnimation ? (
-              <div className="bg-transparent dark:bg-white/20 rounded-2xl p-6">
-                <Lottie
-                  loop
-                  animationData={lottieAnimation}
-                  play
-                  style={{ width: 412, height: 412 }}
-                  className="mx-auto"
-                />
+              <div className="bg-transparent dark:bg-white/20 rounded-2xl p-3 md:p-6">
+                <div className="w-[280px] h-[280px] md:w-[412px] md:h-[412px]">
+                  <Lottie
+                    loop
+                    animationData={lottieAnimation}
+                    play
+                    className="w-full h-full"
+                  />
+                </div>
               </div>
             ) : (
-              <Construction className="h-20 w-20 md:h-24 md:w-24 mx-auto text-yellow-500 dark:text-yellow-400 animate-pulse" />
+              <Construction className="h-16 w-16 md:h-24 md:w-24 mx-auto text-yellow-500 dark:text-yellow-400 animate-pulse" />
             )}
           </div>
           
@@ -1045,7 +1046,7 @@ export default function Create() {
           </p>
           
           {/* Supporter Counter */}
-          <div className="mb-6 bg-gray-100/80 dark:bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-gray-300 dark:border-white/20 shadow-lg">
+          <div className="mb-4 md:mb-6 bg-gray-100/80 dark:bg-white/10 backdrop-blur-sm rounded-lg p-3 md:p-4 border border-gray-300 dark:border-white/20 shadow-lg">
             <div className="flex items-center justify-center gap-2 mb-3">
               <Heart className="h-5 w-5 text-red-500 fill-current animate-pulse" />
               <span className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
@@ -1084,23 +1085,23 @@ export default function Create() {
           </div>
           
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
+          <div className="flex flex-col gap-3 items-center justify-center">
             <Button
               onClick={() => setSupportDialogOpen(true)}
-              className="gradient-primary glow-primary text-white font-semibold px-6 py-6 text-base md:text-lg hover:scale-105 transition-transform shadow-xl w-full sm:w-auto"
+              className="gradient-primary glow-primary text-white font-semibold px-6 py-4 md:py-6 text-sm md:text-lg hover:scale-105 transition-transform shadow-xl w-full max-w-xs"
               size="lg"
             >
-              <Heart className="h-5 w-5 mr-2 fill-current" />
+              <Heart className="h-4 w-4 md:h-5 md:w-5 mr-2 fill-current" />
               Support This Project
             </Button>
             
             <Button
               onClick={() => window.open(FEEDBACK_URL, '_blank')}
               variant="outline"
-              className="border-2 border-gray-400 dark:border-white/30 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-white/10 font-semibold px-6 py-6 text-base md:text-lg hover:scale-105 transition-transform shadow-xl w-full sm:w-auto"
+              className="border-2 border-gray-400 dark:border-white/30 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-white/10 font-semibold px-6 py-4 md:py-6 text-sm md:text-lg hover:scale-105 transition-transform shadow-xl w-full max-w-xs"
               size="lg"
             >
-              <MessageSquare className="h-5 w-5 mr-2" />
+              <MessageSquare className="h-4 w-4 md:h-5 md:w-5 mr-2" />
               Give Feedback
             </Button>
           </div>
@@ -1113,20 +1114,21 @@ export default function Create() {
       </div>
       
       {/* Blurred Background Content */}
-      <div className="container mx-auto px-3 md:px-4 py-4 md:py-8 pb-24 md:pb-8 pointer-events-none select-none opacity-50">
-        <div className="max-w-7xl w-full mx-auto">
-          <div className="text-center mb-4 md:mb-8">
-            <h1 className="text-2xl md:text-4xl font-bold mb-1 md:mb-2">Create with AI</h1>
-            <p className="text-sm md:text-base text-muted-foreground">
-              Describe your game idea and let AI bring it to life
-            </p>
-          </div>
+      <div className="flex-1 overflow-hidden pointer-events-none select-none opacity-50">
+        <div className="container mx-auto px-3 md:px-4 py-4 md:py-8 h-full">
+          <div className="max-w-7xl w-full mx-auto h-full flex flex-col">
+            <div className="text-center mb-4 md:mb-6 flex-shrink-0">
+              <h1 className="text-2xl md:text-4xl font-bold mb-1 md:mb-2">Create with AI</h1>
+              <p className="text-sm md:text-base text-muted-foreground">
+                Describe your game idea and let AI bring it to life
+              </p>
+            </div>
 
-          {/* Desktop: Horizontal layout, Mobile: Vertical layout */}
-          <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+            {/* Desktop: Horizontal layout, Mobile: Vertical layout */}
+            <div className="flex flex-col md:flex-row gap-4 md:gap-6 flex-1 min-h-0 overflow-hidden">
             {/* Input Panel */}
-            <Card className="gradient-card border-border/50 p-4 md:p-6 w-full md:flex-1">
-              <div className="space-y-3 md:space-y-4">
+            <Card className="gradient-card border-border/50 p-4 md:p-6 w-full md:flex-1 flex flex-col min-h-0 max-h-full">
+              <div className="space-y-3 md:space-y-4 overflow-y-auto flex-1 pr-2 -mr-2">
                 <div>
                   <Label htmlFor="prompt" className="text-sm md:text-base">Game Prompt</Label>
                   <Textarea
@@ -1316,7 +1318,7 @@ export default function Create() {
             </Card>
 
             {/* Desktop: Preview panel on the right */}
-            <div className="hidden md:flex md:flex-1 items-center justify-center">
+            <div className="hidden md:flex md:flex-1 items-center justify-center min-h-0 max-h-full overflow-hidden">
               {generatedCode ? (
                 <Card className="w-full max-w-md overflow-hidden">
                   <div className="aspect-[9/16] rounded-[28px] overflow-hidden shadow-2xl ring-1 ring-border bg-background">
@@ -1338,6 +1340,7 @@ export default function Create() {
           </div>
         </div>
       </div>
+    </div>
 
       {/* Preview Dialog with curved 9:16 window */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>

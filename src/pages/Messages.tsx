@@ -54,6 +54,7 @@ export default function Messages() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showMobileList, setShowMobileList] = useState(true);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [maximizedImage, setMaximizedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -576,7 +577,11 @@ export default function Messages() {
                                 <img 
                                   src={msg.reply_to_content.substring(7)} 
                                   alt="Reply" 
-                                  className="h-10 w-10 rounded object-cover"
+                                  className="h-10 w-10 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMaximizedImage(msg.reply_to_content!.substring(7));
+                                  }}
                                 />
                                 <span className="text-xs opacity-70">Photo</span>
                               </div>
@@ -599,7 +604,12 @@ export default function Messages() {
                           </div>
                         ) : isImage ? (
                           <div className="p-1">
-                            <img src={msg.content.substring(7)} alt="Image" className="rounded-xl max-w-[250px] w-full" />
+                            <img 
+                              src={msg.content.substring(7)} 
+                              alt="Image" 
+                              className="rounded-xl max-w-[250px] w-full cursor-pointer hover:opacity-90 transition-opacity" 
+                              onClick={() => setMaximizedImage(msg.content.substring(7))}
+                            />
                           </div>
                         ) : (
                           <div className="px-4 py-2.5 whitespace-pre-wrap break-words">{msg.content}</div>
@@ -750,7 +760,8 @@ export default function Messages() {
                       <img 
                         src={replyingTo.content.substring(7)} 
                         alt="Reply" 
-                        className="h-12 w-12 rounded object-cover"
+                        className="h-12 w-12 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setMaximizedImage(replyingTo.content.substring(7))}
                       />
                       <span className="text-sm text-muted-foreground">Photo</span>
                     </div>
@@ -848,6 +859,31 @@ export default function Messages() {
             <p className="text-muted-foreground text-sm max-w-sm">
               Select a conversation from the list to start messaging
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Image Maximization Modal */}
+      {maximizedImage && (
+        <div 
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+          onClick={() => setMaximizedImage(null)}
+        >
+          <div className="relative max-w-full max-h-full">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white"
+              onClick={() => setMaximizedImage(null)}
+            >
+              <X className="h-6 w-6" />
+            </Button>
+            <img 
+              src={maximizedImage} 
+              alt="Maximized" 
+              className="max-w-full max-h-full object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
         </div>
       )}

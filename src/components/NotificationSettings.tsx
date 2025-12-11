@@ -205,22 +205,28 @@ export const NotificationSettings = () => {
         <div className="space-y-2">
           <h4 className="font-medium text-sm">Permission Status</h4>
           <div className="flex items-center gap-2">
-            {Notification.permission === 'granted' && (
+            {typeof Notification !== 'undefined' && Notification.permission === 'granted' && (
               <>
                 <Check className="h-4 w-4 text-green-500" />
                 <span className="text-sm text-green-600">Permission granted</span>
               </>
             )}
-            {Notification.permission === 'denied' && (
+            {typeof Notification !== 'undefined' && Notification.permission === 'denied' && (
               <>
                 <AlertCircle className="h-4 w-4 text-red-500" />
                 <span className="text-sm text-red-600">Permission denied - please enable in browser settings</span>
               </>
             )}
-            {Notification.permission === 'default' && (
+            {typeof Notification !== 'undefined' && Notification.permission === 'default' && (
               <>
                 <AlertCircle className="h-4 w-4 text-yellow-500" />
                 <span className="text-sm text-yellow-600">Permission not requested yet</span>
+              </>
+            )}
+            {typeof Notification === 'undefined' && (
+              <>
+                <AlertCircle className="h-4 w-4 text-red-500" />
+                <span className="text-sm text-red-600">Notifications not supported in this browser</span>
               </>
             )}
           </div>

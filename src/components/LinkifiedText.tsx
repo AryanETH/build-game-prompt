@@ -164,7 +164,7 @@ export const LinkifiedText = ({ text, className = "" }: LinkifiedTextProps) => {
         parts.push(
           <span
             key={`mention-${i}`}
-            className="text-gray-300 hover:underline cursor-pointer font-semibold"
+            className="text-purple-600 dark:text-purple-400 hover:underline cursor-pointer font-semibold"
             onClick={(e) => {
               e.stopPropagation();
               navigate(`/u/${match.value}`);
