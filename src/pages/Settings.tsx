@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { NotificationSettings } from "@/components/NotificationSettings";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -157,8 +158,8 @@ export default function Settings() {
   );
 
   return (
-    <div className="min-h-screen pb-16 md:pb-0 bg-background">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen pb-16 md:pb-0 bg-background no-scrollbar">
+      <div className="max-w-2xl mx-auto no-scrollbar">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b">
           <div className="flex items-center gap-3 p-4">
@@ -240,6 +241,11 @@ export default function Settings() {
               onClick={() => toast.info("Data settings coming soon")}
             />
           </Card>
+
+          {/* Notifications Section */}
+          <div className="space-y-4">
+            <NotificationSettings />
+          </div>
 
           {/* Preferences Section */}
           <Card className="overflow-hidden rounded-2xl shadow-soft hover-lift transition-smooth">

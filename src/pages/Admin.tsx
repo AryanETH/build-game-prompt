@@ -718,7 +718,7 @@ export default function Admin() {
   }
 
   return (
-    <div className={`min-h-screen transition-colors ${isDarkMode ? 'bg-black text-white' : 'bg-white text-black'}`}>
+    <div className={`min-h-screen transition-colors no-scrollbar ${isDarkMode ? 'bg-black text-white' : 'bg-white text-black'}`}>
       {/* Header */}
       <header className={`border-b sticky top-0 z-50 shadow-sm transition-colors ${
         isDarkMode ? 'bg-black border-white/10' : 'bg-white border-black/10'

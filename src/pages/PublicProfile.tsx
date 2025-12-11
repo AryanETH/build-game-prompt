@@ -18,6 +18,7 @@ import { PublicProfileSkeleton, GameGridSkeleton } from "@/components/SkeletonCo
 import { notifyNewFollower, notifyFollowBack } from "@/lib/notificationSystem";
 import { LinkifiedText } from "@/components/LinkifiedText";
 import { OnlineIndicator } from "@/components/OnlineIndicator";
+import { VideoThumbnail } from "@/components/VideoThumbnail";
 
 interface ProfileRow {
   id: string;
@@ -248,11 +249,11 @@ export default function PublicProfile() {
   }
 
   return (
-    <div className="min-h-screen pb-16 md:pb-0">
+    <div className="min-h-screen pb-16 md:pb-0 no-scrollbar">
       {selectedGame ? (
         <GamePlayer game={selectedGame as any} onClose={() => setSelectedGame(null)} />
       ) : (
-        <div className="max-w-4xl mx-auto px-3 md:px-4 py-4 space-y-6 overflow-x-hidden">
+        <div className="max-w-4xl mx-auto px-3 md:px-4 py-4 space-y-6 overflow-x-hidden no-scrollbar">
           {/* Back button */}
           <Button
             variant="ghost"
@@ -350,7 +351,12 @@ export default function PublicProfile() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-2 md:gap-3">
                   {createdGames.map((g) => (
                     <div key={g.id} className="aspect-[9/16] relative group overflow-hidden rounded-lg border border-border hover:border-primary transition-all">
-                      <img src={g.cover_url || g.thumbnail_url} alt={g.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                      <VideoThumbnail 
+                        thumbnailUrl={g.cover_url || g.thumbnail_url || ''} 
+                        title={g.title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                        showPlayIcon={true}
+                      />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                       <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
                         <p className="font-bold text-sm mb-1 truncate">{g.title}</p>
@@ -371,7 +377,12 @@ export default function PublicProfile() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-2 md:gap-3">
                   {remixedGames.map((g) => (
                     <div key={g.id} className="aspect-[9/16] relative group cursor-pointer overflow-hidden rounded-lg border border-border hover:border-primary transition-all" onClick={() => setSelectedGame(g)}>
-                      <img src={g.cover_url || g.thumbnail_url} alt={g.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                      <VideoThumbnail 
+                        thumbnailUrl={g.cover_url || g.thumbnail_url || ''} 
+                        title={g.title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                        showPlayIcon={true}
+                      />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                       <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
                         <p className="font-bold text-sm mb-1 truncate">{g.title}</p>

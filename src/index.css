@@ -277,6 +277,49 @@ All colors MUST be HSL.
     overscroll-behavior-y: none;
   }
 
+  /* 
+   * Global scrollbar hiding - applies to all pages except landing page
+   * This hides scrollbars while preserving scroll functionality
+   * Landing page (Index.tsx) is excluded by adding 'landing-page' class to body
+   */
+  body:not(.landing-page) {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  body:not(.landing-page)::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+
+  /* Hide scrollbars on all scrollable elements except on landing page */
+  body:not(.landing-page) *::-webkit-scrollbar {
+    display: none;
+  }
+
+  body:not(.landing-page) * {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  /* Ensure scroll functionality is preserved */
+  body:not(.landing-page) * {
+    overflow: auto; /* Maintain scroll functionality */
+  }
+
+  /* Special handling for specific scrollable areas */
+  body:not(.landing-page) .overflow-y-auto,
+  body:not(.landing-page) .overflow-x-auto,
+  body:not(.landing-page) .overflow-auto {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  body:not(.landing-page) .overflow-y-auto::-webkit-scrollbar,
+  body:not(.landing-page) .overflow-x-auto::-webkit-scrollbar,
+  body:not(.landing-page) .overflow-auto::-webkit-scrollbar {
+    display: none !important;
+  }
+
   /* Fallback for browsers that don't support dvh */
   @supports not (height: 100dvh) {
     .mobile-feed-container {

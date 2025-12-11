@@ -116,6 +116,14 @@ const Index = () => {
     checkSession();
   }, [navigate]);
 
+  // Add landing-page class to body to exclude from scrollbar hiding
+  useEffect(() => {
+    document.body.classList.add('landing-page');
+    return () => {
+      document.body.classList.remove('landing-page');
+    };
+  }, []);
+
   // Fetch live stats
   const { data: stats } = useQuery({
     queryKey: ['platformStats'],

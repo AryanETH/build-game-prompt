@@ -7,7 +7,7 @@ import { NotificationReminderSystem } from "@/components/NotificationReminderSys
 
 export default function Feed() {
   return (
-    <>
+    <div className="no-scrollbar">
       <NotificationOnboarding trigger="early" />
       <ExistingUserNotificationPrompt />
       <NotificationReminderSystem strategy="gentle" />
@@ -15,6 +15,6 @@ export default function Feed() {
         playContent={<GameFeed />}
         watchContent={<WatchFeed />}
       />
-    </>
+    </div>
   );
 }

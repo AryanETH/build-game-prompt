@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Heart, Play, Loader2, Pencil, UserPlus, UserCheck, Star, Trash2, Coins, LogOut, Share2, Settings, Bookmark, Sparkles, Plus, HelpCircle, Crown, Trophy } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -27,10 +27,11 @@ import { Bell } from "lucide-react";
 import { LinkifiedText } from "@/components/LinkifiedText";
 import { NotificationPermissionPrompt } from "@/components/NotificationPermissionPrompt";
 import { NotificationBanner } from "@/components/NotificationBanner";
-import { NotificationSettings } from "@/components/NotificationSettings";
+
 import { isSubscribed, isPushSupported } from "@/lib/pushNotifications";
 import { MentionTextarea } from "@/components/MentionTextarea";
 import { ImageCropper } from "@/components/ImageCropper";
+import { VideoThumbnail } from "@/components/VideoThumbnail";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -745,7 +746,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen pb-16 md:pb-0">
+    <div className="min-h-screen pb-16 md:pb-0 no-scrollbar">
       
       <div className="w-full">
         {/* Notification Banner */}
@@ -1031,13 +1032,7 @@ export default function Profile() {
               <Trophy className="w-4 h-4 mr-1 md:mr-2" />
               Achievements
             </TabsTrigger>
-            <TabsTrigger 
-              value="settings" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent px-4 md:px-6 py-3 text-sm md:text-base whitespace-nowrap"
-            >
-              <Settings className="w-4 h-4 mr-1 md:mr-2" />
-              Settings
-            </TabsTrigger>
+
           </TabsList>
 
           <TabsContent value="created" className="mt-0">
@@ -1054,7 +1049,11 @@ export default function Profile() {
                     className="aspect-[9/16] relative cursor-pointer overflow-hidden bg-muted group"
                   >
                     {game.thumbnail_url ? (
-                      <img src={game.thumbnail_url} alt={game.title} className="w-full h-full object-cover" />
+                      <VideoThumbnail 
+                        thumbnailUrl={game.thumbnail_url} 
+                        title={game.title}
+                        showPlayIcon={true}
+                      />
                     ) : (
                       <div className="w-full h-full bg-muted flex items-center justify-center"><Play className="w-8 h-8 text-muted-foreground" /></div>
                     )}
@@ -1103,7 +1102,11 @@ export default function Profile() {
                     className="aspect-[9/16] relative cursor-pointer overflow-hidden bg-muted group"
                   >
                     {game.thumbnail_url ? (
-                      <img src={game.thumbnail_url} alt={game.title} className="w-full h-full object-cover" />
+                      <VideoThumbnail 
+                        thumbnailUrl={game.thumbnail_url} 
+                        title={game.title}
+                        showPlayIcon={true}
+                      />
                     ) : (
                       <div className="w-full h-full bg-muted flex items-center justify-center"><Play className="w-8 h-8 text-muted-foreground" /></div>
                     )}
@@ -1152,7 +1155,11 @@ export default function Profile() {
                     className="aspect-[9/16] relative cursor-pointer overflow-hidden bg-muted group"
                   >
                     {game.thumbnail_url ? (
-                      <img src={game.thumbnail_url} alt={game.title} className="w-full h-full object-cover" />
+                      <VideoThumbnail 
+                        thumbnailUrl={game.thumbnail_url} 
+                        title={game.title}
+                        showPlayIcon={true}
+                      />
                     ) : (
                       <div className="w-full h-full bg-muted flex items-center justify-center"><Play className="w-8 h-8 text-muted-foreground" /></div>
                     )}
@@ -1181,64 +1188,7 @@ export default function Profile() {
             <AchievementsPanel />
           </TabsContent>
 
-          <TabsContent value="settings" className="mt-6 px-0">
-            <div className="space-y-6">
-              <NotificationSettings />
-              
-              {/* Game Settings */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Play className="h-5 w-5" />
-                    Game Settings
-                  </CardTitle>
-                  <CardDescription>
-                    Customize your gaming experience
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <span className="font-medium">Autoplay Feed</span>
-                      <p className="text-sm text-muted-foreground">
-                        Automatically play games when scrolling
-                      </p>
-                    </div>
-                    <Switch
-                      checked={autoplayFeed}
-                      onCheckedChange={setAutoplayFeed}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <span className="font-medium">Enable Sound by Default</span>
-                      <p className="text-sm text-muted-foreground">
-                        Play game sounds automatically
-                      </p>
-                    </div>
-                    <Switch
-                      checked={enableSoundByDefault}
-                      onCheckedChange={setEnableSoundByDefault}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <span className="font-medium">High Graphics Quality</span>
-                      <p className="text-sm text-muted-foreground">
-                        Use higher quality graphics (may affect performance)
-                      </p>
-                    </div>
-                    <Switch
-                      checked={highGraphicsQuality}
-                      onCheckedChange={setHighGraphicsQuality}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
+
         </Tabs>
       </div>
       <FollowersFollowingDialogs

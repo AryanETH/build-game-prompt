@@ -1009,7 +1009,7 @@ export default function Create() {
   };
 
   return (
-    <div className="min-h-[100dvh] overflow-y-auto relative" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+    <div className="min-h-[100dvh] overflow-y-auto relative no-scrollbar" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       {/* Notification Permission Prompt */}
       {PromptComponent && <PromptComponent />}
       
