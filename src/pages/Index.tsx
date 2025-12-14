@@ -188,13 +188,13 @@ const Index = () => {
             </Button>
             <Button 
               variant="ghost" 
-              onClick={() => navigate('/auth')} 
+              onClick={() => navigate('/auth?mode=login')} 
               className={isDarkMode ? 'text-white' : 'text-black'}
             >
               Log In
             </Button>
             <Button 
-              onClick={() => navigate('/auth')} 
+              onClick={() => navigate('/auth?mode=signup')} 
               className={isDarkMode 
                 ? 'bg-white text-black hover:bg-white/90' 
                 : 'bg-black text-white hover:bg-black/90'
@@ -241,7 +241,7 @@ const Index = () => {
           
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center relative z-20">
             <AnimatedButton 
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/auth?mode=signup')}
               isDarkMode={isDarkMode}
             >
               Start Creating
@@ -309,7 +309,7 @@ const Index = () => {
             </div>
 
             <AnimatedButton 
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/auth?mode=signup')}
               isDarkMode={isDarkMode}
             >
               Start Creating

@@ -606,20 +606,22 @@ All colors MUST be HSL.
       scroll-snap-type: y mandatory !important;
       overflow-y: scroll !important;
       scroll-behavior: smooth !important;
-      padding: 2rem 0 !important;
+      padding: 0 !important;
+      /* Fix zoom issues by using exact viewport height */
+      height: 100vh !important;
     }
     .snap-item {
-      scroll-snap-align: center !important;
+      scroll-snap-align: start !important;
       scroll-snap-stop: always !important;
-      height: calc(100dvh - 4rem) !important;
-      min-height: calc(100dvh - 4rem) !important;
+      height: 100vh !important;
+      min-height: 100vh !important;
       width: 100% !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
-      padding: 2rem 0 !important;
-      /* Ensure smooth transitions */
-      transition: transform 0.3s ease-out !important;
+      padding: 0 !important;
+      /* Remove transition that can interfere with snap */
+      box-sizing: border-box !important;
     }
   }
 
@@ -644,8 +646,8 @@ All colors MUST be HSL.
     /* Desktop fallback */
     @media (min-width: 768px) {
       .snap-item {
-        height: calc(100vh - 4rem) !important;
-        min-height: calc(100vh - 4rem) !important;
+        height: 100vh !important;
+        min-height: 100vh !important;
       }
     }
   }

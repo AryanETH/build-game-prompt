@@ -14,7 +14,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 export default function AuthPage() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [isSignUp, setIsSignUp] = useState(true);
+  
+  // Check URL parameter to determine initial mode
+  const urlParams = new URLSearchParams(window.location.search);
+  const mode = urlParams.get('mode');
+  const [isSignUp, setIsSignUp] = useState(mode === 'login' ? false : true);
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
@@ -370,6 +374,7 @@ export default function AuthPage() {
         setOtpEmail("");
         // Switch to login mode
         setIsSignUp(false);
+        window.history.replaceState(null, '', '/auth?mode=login');
       }
     } catch (error) {
       console.error("OTP verification error:", error);
@@ -654,7 +659,13 @@ export default function AuthPage() {
             <p className="text-white/60 text-sm">
               {isSignUp ? "Already have an account? " : "Don't have an account? "}
               <button
-                onClick={() => setIsSignUp(!isSignUp)}
+                onClick={() => {
+                  const newMode = !isSignUp;
+                  setIsSignUp(newMode);
+                  // Update URL parameter
+                  const newUrl = newMode ? '/auth?mode=signup' : '/auth?mode=login';
+                  window.history.replaceState(null, '', newUrl);
+                }}
                 className="text-purple-400 hover:text-purple-300 font-medium"
               >
                 {isSignUp ? "Log in" : "Sign up"}
@@ -941,6 +952,7 @@ export default function AuthPage() {
                       onClick={() => {
                         setShowEmailVerification(false);
                         setIsSignUp(false);
+                        window.history.replaceState(null, '', '/auth?mode=login');
                       }}
                       className="text-purple-400 hover:text-purple-300"
                     >
