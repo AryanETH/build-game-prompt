@@ -1541,7 +1541,7 @@ export const GameFeed = () => {
       {/* Snap scrolling feed - TikTok style on mobile, centered on desktop */}
       <div className="relative w-full bg-white dark:bg-black md:bg-[#F8F9FA]" style={{ height: '100' }}>
         {/* Desktop Navigation Buttons */}
-        <div className="hidden md:flex fixed right-8 top-1/2 -translate-y-1/2 flex-col gap-4 z-50">
+        <div className="hidden md:flex fixed right-8 top-1/2 -translate-y-1/2 flex-col gap-4 z-50 p-3">
           <button
             onClick={navigateUp}
             className="h-12 w-12 rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg hover:shadow-xl"
@@ -1775,7 +1775,7 @@ export const GameFeed = () => {
                   </div>
 
                   {/* Desktop: Action buttons on RIGHT - positioned at bottom */}
-                  <div className="hidden md:flex flex-col gap-4 items-center self-end mb-8">
+                  <div className="hidden md:flex flex-col gap-4 items-center self-end mb-8 p-1">
                     {/* Play button */}
                     <button
                       aria-label="Play game"
