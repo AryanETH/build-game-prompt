@@ -150,7 +150,7 @@ export const TikTokSidebar = () => {
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 px-2 py-4 space-y-1">
+      <nav className="flex flex-col px-2 py-4 space-y-1 h-max">
         {navItems.map(({ icon: Icon, label, path }) => {
           const active = isActive(path);
           const isProfileItem = path === "/profile";
@@ -159,7 +159,7 @@ export const TikTokSidebar = () => {
             <button
               key={path}
               onClick={() => handleNavigate(path)}
-              className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 group ${
+              className={`w-full flex items-center gap-4 px-4 py-1 h-12 rounded-lg transition-all duration-200 group ${
                 active
                   ? "bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary font-semibold"
                   : "text-foreground hover:bg-muted/50 hover:text-primary dark:hover:text-primary"
@@ -179,8 +179,8 @@ export const TikTokSidebar = () => {
                 </Avatar>
               ) : (
                 <Icon 
-                  className={`h-5 w-5 transition-transform duration-200 ${
-                    active ? "scale-110" : "group-hover:scale-110"
+                  className={`h-6 w-5 transition-transform duration-200 ${
+                    active ? "scale-100" : "group-hover:scale-110"
                   }`} 
                   strokeWidth={active ? 2.5 : 2}
                 />
