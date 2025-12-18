@@ -1633,7 +1633,7 @@ export const GameFeed = () => {
 
 
                       {/* Game info - bottom left - fixed position on mobile to avoid browser UI */}
-                      <div className="absolute left-0 right-[70px] md:right-[80px] bottom-20 md:bottom-2 p-3 md:p-5 pb-4 md:pb-[130px] text-white z-10">
+                      <div className="absolute left-0 right-[70px] md:right-[80px] bottom-20 md:bottom-2 p-3 md:p-5 pb-4 text-white z-10">
                         <div className="flex items-center gap-2 mb-2">
                           <button
                             className="flex items-center gap-2 hover:opacity-80 transition-opacity group"
