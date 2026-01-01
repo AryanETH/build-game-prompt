@@ -31,6 +31,7 @@ export default function AuthPage() {
   const [otpEmail, setOtpEmail] = useState("");
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState("");
+  const [loginError, setLoginError] = useState(false); // Track login error for red input styling
   const [formData, setFormData] = useState({
     name: "",
     username: "",
@@ -283,6 +284,7 @@ export default function AuthPage() {
         
         if (profileError || !profile?.email) {
           toast.error('Username not found. Please check your username or use your email.');
+          setLoginError(true);
           return;
         }
         
@@ -295,7 +297,17 @@ export default function AuthPage() {
       });
 
       if (error) {
-        toast.error(error.message);
+        // Set login error state to show red borders on inputs
+        setLoginError(true);
+        // Show user-friendly error message for invalid credentials
+        if (error.message.toLowerCase().includes('invalid') || 
+            error.message.toLowerCase().includes('credentials') ||
+            error.message.toLowerCase().includes('password') ||
+            error.message.toLowerCase().includes('user not found')) {
+          toast.error("Invalid email or password. Please try again with correct credentials.");
+        } else {
+          toast.error(error.message);
+        }
       }
     }
   };
@@ -590,13 +602,20 @@ export default function AuthPage() {
                 type={isSignUp ? "email" : "text"}
                 placeholder=" "
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, email: e.target.value });
+                  if (loginError) setLoginError(false); // Clear error when user types
+                }}
                 required
-                className="bg-[#111111] border-[#333333] text-white placeholder:text-transparent focus:border-purple-600 focus:ring-purple-600 peer pt-6 pb-2"
+                className={`bg-[#111111] border-[#333333] text-white placeholder:text-transparent focus:border-purple-600 focus:ring-purple-600 peer pt-6 pb-2 transition-all duration-200 ${
+                  !isSignUp && loginError ? 'border-red-500 focus:border-red-500 focus:ring-red-500 animate-shake' : ''
+                }`}
               />
               <Label 
                 htmlFor="email" 
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 transition-all peer-focus:top-2 peer-focus:text-xs peer-focus:text-purple-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-xs pointer-events-none"
+                className={`absolute left-3 top-1/2 -translate-y-1/2 transition-all peer-focus:top-2 peer-focus:text-xs peer-focus:text-purple-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-xs pointer-events-none ${
+                  !isSignUp && loginError ? 'text-red-400' : 'text-white/40'
+                }`}
               >
                 {isSignUp ? 'Email' : 'Email or Username'}
               </Label>
@@ -610,14 +629,21 @@ export default function AuthPage() {
                   type={showPassword ? "text" : "password"}
                   placeholder=" "
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, password: e.target.value });
+                    if (loginError) setLoginError(false); // Clear error when user types
+                  }}
                   required
                   minLength={6}
-                  className="bg-[#111111] border-[#333333] text-white placeholder:text-transparent focus:border-purple-600 focus:ring-purple-600 pr-10 peer pt-6 pb-2"
+                  className={`bg-[#111111] border-[#333333] text-white placeholder:text-transparent focus:border-purple-600 focus:ring-purple-600 pr-10 peer pt-6 pb-2 transition-all duration-200 ${
+                    !isSignUp && loginError ? 'border-red-500 focus:border-red-500 focus:ring-red-500 animate-shake' : ''
+                  }`}
                 />
                 <Label 
                   htmlFor="password" 
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 transition-all peer-focus:top-2 peer-focus:text-xs peer-focus:text-purple-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-xs pointer-events-none"
+                  className={`absolute left-3 top-1/2 -translate-y-1/2 transition-all peer-focus:top-2 peer-focus:text-xs peer-focus:text-purple-400 peer-[:not(:placeholder-shown)]:top-2 peer-[:not(:placeholder-shown)]:text-xs pointer-events-none ${
+                    !isSignUp && loginError ? 'text-red-400' : 'text-white/40'
+                  }`}
                 >
                   Password
                 </Label>
@@ -632,6 +658,10 @@ export default function AuthPage() {
               {/* Password validation - only show error when user types less than 6 chars */}
               {isSignUp && formData.password && formData.password.length < 6 && (
                 <p className="text-xs text-red-500 mt-1">Must be at least 6 characters</p>
+              )}
+              {/* Login error message */}
+              {!isSignUp && loginError && (
+                <p className="text-xs text-red-500 mt-1">Invalid credentials. Please try again.</p>
               )}
             </div>
 

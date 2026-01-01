@@ -19,6 +19,7 @@ import { notifyNewFollower, notifyFollowBack } from "@/lib/notificationSystem";
 import { LinkifiedText } from "@/components/LinkifiedText";
 import { OnlineIndicator } from "@/components/OnlineIndicator";
 import { VideoThumbnail } from "@/components/VideoThumbnail";
+import { MentionTextarea } from "@/components/MentionTextarea";
 
 interface ProfileRow {
   id: string;
@@ -404,7 +405,12 @@ export default function PublicProfile() {
           {messageOpen && (
             <Card className="p-4 space-y-3">
               <div className="font-semibold">Send a message to {profile.username}</div>
-              <textarea value={messageText} onChange={(e) => setMessageText(e.target.value)} className="w-full h-24 bg-background border border-border rounded p-2" placeholder="Say hi..." />
+              <MentionTextarea 
+                value={messageText} 
+                onChange={setMessageText} 
+                className="w-full min-h-24" 
+                placeholder="Say hi... (@ for users, + for games)" 
+              />
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setMessageOpen(false)}>Cancel</Button>
                 <Button onClick={sendMessage} disabled={!messageText.trim() || isSendingMessage}>

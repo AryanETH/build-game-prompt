@@ -9,6 +9,7 @@ import { GameCreationFlow } from "@/components/GameCreationFlow";
 import { AnimatedButton } from "@/components/AnimatedButton";
 import { NotificationPermissionPrompt } from "@/components/NotificationPermissionPrompt";
 import QRCode from "qrcode";
+import Lenis from "@studio-freight/lenis";
 
 const MOCK_GAMES = [
   { id: 1, title: "Space Adventure", username: "cosmic_dev", description: "Explore the galaxy in this epic space shooter 🚀", likes: 12340, comments: 856, thumbnail: "https://images.unsplash.com/photo-1614732414444-096e5f1122d5?w=400&h=800&fit=crop" },
@@ -26,12 +27,78 @@ const MOCK_GAMES = [
 const Index = () => {
   const navigate = useNavigate();
   const phoneScrollRef = useRef<HTMLDivElement>(null);
+  const lenisRef = useRef<Lenis | null>(null);
   const [currentScreen, setCurrentScreen] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [batteryLevel, setBatteryLevel] = useState(100);
   const [isCharging, setIsCharging] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
+
+  // Lenis smooth scrolling - cinematic, buttery feel (desktop only)
+  useEffect(() => {
+    // Check for prefers-reduced-motion
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    
+    // Skip on mobile or if user prefers reduced motion
+    if (prefersReducedMotion || window.innerWidth < 768) {
+      return;
+    }
+
+    // Initialize Lenis with slow, cinematic settings
+    const lenis = new Lenis({
+      duration: 1.8, // Slower duration for cinematic feel
+      easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // Smooth easeOutExpo
+      orientation: 'vertical',
+      gestureOrientation: 'vertical',
+      smoothWheel: true,
+      wheelMultiplier: 0.8, // Slower wheel scrolling
+      touchMultiplier: 1.5,
+      infinite: false,
+    });
+
+    lenisRef.current = lenis;
+
+    // RAF loop for 60fps smooth scrolling
+    function raf(time: number) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+
+    requestAnimationFrame(raf);
+
+    // Handle resize - disable on mobile
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        lenis.destroy();
+        lenisRef.current = null;
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      lenis.destroy();
+      lenisRef.current = null;
+    };
+  }, []);
+
+  // Scroll to section helper using Lenis
+  const scrollToSection = (elementId: string) => {
+    const element = document.getElementById(elementId);
+    if (element && lenisRef.current) {
+      lenisRef.current.scrollTo(element, {
+        offset: 0,
+        duration: 2, // Slow, cinematic scroll
+        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      });
+    } else if (element) {
+      // Fallback for mobile/reduced motion
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   // Toggle theme
   const toggleTheme = () => {
@@ -247,10 +314,7 @@ const Index = () => {
               Start Creating
             </AnimatedButton>
             <button
-              onClick={() => {
-                const section = document.getElementById('build-section');
-                section?.scrollIntoView({ behavior: 'smooth' });
-              }}
+              onClick={() => scrollToSection('build-section')}
               className={`flex items-center gap-1.5 px-5 py-2.5 rounded-full font-semibold shadow-2xl transition-all hover:scale-105 border-2 ${
                 isDarkMode 
                   ? 'bg-white/10 border-white/20 hover:bg-white/20 text-white hover:shadow-white/20' 
@@ -496,7 +560,7 @@ const Index = () => {
               <ul className="space-y-4">
                 <li>
                   <a 
-                    href="#" 
+                    href="/privacy" 
                     className={`text-base transition-colors duration-200 ${
                       isDarkMode ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
                     }`}
@@ -506,7 +570,7 @@ const Index = () => {
                 </li>
                 <li>
                   <a 
-                    href="#" 
+                    href="/terms" 
                     className={`text-base transition-colors duration-200 ${
                       isDarkMode ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
                     }`}
@@ -516,7 +580,7 @@ const Index = () => {
                 </li>
                 <li>
                   <a 
-                    href="#" 
+                    href="/cookies" 
                     className={`text-base transition-colors duration-200 ${
                       isDarkMode ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
                     }`}

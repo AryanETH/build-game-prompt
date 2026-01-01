@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Image as ImageIcon, Smile, Eye, EyeOff, ArrowLeft, Search, MoreVertical, Trash2, Copy, Reply, Clock, X } from "lucide-react";
@@ -13,6 +12,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { useNavigate, useLocation } from "react-router-dom";
 import { MessagesListSkeleton, MessageThreadSkeleton } from "@/components/SkeletonComponents";
+import { MentionInput } from "@/components/MentionInput";
+import { Input } from "@/components/ui/input";
 
 interface Message {
   id: string;
@@ -825,10 +826,10 @@ export default function Messages() {
                 {isOneTime ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
               </Button>
 
-              <Input
-                placeholder="Type a message..."
+              <MentionInput
+                placeholder="Type a message... (@ for users, + for games)"
                 value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
+                onChange={setNewMessage}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey && newMessage.trim()) {
                     e.preventDefault();

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from './ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -32,137 +33,149 @@ export const MentionInput = ({ value, onChange, onKeyDown, placeholder, classNam
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [mentionQuery, setMentionQuery] = useState('');
-  const [mentionType, setMentionType] = useState<'user' | 'game' | null>(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
+  const [isHoveringDropdown, setIsHoveringDropdown] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Detect @ (user) and + (game) mentions and fetch suggestions
   useEffect(() => {
-    const detectMention = () => {
-      const cursorPos = inputRef.current?.selectionStart || 0;
-      const textBeforeCursor = value.substring(0, cursorPos);
-      
-      // Check for @ (user mention)
-      const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-      const lastPlusIndex = textBeforeCursor.lastIndexOf('+');
-      
-      // Determine which mention type is more recent
-      if (lastAtIndex > lastPlusIndex && lastAtIndex !== -1) {
-        const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
-        if (!textAfterAt.includes(' ') && !textAfterAt.includes('+')) {
-          setMentionQuery(textAfterAt);
-          setMentionType('user');
-          fetchUserSuggestions(textAfterAt);
-          return;
-        }
-      } else if (lastPlusIndex > lastAtIndex && lastPlusIndex !== -1) {
-        const textAfterPlus = textBeforeCursor.substring(lastPlusIndex + 1);
-        if (!textAfterPlus.includes(' ') && !textAfterPlus.includes('@')) {
-          setMentionQuery(textAfterPlus);
-          setMentionType('game');
-          fetchGameSuggestions(textAfterPlus);
-          return;
-        }
-      }
-      
-      setShowSuggestions(false);
-      setSuggestions([]);
-      setMentionType(null);
-    };
-
-    detectMention();
-  }, [value]);
+    if (showSuggestions && inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownPos({
+        top: rect.top - 8,
+        left: rect.left,
+        width: rect.width
+      });
+    }
+  }, [showSuggestions, suggestions]);
 
   const fetchUserSuggestions = async (query: string) => {
     try {
-      let queryBuilder = supabase
+      const { data } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url');
-      
-      if (query.trim()) {
-        queryBuilder = queryBuilder.ilike('username', `${query}%`);
-      }
-      
-      const { data, error } = await queryBuilder
+        .select('id, username, avatar_url')
+        .ilike('username', `%${query}%`)
         .order('username', { ascending: true })
-        .limit(8);
+        .limit(10);
 
-      if (!error && data) {
-        const userSuggestions: Suggestion[] = data.map(user => ({
-          type: 'user' as const,
-          data: user as UserSuggestion
-        }));
-        setSuggestions(userSuggestions);
-        setShowSuggestions(userSuggestions.length > 0);
+      if (data && data.length > 0) {
+        setSuggestions(data.map(u => ({ type: 'user' as const, data: u })));
+        setShowSuggestions(true);
         setSelectedIndex(0);
+      } else if (query === '') {
+        const { data: all } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url')
+          .order('username', { ascending: true })
+          .limit(10);
+        if (all && all.length > 0) {
+          setSuggestions(all.map(u => ({ type: 'user' as const, data: u })));
+          setShowSuggestions(true);
+          setSelectedIndex(0);
+        } else {
+          setSuggestions([]);
+          setShowSuggestions(false);
+        }
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
       }
-    } catch (error) {
-      console.error('Error fetching user suggestions:', error);
+    } catch (e) {
+      setSuggestions([]);
+      setShowSuggestions(false);
     }
   };
 
   const fetchGameSuggestions = async (query: string) => {
     try {
-      let queryBuilder = supabase
+      const { data } = await supabase
         .from('games')
-        .select('id, title, thumbnail_url');
-      
-      if (query.trim()) {
-        queryBuilder = queryBuilder.ilike('title', `${query}%`);
-      }
-      
-      const { data, error } = await queryBuilder
+        .select('id, title, thumbnail_url')
+        .ilike('title', `%${query}%`)
         .order('created_at', { ascending: false })
-        .limit(8);
+        .limit(10);
 
-      if (!error && data) {
-        const gameSuggestions: Suggestion[] = data.map(game => ({
-          type: 'game' as const,
-          data: game as GameSuggestion
-        }));
-        setSuggestions(gameSuggestions);
-        setShowSuggestions(gameSuggestions.length > 0);
+      if (data && data.length > 0) {
+        setSuggestions(data.map(g => ({ type: 'game' as const, data: g })));
+        setShowSuggestions(true);
         setSelectedIndex(0);
+      } else if (query === '') {
+        const { data: all } = await supabase
+          .from('games')
+          .select('id, title, thumbnail_url')
+          .order('created_at', { ascending: false })
+          .limit(10);
+        if (all && all.length > 0) {
+          setSuggestions(all.map(g => ({ type: 'game' as const, data: g })));
+          setShowSuggestions(true);
+          setSelectedIndex(0);
+        } else {
+          setSuggestions([]);
+          setShowSuggestions(false);
+        }
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
       }
-    } catch (error) {
-      console.error('Error fetching game suggestions:', error);
+    } catch (e) {
+      setSuggestions([]);
+      setShowSuggestions(false);
     }
   };
 
-  const insertMention = (suggestion: Suggestion) => {
-    const cursorPos = inputRef.current?.selectionStart || 0;
-    const textBeforeCursor = value.substring(0, cursorPos);
-    const textAfterCursor = value.substring(cursorPos);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    const cursorPos = e.target.selectionStart || newValue.length;
+    onChange(newValue);
     
-    let mentionText = '';
-    let lastIndex = -1;
+    const textBeforeCursor = newValue.substring(0, cursorPos);
+    const lastAt = textBeforeCursor.lastIndexOf('@');
+    const lastPlus = textBeforeCursor.lastIndexOf('+');
     
-    if (suggestion.type === 'user') {
-      lastIndex = textBeforeCursor.lastIndexOf('@');
-      mentionText = `@${suggestion.data.username} `;
-    } else {
-      lastIndex = textBeforeCursor.lastIndexOf('+');
-      // Simple format like usernames
-      mentionText = `+${suggestion.data.title} `;
+    if (lastAt !== -1 && lastAt >= lastPlus) {
+      const query = textBeforeCursor.substring(lastAt + 1);
+      if (!query.includes(' ') && !query.includes('\n')) {
+        fetchUserSuggestions(query);
+        return;
+      }
     }
+    
+    if (lastPlus !== -1 && lastPlus > lastAt) {
+      const query = textBeforeCursor.substring(lastPlus + 1);
+      if (!query.includes(' ') && !query.includes('\n')) {
+        fetchGameSuggestions(query);
+        return;
+      }
+    }
+    
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
+
+  const insertMention = (suggestion: Suggestion) => {
+    const cursorPos = inputRef.current?.selectionStart || value.length;
+    const before = value.substring(0, cursorPos);
+    const after = value.substring(cursorPos);
+    
+    const lastIndex = suggestion.type === 'user' 
+      ? before.lastIndexOf('@') 
+      : before.lastIndexOf('+');
+    
+    const mentionText = suggestion.type === 'user'
+      ? `@${suggestion.data.username} `
+      : `+${(suggestion.data as GameSuggestion).title} `;
 
     if (lastIndex !== -1) {
-      const newValue = 
-        value.substring(0, lastIndex) + 
-        mentionText + 
-        textAfterCursor;
-      
+      const newValue = value.substring(0, lastIndex) + mentionText + after;
       onChange(newValue);
-      setShowSuggestions(false);
       setSuggestions([]);
-      setMentionType(null);
+      setShowSuggestions(false);
+      setIsHoveringDropdown(false);
       
-      // Focus back on input
       setTimeout(() => {
         inputRef.current?.focus();
-        const newCursorPos = lastIndex + mentionText.length;
-        inputRef.current?.setSelectionRange(newCursorPos, newCursorPos);
-      }, 0);
+        const pos = lastIndex + mentionText.length;
+        inputRef.current?.setSelectionRange(pos, pos);
+      }, 10);
     }
   };
 
@@ -170,77 +183,125 @@ export const MentionInput = ({ value, onChange, onKeyDown, placeholder, classNam
     if (showSuggestions && suggestions.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedIndex((prev) => (prev + 1) % suggestions.length);
+        setSelectedIndex(i => (i + 1) % suggestions.length);
         return;
       }
       if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelectedIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
+        setSelectedIndex(i => (i - 1 + suggestions.length) % suggestions.length);
         return;
       }
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault();
         insertMention(suggestions[selectedIndex]);
         return;
       }
       if (e.key === 'Escape') {
+        setSuggestions([]);
         setShowSuggestions(false);
         return;
       }
     }
-
     onKeyDown?.(e);
   };
+
+  const handleBlur = () => {
+    // Don't close if hovering over dropdown
+    if (!isHoveringDropdown) {
+      setTimeout(() => {
+        if (!isHoveringDropdown) {
+          setSuggestions([]);
+          setShowSuggestions(false);
+        }
+      }, 200);
+    }
+  };
+
+  const dropdownHeight = Math.min(suggestions.length * 44 + 8, 220);
+
+  const dropdown = showSuggestions && suggestions.length > 0 ? createPortal(
+    <div 
+      onMouseEnter={() => setIsHoveringDropdown(true)}
+      onMouseLeave={() => setIsHoveringDropdown(false)}
+      onWheel={(e) => e.stopPropagation()}
+      className="fixed bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-2xl"
+      style={{ 
+        top: dropdownPos.top - dropdownHeight,
+        left: dropdownPos.left,
+        width: Math.max(dropdownPos.width, 280),
+        height: dropdownHeight,
+        zIndex: 999999,
+        overflow: 'hidden'
+      }}
+    >
+      <div 
+        className="h-full overflow-y-auto py-1 px-1"
+        style={{ 
+          scrollbarWidth: 'thin',
+          scrollbarColor: '#888 transparent'
+        }}
+      >
+        {suggestions.map((s, i) => (
+          <button
+            key={s.data.id}
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              insertMention(s);
+            }}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-zinc-800 text-left ${
+              i === selectedIndex ? 'bg-gray-100 dark:bg-zinc-800' : ''
+            }`}
+          >
+            {s.type === 'user' ? (
+              <>
+                <Avatar className="w-7 h-7 flex-shrink-0">
+                  <AvatarImage src={s.data.avatar_url || undefined} />
+                  <AvatarFallback className="text-xs bg-purple-100 text-purple-600">
+                    {s.data.username[0]?.toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium flex-1 text-gray-900 dark:text-white truncate">
+                  @{s.data.username}
+                </span>
+                <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              </>
+            ) : (
+              <>
+                <div className="w-7 h-7 rounded overflow-hidden bg-gray-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                  {(s.data as GameSuggestion).thumbnail_url ? (
+                    <img src={(s.data as GameSuggestion).thumbnail_url!} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <Gamepad2 className="w-4 h-4 text-gray-400" />
+                  )}
+                </div>
+                <span className="text-sm font-medium flex-1 truncate text-gray-900 dark:text-white">
+                  +{(s.data as GameSuggestion).title}
+                </span>
+                <Gamepad2 className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              </>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>,
+    document.body
+  ) : null;
 
   return (
     <div className="relative flex-1">
       <Input
         ref={inputRef}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={handleChange}
         onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
         placeholder={placeholder}
         className={className}
+        autoComplete="off"
       />
-      
-      {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute bottom-full left-0 right-0 mb-2 bg-background border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto z-50">
-          {suggestions.map((suggestion, index) => (
-            <button
-              key={suggestion.data.id}
-              onClick={() => insertMention(suggestion)}
-              className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-muted transition-colors ${
-                index === selectedIndex ? 'bg-muted' : ''
-              }`}
-            >
-              {suggestion.type === 'user' ? (
-                <>
-                  <Avatar className="w-6 h-6">
-                    <AvatarImage className="object-cover" src={suggestion.data.avatar_url || undefined} />
-                    <AvatarFallback className="text-xs">
-                      {suggestion.data.username[0]?.toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm font-medium">@{suggestion.data.username}</span>
-                  <User className="w-3 h-3 ml-auto text-muted-foreground" />
-                </>
-              ) : (
-                <>
-                  <div className="w-6 h-6 rounded overflow-hidden bg-muted flex items-center justify-center">
-                    {suggestion.data.thumbnail_url ? (
-                      <img src={suggestion.data.thumbnail_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <Gamepad2 className="w-3 h-3 text-muted-foreground" />
-                    )}
-                  </div>
-                  <span className="text-sm font-medium">+{suggestion.data.title}</span>
-                  <Gamepad2 className="w-3 h-3 ml-auto text-muted-foreground" />
-                </>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
+      {dropdown}
     </div>
   );
 };
