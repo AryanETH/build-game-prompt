@@ -1593,6 +1593,48 @@ export const GameFeed = () => {
                           onPlaying={() => setLoadingVideos(prev => { const s = new Set(prev); s.delete(game.id); return s; })}
                           onError={() => setLoadingVideos(prev => { const s = new Set(prev); s.delete(game.id); return s; })}
                           style={{ transform: 'translateZ(0)', willChange: 'transform', backfaceVisibility: 'hidden' }}
+                          // Long press to pause (mobile touch)
+                          onTouchStart={(e) => {
+                            const video = e.currentTarget;
+                            if (!video.paused) {
+                              video.pause();
+                            }
+                          }}
+                          onTouchEnd={(e) => {
+                            const video = e.currentTarget;
+                            if (video.paused) {
+                              video.play().catch(() => {});
+                            }
+                          }}
+                          onTouchCancel={(e) => {
+                            const video = e.currentTarget;
+                            if (video.paused) {
+                              video.play().catch(() => {});
+                            }
+                          }}
+                          // Long press to pause (desktop mouse)
+                          onMouseDown={(e) => {
+                            if (e.button === 0) { // Left mouse button only
+                              const video = e.currentTarget;
+                              if (!video.paused) {
+                                video.pause();
+                              }
+                            }
+                          }}
+                          onMouseUp={(e) => {
+                            if (e.button === 0) { // Left mouse button only
+                              const video = e.currentTarget;
+                              if (video.paused) {
+                                video.play().catch(() => {});
+                              }
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            const video = e.currentTarget;
+                            if (video.paused) {
+                              video.play().catch(() => {});
+                            }
+                          }}
                         >
                           <source src={game.media_url} type="video/mp4" />
                         </video>
