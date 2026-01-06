@@ -91,7 +91,6 @@ export const GameFeed = () => {
   const navigate = useNavigate();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isNavigatingRef = useRef(false); // Flag to prevent observer interference during button navigation
-  const savedScrollPosition = useRef<number>(0); // Save scroll position when leaving feed
   const { triggerAfterAction, shouldPrompt, PromptComponent } = useNotificationPrompt();
 
   // location UI removed per TikTok-style layout
@@ -131,9 +130,11 @@ export const GameFeed = () => {
 
       // Optimized: Exclude game_code from list query (fetch only when playing)
       // Include immersive media fields for video/audio playback
+      // Order by feed_position first (for admin-controlled ordering), then by created_at
       const { data, error } = await supabase
         .from('games')
-        .select('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, comments_count, creator_id, media_type, media_url, background_sound_url, media_duration')
+        .select('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, comments_count, creator_id, media_type, media_url, background_sound_url, media_duration, feed_position')
+        .order('feed_position', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: false })
         .range(from, to);
 
@@ -353,13 +354,13 @@ export const GameFeed = () => {
   const handlePlay = async (game: Game) => {
     playClick();
     
-    // Save scroll position before opening game
-    const scrollContainer = document.querySelector('.snap-y');
-    if (scrollContainer) {
-      savedScrollPosition.current = scrollContainer.scrollTop;
+    // Find and save the index of the game being played
+    const gameIndex = hydratedGames?.findIndex(g => g.id === game.id) ?? -1;
+    if (gameIndex >= 0) {
+      setCurrentGameIndex(gameIndex);
     }
     
-    // Pause all videos and mute them when leaving feed
+    // Pause all videos and mute them when opening game player
     videoRefs.current.forEach((video) => {
       video.pause();
       video.muted = true;
@@ -1504,37 +1505,38 @@ export const GameFeed = () => {
     );
   }
 
-  if (selectedGame) {
-    return (
-      <GamePlayer
-        game={selectedGame}
-        onClose={() => {
-          setSelectedGame(null);
-          // Restore scroll position after closing game
-          setTimeout(() => {
-            const scrollContainer = document.querySelector('.snap-y');
-            if (scrollContainer && savedScrollPosition.current > 0) {
-              scrollContainer.scrollTop = savedScrollPosition.current;
-            }
-            // Resume the active video
-            if (activeVideoId) {
-              const video = videoRefs.current.get(activeVideoId);
-              if (video) {
-                video.play().catch(() => {});
-                if (!mutedGames.has(activeVideoId)) {
-                  video.muted = false;
-                }
-              }
-            }
-          }, 100);
-        }}
-      />
-    );
-  }
+  // Handle closing the game player
+  const handleCloseGame = () => {
+    setSelectedGame(null);
+    
+    // Resume the active video after a short delay
+    setTimeout(() => {
+      if (activeVideoId) {
+        const video = videoRefs.current.get(activeVideoId);
+        if (video) {
+          video.play().catch(() => {});
+          if (!mutedGames.has(activeVideoId)) {
+            video.muted = false;
+          }
+        }
+      }
+    }, 100);
+  };
 
   // TikTok-style vertical snap scroll with centered layout
+  // IMPORTANT: Feed is always rendered to preserve scroll position
+  // GamePlayer is rendered as an overlay on top when a game is selected
   return (
     <>
+      {/* Game Player Overlay - rendered on top of feed to preserve scroll position */}
+      {selectedGame && (
+        <div className="fixed inset-0 z-[100]">
+          <GamePlayer
+            game={selectedGame}
+            onClose={handleCloseGame}
+          />
+        </div>
+      )}
       {/* Notification Permission Prompt */}
       {PromptComponent && <PromptComponent />}
       

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, Upload, LogOut, Trash2, Edit, Users, GamepadIcon, BarChart3, Search, Eye, Download, RefreshCw, Moon, Sun, Coins, CheckCircle, XCircle, ExternalLink, Bell, Send } from "lucide-react";
+import { Loader2, Upload, LogOut, Trash2, Edit, Users, GamepadIcon, BarChart3, Search, Eye, Download, RefreshCw, Moon, Sun, Coins, CheckCircle, XCircle, ExternalLink, Bell, Send, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PushNotificationButton } from "@/components/PushNotificationButton";
@@ -142,6 +142,7 @@ export default function Admin() {
       const { data, error } = await supabase
         .from('games')
         .select('*, creator:profiles!games_creator_id_fkey(username, avatar_url)')
+        .order('feed_position', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -695,6 +696,86 @@ export default function Admin() {
     toast.success("Game downloaded");
   };
 
+  // Move game up in feed position (swap with previous game)
+  const handleMoveGameUp = async (gameIndex: number) => {
+    if (gameIndex <= 0) return; // Already at top
+    
+    const currentGame = filteredGames[gameIndex];
+    const previousGame = filteredGames[gameIndex - 1];
+    
+    try {
+      // Swap feed_position values
+      const currentPosition = currentGame.feed_position ?? gameIndex;
+      const previousPosition = previousGame.feed_position ?? (gameIndex - 1);
+      
+      // Update both games' positions
+      await Promise.all([
+        supabase
+          .from('games')
+          .update({ feed_position: previousPosition })
+          .eq('id', currentGame.id),
+        supabase
+          .from('games')
+          .update({ feed_position: currentPosition })
+          .eq('id', previousGame.id)
+      ]);
+      
+      toast.success(`"${currentGame.title}" moved up`);
+      loadGames();
+    } catch (error) {
+      console.error('Move up error:', error);
+      toast.error('Failed to move game');
+    }
+  };
+
+  // Move game down in feed position (swap with next game)
+  const handleMoveGameDown = async (gameIndex: number) => {
+    if (gameIndex >= filteredGames.length - 1) return; // Already at bottom
+    
+    const currentGame = filteredGames[gameIndex];
+    const nextGame = filteredGames[gameIndex + 1];
+    
+    try {
+      // Swap feed_position values
+      const currentPosition = currentGame.feed_position ?? gameIndex;
+      const nextPosition = nextGame.feed_position ?? (gameIndex + 1);
+      
+      // Update both games' positions
+      await Promise.all([
+        supabase
+          .from('games')
+          .update({ feed_position: nextPosition })
+          .eq('id', currentGame.id),
+        supabase
+          .from('games')
+          .update({ feed_position: currentPosition })
+          .eq('id', nextGame.id)
+      ]);
+      
+      toast.success(`"${currentGame.title}" moved down`);
+      loadGames();
+    } catch (error) {
+      console.error('Move down error:', error);
+      toast.error('Failed to move game');
+    }
+  };
+
+  // Set specific position for a game
+  const handleSetGamePosition = async (gameId: string, newPosition: number) => {
+    try {
+      await supabase
+        .from('games')
+        .update({ feed_position: newPosition })
+        .eq('id', gameId);
+      
+      toast.success('Position updated');
+      loadGames();
+    } catch (error) {
+      console.error('Set position error:', error);
+      toast.error('Failed to update position');
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
@@ -855,7 +936,7 @@ export default function Admin() {
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                  {filteredGames.map((game) => (
+                  {filteredGames.map((game, index) => (
                     <div
                       key={game.id}
                       className={`p-4 border rounded-lg transition-colors ${
@@ -863,6 +944,34 @@ export default function Admin() {
                       }`}
                     >
                       <div className="flex items-start gap-4">
+                        {/* Position indicator and reorder buttons */}
+                        <div className="flex flex-col items-center gap-1 min-w-[40px]">
+                          <span className={`text-xs font-bold px-2 py-1 rounded ${isDarkMode ? 'bg-purple-600/30 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
+                            #{index + 1}
+                          </span>
+                          <div className="flex flex-col gap-0.5">
+                            <Button
+                              onClick={() => handleMoveGameUp(index)}
+                              variant="ghost"
+                              size="sm"
+                              disabled={index === 0}
+                              title="Move up"
+                              className={`h-6 w-6 p-0 ${isDarkMode ? 'text-white hover:bg-white/20 hover:text-white disabled:opacity-30' : 'disabled:opacity-30'}`}
+                            >
+                              <ChevronUp className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              onClick={() => handleMoveGameDown(index)}
+                              variant="ghost"
+                              size="sm"
+                              disabled={index === filteredGames.length - 1}
+                              title="Move down"
+                              className={`h-6 w-6 p-0 ${isDarkMode ? 'text-white hover:bg-white/20 hover:text-white disabled:opacity-30' : 'disabled:opacity-30'}`}
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
                         <img
                           src={game.thumbnail_url}
                           alt={game.title}
