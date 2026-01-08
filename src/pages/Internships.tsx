@@ -1,456 +1,517 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Clock, MapPin, Award, ChevronDown, ExternalLink, Sparkles } from "lucide-react";
+import { ArrowLeft, Clock, MapPin, Award, ChevronRight, ExternalLink, Sparkles, Gamepad2, Zap, Target, Trophy, Users, Search, Paintbrush } from "lucide-react";
 import { Logo } from "@/components/Logo";
+
+// --- Visual Assets (SVG Illustrations) ---
+const RealParachuteSVG = () => (
+  <svg width="120" height="60" viewBox="0 0 120 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+    {/* Main Canopy - Technical Rectangular Shape */}
+    <path d="M5 55C5 25 25 5 60 5C95 5 115 25 115 55H5Z" fill="url(#canopyGradient)" stroke="#fff" strokeWidth="0.5" />
+    <path d="M15 55V20C15 20 35 10 60 10C85 10 105 20 105 20V55" stroke="white" strokeOpacity="0.2" strokeWidth="1" />
+    <path d="M35 55V12M85 55V12M60 55V10" stroke="white" strokeOpacity="0.1" strokeWidth="1" />
+    {/* Ribbing/Cells */}
+    {[25, 45, 75, 95].map(x => (
+      <path key={x} d={`M${x} 55C${x} 35 ${x+2} 15 ${x} 12`} stroke="white" strokeOpacity="0.2" strokeWidth="0.5" />
+    ))}
+    <defs>
+      <linearGradient id="canopyGradient" x1="60" y1="5" x2="60" y2="55" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#9333EA" />
+        <stop offset="1" stopColor="#4F46E5" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+const RealManSVG = ({ landed }: { landed: boolean }) => (
+  <svg width="40" height="60" viewBox="0 0 40 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+    {/* Body Silhouette / Jumpsuit */}
+    <path d="M15 15C15 12.2386 17.2386 10 20 10C22.7614 10 25 12.2386 25 15V22H15V15Z" fill="#1E293B" />
+    {/* Helmet */}
+    <circle cx="20" cy="12" r="4.5" fill="#FACC15" />
+    <path d="M18 11H22V13H18V11Z" fill="#0F172A" fillOpacity="0.6" />
+    {/* Torso & Harness */}
+    <rect x="16" y="22" width="8" height="12" rx="2" fill="#334155" />
+    <path d="M16 23L24 33M24 23L16 33" stroke="white" strokeOpacity="0.3" strokeWidth="0.8" />
+    {/* Arms */}
+    <motion.path 
+      animate={!landed ? { d: ["M16 24L8 18", "M16 24L8 22", "M16 24L8 18"] } : { d: "M16 24L12 30" }}
+      stroke="#334155" strokeWidth="3" strokeLinecap="round" 
+    />
+    <motion.path 
+      animate={!landed ? { d: ["M24 24L32 18", "M24 24L32 22", "M24 24L32 18"] } : { d: "M24 24L28 30" }}
+      stroke="#334155" strokeWidth="3" strokeLinecap="round" 
+    />
+    {/* Legs */}
+    <motion.path 
+      animate={!landed ? { d: ["M17 34L14 48", "M17 34L15 46", "M17 34L14 48"] } : { d: "M17 34L18 52" }}
+      stroke="#0F172A" strokeWidth="3.5" strokeLinecap="round" 
+    />
+    <motion.path 
+      animate={!landed ? { d: ["M23 34L26 48", "M23 34L25 46", "M23 34L26 48"] } : { d: "M23 34L22 52" }}
+      stroke="#0F172A" strokeWidth="3.5" strokeLinecap="round" 
+    />
+  </svg>
+);
+
+
+// --- Page Components ---
+const BackgroundNebula = () => (
+  <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-[#020205]">
+    <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/10 blur-[120px]" />
+    <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/10 blur-[120px]" />
+    <svg className="absolute inset-0 w-full h-full opacity-20">
+      <filter id="noise">
+        <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" />
+      </filter>
+      <rect width="100%" height="100%" filter="url(#noise)" />
+    </svg>
+    <div className="absolute inset-0" style={{ 
+      backgroundImage: `radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0)`,
+      backgroundSize: '40px 40px'
+    }} />
+  </div>
+);
+
+const LandingPad = ({ active, landed }: { active: boolean; landed: boolean }) => (
+  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 flex items-center justify-center pointer-events-none z-0">
+    <AnimatePresence>
+      {active && !landed && (
+        <>
+          <motion.div 
+            animate={{ rotate: 360 }}
+            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+            className="absolute inset-0 border border-purple-500/20 rounded-full"
+          />
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.4, 0.2] }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="absolute inset-8 border-2 border-dashed border-purple-500/40 rounded-full"
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-16 h-16 bg-purple-500/5 rounded-full blur-xl" />
+          </div>
+        </>
+      )}
+    </AnimatePresence>
+  </div>
+);
+
+interface GameParachutistProps {
+  pos: { x: number; y: number };
+  landed: boolean;
+  parachuteOpen: boolean;
+}
+
+const GameParachutist = ({ pos, landed, parachuteOpen }: GameParachutistProps) => (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ 
+      opacity: 1,
+      x: pos.x, 
+      y: pos.y,
+      rotate: landed ? 0 : (Math.sin(Date.now() / 300) * 4),
+    }}
+    exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.8 } }}
+    className="fixed z-[100] pointer-events-none flex flex-col items-center"
+    transition={{ type: "spring", damping: 20, stiffness: 120 }}
+  >
+    <AnimatePresence mode="wait">
+      {parachuteOpen && !landed && (
+        <motion.div
+          key="parachute"
+          initial={{ scale: 0.5, opacity: 0, y: 30 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0, opacity: 0, y: -20 }}
+          className="mb-[-5px]"
+        >
+          <RealParachuteSVG />
+          <svg width="120" height="40" className="mt-[-5px]">
+            <line x1="5" y1="0" x2="50" y2="40" stroke="white" strokeOpacity="0.2" />
+            <line x1="115" y1="0" x2="70" y2="40" stroke="white" strokeOpacity="0.2" />
+            <line x1="60" y1="0" x2="60" y2="40" stroke="white" strokeOpacity="0.2" />
+          </svg>
+        </motion.div>
+      )}
+    </AnimatePresence>
+    <div className="mt-[-10px]">
+      <RealManSVG landed={landed} />
+    </div>
+    {landed && (
+      <motion.div 
+        initial={{ scale: 0, opacity: 1 }} 
+        animate={{ scale: 3, opacity: 0 }}
+        transition={{ duration: 0.8 }}
+        className="absolute bottom-0 w-16 h-16 bg-white/20 rounded-full blur-2xl"
+      />
+    )}
+  </motion.div>
+);
+
 
 const Internships = () => {
   const navigate = useNavigate();
-  const [expandedCategory, setExpandedCategory] = useState<number | null>(0);
-  const [hoveredCard, setHoveredCard] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState(0);
+  const [gameActive, setGameActive] = useState(false);
+  const [pos, setPos] = useState({ x: 0, y: -250 });
+  const [landed, setLanded] = useState(false);
+  const [showCharacter, setShowCharacter] = useState(true);
+  const [showGameUI, setShowGameUI] = useState(false);
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  
+  const targetRef = useRef<HTMLDivElement>(null);
+  const velocityRef = useRef({ x: 0, y: 1.8 });
+  const requestRef = useRef<number>();
+
+  const tracks = [
+    {
+      id: 0,
+      title: "Content & Creator",
+      icon: Paintbrush,
+      color: "text-rose-400",
+      accent: "bg-rose-500",
+      description: "Be the voice of Oplus. Translate complex AI tech into relatable Gen-Z vibes.",
+      tasks: ["Script/Edit Reels & Shorts", "Meme Strategy", "User Walkthroughs"],
+      skills: ["Storytelling", "CapCut/Canva", "Brand Voice"],
+      deliverables: "10 Viral-ready pieces per month"
+    },
+    {
+      id: 1,
+      title: "User Insight & Growth",
+      icon: Search,
+      color: "text-cyan-400",
+      accent: "bg-cyan-500",
+      description: "Deep dive into what makes our users tick. Build the foundation of our community.",
+      tasks: ["User Interviews", "Trend Analysis", "Discord Management"],
+      skills: ["Psychology", "Market Research", "Community Ops"],
+      deliverables: "Weekly Insight Report & Growth Map"
+    },
+    {
+      id: 2,
+      title: "Game Design & QA",
+      icon: Gamepad2,
+      color: "text-purple-400",
+      accent: "bg-purple-500",
+      description: "Break our games so we can make them better. Help design AI game prompts.",
+      tasks: ["Playtesting", "Bug Hunting", "Prompt Engineering"],
+      skills: ["Logic", "UX Design", "Product Testing"],
+      deliverables: "Documented Bug List & Fun-Log"
+    }
+  ];
+
+  const startGame = useCallback(() => {
+    if (landed || gameActive) return;
+    if (targetRef.current) {
+      const rect = targetRef.current.getBoundingClientRect();
+      setTargetRect(rect);
+      setPos({ x: window.innerWidth / 2 - 20, y: -200 });
+      setGameActive(true);
+      setShowGameUI(true);
+      setShowCharacter(true);
+      velocityRef.current = { x: 0, y: 1.8 };
+      setTimeout(() => setShowGameUI(false), 5000);
+    }
+  }, [landed, gameActive]);
+
+  // Effect to hide man after landing
+  useEffect(() => {
+    if (landed) {
+      const timer = setTimeout(() => {
+        setShowCharacter(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [landed]);
+
+
+  const update = useCallback(() => {
+    if (!gameActive || landed) return;
+    
+    setPos(prev => {
+      let nextX = prev.x + velocityRef.current.x;
+      let nextY = prev.y + velocityRef.current.y;
+      velocityRef.current.x *= 0.98;
+      
+      if (nextX < 0) nextX = 0;
+      if (nextX > window.innerWidth - 60) nextX = window.innerWidth - 60;
+      
+      if (targetRect) {
+        const charCenterX = nextX + 30;
+        const charCenterY = nextY + 100;
+        const targetCenterX = targetRect.left + targetRect.width / 2;
+        const targetCenterY = targetRect.top + targetRect.height / 2;
+        const dx = charCenterX - targetCenterX;
+        const dist = Math.abs(dx);
+        
+        if (nextY > targetRect.top - 300) {
+          velocityRef.current.x += (targetCenterX - charCenterX) * 0.015;
+        }
+        
+        if (dist < 50 && charCenterY >= targetCenterY - 10) {
+          setLanded(true);
+          setGameActive(false);
+          return { x: targetCenterX - 20, y: targetCenterY - 60 };
+        }
+      }
+      
+      if (nextY > window.innerHeight + 100) {
+        setGameActive(false);
+        return { x: window.innerWidth / 2, y: -200 };
+      }
+      
+      return { x: nextX, y: nextY };
+    });
+    
+    requestRef.current = requestAnimationFrame(update);
+  }, [gameActive, landed, targetRect]);
+
+  useEffect(() => {
+    requestRef.current = requestAnimationFrame(update);
+    return () => {
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    };
+  }, [update]);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (!gameActive) return;
+      if (e.key === "ArrowLeft" || e.key === "a") velocityRef.current.x -= 1.4;
+      if (e.key === "ArrowRight" || e.key === "d") velocityRef.current.x += 1.4;
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [gameActive]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
-  const internshipCategories = [
-    {
-      emoji: "🎨",
-      title: "Content & Creator",
-      subtitle: "Shape the voice of Oplus",
-      gradient: "from-rose-500 via-pink-500 to-purple-500",
-      bgGlow: "bg-pink-500/20",
-      overview: "Create engaging, Gen-Z-friendly content that explains and builds excitement around AI-powered social gaming.",
-      tasks: [
-        "Create short-form content (Reels / Shorts / Posts)",
-        "Record demo or walkthrough videos",
-        "Create memes, visuals, or storytelling content",
-        "Assist in launch or campaign content",
-        "Suggest creative content ideas weekly"
-      ],
-      skills: ["Startup content strategy", "Creator-style storytelling", "Product-first marketing", "Personal brand building"],
-      deliverables: ["8–12 short-form content pieces", "2 demo or explainer videos", "1 content idea document"],
-      tools: ["Instagram / YouTube Shorts", "CapCut / Canva", "Notion"],
-      success: "Clear, engaging storytelling with consistent output that explains Oplus simply and creatively."
-    },
-    {
-      emoji: "🔍",
-      title: "Research & Community",
-      subtitle: "Understand users, build community",
-      gradient: "from-blue-500 via-cyan-500 to-teal-500",
-      bgGlow: "bg-cyan-500/20",
-      overview: "Help us understand users better and build an early community through research, outreach, and feedback collection.",
-      tasks: [
-        "Research Gen-Z gaming & creator behavior",
-        "Conduct user interviews or surveys",
-        "Build and manage Discord / WhatsApp communities",
-        "Collect and organize feedback",
-        "Share weekly insight summaries"
-      ],
-      skills: ["Startup research methods", "Community building", "User psychology", "Early-stage product thinking"],
-      deliverables: ["1 competitor/market research report", "10–15 user conversations", "1 community growth plan", "Weekly insights"],
-      tools: ["Google Forms", "Discord / WhatsApp", "Notion", "Sheets"],
-      success: "Clear insights (not assumptions), honest user feedback, and a growing engaged community."
-    },
-    {
-      emoji: "🎮",
-      title: "Game Testing & Design",
-      subtitle: "Make games more fun",
-      gradient: "from-violet-500 via-purple-500 to-indigo-500",
-      bgGlow: "bg-violet-500/20",
-      overview: "Improve the quality, fun, and engagement of AI-generated games by testing gameplay and suggesting improvements.",
-      tasks: [
-        "Playtest AI-generated games",
-        "Identify bugs, glitches, or UX issues",
-        "Suggest gameplay improvements",
-        "Write better prompts for game generation",
-        "Rate games based on fun and engagement"
-      ],
-      skills: ["Game testing fundamentals", "AI game workflows", "Game design thinking", "Product feedback articulation"],
-      deliverables: ["15–20 game test reports", "Bug & improvement list", "Fun-factor rating sheet", "Prompt suggestions"],
-      tools: ["Oplus prototype", "Notion", "Screen recording"],
-      success: "Clear, structured feedback with a strong sense of what's fun vs boring."
-    }
-  ];
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
-  };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white overflow-x-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-[128px] animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[128px] animate-pulse delay-1000" />
-      </div>
+    <div className="min-h-screen text-slate-100 font-sans selection:bg-purple-500/30 overflow-x-hidden">
+      <BackgroundNebula />
+      
+      {/* Parachutist Animation Container */}
+      <AnimatePresence>
+        {gameActive && (
+          <GameParachutist key="active-man" pos={pos} landed={false} parachuteOpen={true} />
+        )}
+        {landed && showCharacter && (
+          <GameParachutist key="landed-man" pos={pos} landed={true} parachuteOpen={false} />
+        )}
+      </AnimatePresence>
 
       {/* Header */}
-      <motion.header 
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-white/5"
-      >
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
+      <header className="fixed top-0 left-0 right-0 z-[110] border-b border-white/[0.05] bg-black/20 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <button 
               onClick={() => navigate('/careers')}
-              className="text-white/70 hover:text-white hover:bg-white/10 rounded-full"
+              className="p-2 hover:bg-white/5 rounded-full transition-colors text-white/50 hover:text-white"
             >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
+              <ArrowLeft size={20} />
+            </button>
             <Logo variant="horizontal" size="sm" forceWhite />
           </div>
-          <Button
+          <button 
             onClick={() => navigate('/auth?mode=signup')}
-            className="bg-white text-black hover:bg-white/90 rounded-full px-6"
+            className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-white text-black rounded-full font-bold text-sm hover:bg-purple-400 transition-colors shadow-lg"
           >
             Join Oplus
-          </Button>
+          </button>
         </div>
-      </motion.header>
+      </header>
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6 relative">
-        <motion.div 
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="container mx-auto max-w-4xl text-center"
-        >
-          {/* Badge */}
-          <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 mb-8"
-          >
-            <Sparkles className="w-4 h-4 text-yellow-400" />
-            <span className="text-sm font-medium bg-gradient-to-r from-yellow-200 to-orange-200 bg-clip-text text-transparent">
-              4-Week Remote Program
-            </span>
+      <main className="relative z-10 pt-32 pb-20">
+        {/* Hero */}
+        <section className="max-w-7xl mx-auto px-6 text-center mb-24">
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm font-medium">
+              <Sparkles size={14} />
+              Fall 2025 Applications Open
+            </div>
+            <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-[1]">
+              Be Intern At <br />
+              <span className="bg-gradient-to-r from-purple-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+                Oplus AI.
+              </span>
+            </h1>
+            <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto font-medium leading-relaxed">
+              A 4-week intensive remote program. Build real features and shape the future of social gaming with the founding team.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4 pt-4">
+              {[
+                { icon: Clock, text: "4 Weeks", color: "text-blue-400" },
+                { icon: MapPin, text: "Remote", color: "text-emerald-400" },
+                { icon: Zap, text: "Fast Paced", color: "text-amber-400" }
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md">
+                  <item.icon size={16} className={item.color} />
+                  <span className="text-sm font-semibold">{item.text}</span>
+                </div>
+              ))}
+            </div>
           </motion.div>
-          
-          {/* Title */}
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="text-5xl md:text-7xl font-bold mb-6 tracking-tight"
-          >
-            <span className="text-white">Intern at </span>
-            <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-transparent">
-              Oplus
-            </span>
-          </motion.h1>
-          
-          {/* Subtitle */}
-          <motion.p 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="text-xl md:text-2xl text-white/50 mb-10 max-w-2xl mx-auto leading-relaxed"
-          >
-            Real startup experience. Real impact. 
-            <br className="hidden md:block" />
-            Work directly with founders on what matters.
-          </motion.p>
+        </section>
 
-          {/* Quick Stats */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="flex flex-wrap justify-center gap-3"
-          >
-            {[
-              { icon: Clock, text: "4 Weeks" },
-              { icon: MapPin, text: "Remote" },
-              { icon: Award, text: "Certificate" }
-            ].map((item, i) => (
-              <div 
-                key={i}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10"
-              >
-                <item.icon className="w-4 h-4 text-white/40" />
-                <span className="text-sm text-white/70">{item.text}</span>
-              </div>
-            ))}
-          </motion.div>
-        </motion.div>
-      </section>
 
-      {/* Categories Section */}
-      <section className="py-16 px-6 relative">
-        <div className="container mx-auto max-w-5xl">
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            className="space-y-4"
-          >
-            {internshipCategories.map((category, index) => (
-              <motion.div
-                key={index}
-                variants={itemVariants}
-                onMouseEnter={() => setHoveredCard(index)}
-                onMouseLeave={() => setHoveredCard(null)}
-                className="relative"
-              >
-                {/* Glow Effect */}
-                <AnimatePresence>
-                  {hoveredCard === index && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className={`absolute inset-0 ${category.bgGlow} rounded-3xl blur-xl -z-10`}
-                    />
-                  )}
-                </AnimatePresence>
-
-                <div 
-                  className={`relative bg-white/[0.03] border border-white/10 rounded-3xl overflow-hidden transition-all duration-500 ${
-                    hoveredCard === index ? 'border-white/20 bg-white/[0.05]' : ''
-                  }`}
-                >
-                  {/* Header - Always Visible */}
-                  <button
-                    onClick={() => setExpandedCategory(expandedCategory === index ? null : index)}
-                    className="w-full p-6 md:p-8 flex items-center justify-between text-left group"
-                  >
-                    <div className="flex items-center gap-4 md:gap-6">
-                      {/* Emoji Icon */}
-                      <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br ${category.gradient} p-[1px]`}>
-                        <div className="w-full h-full rounded-2xl bg-[#0a0a0a] flex items-center justify-center text-3xl md:text-4xl">
-                          {category.emoji}
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <h3 className="text-xl md:text-2xl font-bold text-white mb-1">
-                          {category.title}
-                        </h3>
-                        <p className="text-white/40 text-sm md:text-base">
-                          {category.subtitle}
-                        </p>
+        {/* Roles Section */}
+        <section className="max-w-7xl mx-auto px-6 mb-32">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+            <div className="md:col-span-8">
+              <div className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-[2.5rem] p-8 md:p-12 relative overflow-hidden h-full group">
+                <div className="relative z-10">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold text-amber-400 bg-amber-400/10 border border-amber-400/20 mb-6 uppercase tracking-widest">
+                    <Award size={12} /> Detailed Track
+                  </div>
+                  <h3 className="text-4xl md:text-5xl font-black mb-6">{tracks[activeTab].title}</h3>
+                  <p className="text-slate-400 text-lg mb-10 leading-relaxed max-w-xl">{tracks[activeTab].description}</p>
+                  
+                  <div className="grid md:grid-cols-2 gap-10">
+                    <div className="space-y-4">
+                      <h4 className="text-xs uppercase tracking-widest text-white/30 font-black">Weekly Tasks</h4>
+                      <ul className="space-y-3">
+                        {tracks[activeTab].tasks.map(t => (
+                          <li key={t} className="flex items-center gap-3 text-sm text-slate-300 font-medium">
+                            <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                            {t}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="space-y-4">
+                      <h4 className="text-xs uppercase tracking-widest text-white/30 font-black">Success Metric</h4>
+                      <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-sm font-medium italic text-slate-400">
+                        "{tracks[activeTab].deliverables}"
                       </div>
                     </div>
-
-                    <motion.div
-                      animate={{ rotate: expandedCategory === index ? 180 : 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors"
-                    >
-                      <ChevronDown className="w-5 h-5 text-white/50" />
-                    </motion.div>
-                  </button>
-
-                  {/* Expandable Content */}
-                  <AnimatePresence>
-                    {expandedCategory === index && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.4, ease: "easeInOut" }}
-                        className="overflow-hidden"
-                      >
-                        <div className="px-6 md:px-8 pb-8 pt-2">
-                          {/* Overview */}
-                          <p className="text-white/60 text-lg mb-8 leading-relaxed">
-                            {category.overview}
-                          </p>
-
-                          {/* Grid Content */}
-                          <div className="grid md:grid-cols-2 gap-6">
-                            {/* What You'll Do */}
-                            <div className="space-y-3">
-                              <h4 className="text-sm font-semibold text-white/30 uppercase tracking-wider">
-                                What you'll do
-                              </h4>
-                              <ul className="space-y-2">
-                                {category.tasks.map((task, i) => (
-                                  <motion.li 
-                                    key={i}
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: i * 0.05 }}
-                                    className="flex items-start gap-3 text-white/70"
-                                  >
-                                    <span className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${category.gradient} mt-2 flex-shrink-0`} />
-                                    <span className="text-sm">{task}</span>
-                                  </motion.li>
-                                ))}
-                              </ul>
-                            </div>
-
-                            {/* Skills */}
-                            <div className="space-y-3">
-                              <h4 className="text-sm font-semibold text-white/30 uppercase tracking-wider">
-                                Skills you'll gain
-                              </h4>
-                              <div className="flex flex-wrap gap-2">
-                                {category.skills.map((skill, i) => (
-                                  <motion.span
-                                    key={i}
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: i * 0.05 }}
-                                    className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/60 text-xs"
-                                  >
-                                    {skill}
-                                  </motion.span>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Deliverables */}
-                            <div className="space-y-3">
-                              <h4 className="text-sm font-semibold text-white/30 uppercase tracking-wider">
-                                Deliverables
-                              </h4>
-                              <ul className="space-y-2">
-                                {category.deliverables.map((item, i) => (
-                                  <li key={i} className="flex items-center gap-2 text-white/70 text-sm">
-                                    <span className="text-green-400">✓</span>
-                                    {item}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-
-                            {/* Tools */}
-                            <div className="space-y-3">
-                              <h4 className="text-sm font-semibold text-white/30 uppercase tracking-wider">
-                                Tools
-                              </h4>
-                              <div className="flex flex-wrap gap-2">
-                                {category.tools.map((tool, i) => (
-                                  <span
-                                    key={i}
-                                    className="px-3 py-1.5 rounded-lg bg-white/[0.03] text-white/50 text-xs"
-                                  >
-                                    {tool}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Success Note */}
-                          <div className={`mt-8 p-4 rounded-2xl bg-gradient-to-r ${category.gradient} bg-opacity-10 border border-white/5`}>
-                            <p className="text-white/70 text-sm">
-                              <span className="text-white font-medium">Success looks like: </span>
-                              {category.success}
-                            </p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  </div>
                 </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* What You Get Section */}
-      <section className="py-20 px-6">
-        <div className="container mx-auto max-w-4xl">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">What you'll walk away with</h2>
-            <p className="text-white/50">More than just a line on your resume</p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="grid md:grid-cols-3 gap-4"
-          >
-            {[
-              { emoji: "🎓", title: "Certificate", desc: "Official Certificate of Appreciation" },
-              { emoji: "🚀", title: "Real Experience", desc: "Work on a live product with real users" },
-              { emoji: "💼", title: "Team Consideration", desc: "Top performers may join the team" }
-            ].map((item, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                className="p-6 rounded-2xl bg-white/[0.03] border border-white/10 text-center hover:border-white/20 transition-colors"
-              >
-                <div className="text-4xl mb-4">{item.emoji}</div>
-                <h3 className="font-semibold text-white mb-2">{item.title}</h3>
-                <p className="text-white/50 text-sm">{item.desc}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-24 px-6">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          className="container mx-auto max-w-3xl"
-        >
-          <div className="relative p-8 md:p-12 rounded-3xl bg-gradient-to-br from-purple-500/10 via-transparent to-blue-500/10 border border-white/10 text-center overflow-hidden">
-            {/* Background Glow */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-purple-500/20 rounded-full blur-[100px]" />
+                <div className="absolute top-0 right-0 w-96 h-96 bg-purple-600/10 blur-[100px] rounded-full -translate-y-1/2 translate-x-1/2" />
+              </div>
+            </div>
             
-            <div className="relative">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Ready to start?
-              </h2>
-              <p className="text-white/50 mb-8 max-w-md mx-auto">
-                Apply now and become part of something exciting. No experience required—just curiosity and drive.
-              </p>
-              
-              <motion.a
-                href="https://forms.gle/fBV9FjTWnFeM1kc96"
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.98 }}
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-white text-black font-semibold hover:bg-white/90 transition-colors"
-              >
-                Apply Now
-                <ExternalLink className="w-4 h-4" />
-              </motion.a>
+            <div className="md:col-span-4 flex flex-col gap-4">
+              {tracks.map((t, idx) => (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTab(idx)}
+                  className={`flex items-center gap-5 p-6 rounded-[2rem] border transition-all duration-500 text-left group relative overflow-hidden
+                    ${activeTab === idx ? 'bg-white text-black border-white shadow-2xl' : 'bg-white/[0.03] border-white/10 hover:bg-white/5'}`}
+                >
+                  <div className={`p-4 rounded-2xl ${activeTab === idx ? 'bg-black text-white' : 'bg-white/5'}`}>
+                    <t.icon size={28} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-black text-xl tracking-tight">{t.title}</div>
+                    <div className={`text-xs font-bold uppercase tracking-widest mt-1 ${activeTab === idx ? 'text-black/40' : 'text-white/20'}`}>
+                      Explore Path
+                    </div>
+                  </div>
+                  <ChevronRight size={20} className={`transition-transform duration-500 ${activeTab === idx ? "translate-x-1" : "opacity-0 -translate-x-2"}`} />
+                </button>
+              ))}
             </div>
           </div>
-        </motion.div>
-      </section>
+        </section>
+
+
+        {/* Features */}
+        <section className="max-w-7xl mx-auto px-6 mb-32">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { icon: Trophy, title: "Recognition", desc: "Official Oplus Certificate of Excellence for your portfolio.", bg: "bg-blue-500/10", text: "text-blue-400" },
+              { icon: Users, title: "Founders", desc: "Work directly with founding engineers and product leads.", bg: "bg-purple-500/10", text: "text-purple-400" },
+              { icon: Target, title: "Future", desc: "Top interns fast-tracked for full-time offers and equity.", bg: "bg-orange-500/10", text: "text-orange-400" }
+            ].map((p, i) => (
+              <div key={i} className="bg-white/[0.02] border border-white/[0.05] p-10 rounded-[2.5rem] hover:bg-white/[0.04] transition-colors">
+                <div className={`w-14 h-14 rounded-2xl ${p.bg} flex items-center justify-center ${p.text} mb-8 shadow-inner`}>
+                  <p.icon size={28} />
+                </div>
+                <h4 className="text-2xl font-black mb-4">{p.title}</h4>
+                <p className="text-slate-400 leading-relaxed font-medium">{p.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* CTA Section with Game */}
+        <section className="max-w-6xl mx-auto px-6 mb-20">
+          <div 
+            onMouseEnter={startGame}
+            className="relative p-16 md:p-32 rounded-[3.5rem] bg-[#05050a] border border-white/10 overflow-hidden text-center shadow-[0_40px_100px_rgba(0,0,0,0.8)]"
+          >
+            <LandingPad active={gameActive} landed={landed} />
+            <div ref={targetRef} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 pointer-events-none z-0" />
+            
+            <div className="relative z-20 space-y-10">
+              <h2 className="text-5xl md:text-7xl font-black tracking-tighter">Ready to join?</h2>
+              <p className="text-slate-400 text-lg md:text-xl max-w-lg mx-auto font-medium leading-relaxed">
+                Take the leap. Apply now and start your journey with Oplus. No red tape, just progress.
+              </p>
+              
+              <div className="flex flex-col items-center gap-8">
+                <a
+                  href="https://forms.gle/fBV9FjTWnFeM1kc96"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`flex items-center gap-4 px-14 py-6 rounded-full font-black text-2xl
+                    ${landed ? "bg-white text-black" : "bg-indigo-600 text-white hover:bg-indigo-500"}`}
+                >
+                  {landed ? "APPLY NOW" : "Apply for Program"}
+                  <ExternalLink size={24} />
+                </a>
+                
+                {!landed && !gameActive && (
+                  <div className="flex flex-col items-center gap-3 opacity-30">
+                    <div className="text-xs font-black uppercase tracking-[0.3em]">Hover to Deploy</div>
+                    <div className="w-px h-16 bg-gradient-to-b from-white to-transparent" />
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(79,70,229,0.15),transparent)] pointer-events-none" />
+          </div>
+        </section>
+      </main>
+
+
+      {/* Game UI Overlay */}
+      <AnimatePresence>
+        {showGameUI && !landed && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[150] w-full max-w-sm px-6"
+          >
+            <div className="bg-white text-black px-8 py-6 rounded-[2.5rem] shadow-2xl flex items-center gap-6 border border-white/20">
+              <div className="bg-indigo-600 text-white p-4 rounded-2xl animate-pulse">
+                <Gamepad2 size={24} />
+              </div>
+              <div className="flex-1">
+                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 mb-1">In Flight</div>
+                <div className="text-sm font-bold leading-snug">
+                  Use <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-300">ARROW KEYS</span> to guide your landing.
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Footer */}
-      <footer className="py-8 px-6 border-t border-white/5">
-        <div className="container mx-auto text-center text-white/30 text-sm">
-          © 2025 Oplus. All rights reserved.
+      <footer className="py-20 text-center border-t border-white/5 relative z-10 bg-[#020205]">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-white/10 font-black text-xs tracking-[0.4em] uppercase mb-6">Oplus AI Inc</div>
+          <p className="text-white/30 text-xs font-bold max-w-sm mx-auto leading-relaxed">
+            Building social infrastructure for the next generation of Gamers.
+          </p>
+          <div className="mt-12 text-white/5 text-[9px] font-black tracking-widest">© 2025 ALL RIGHTS RESERVED</div>
         </div>
       </footer>
     </div>
