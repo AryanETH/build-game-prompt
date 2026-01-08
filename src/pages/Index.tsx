@@ -547,6 +547,16 @@ const Index = () => {
                     Blog
                   </a>
                 </li>
+                <li>
+                  <a 
+                    href="/careers" 
+                    className={`text-base transition-colors duration-200 ${
+                      isDarkMode ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
+                    }`}
+                  >
+                    Careers
+                  </a>
+                </li>
               </ul>
             </div>
 

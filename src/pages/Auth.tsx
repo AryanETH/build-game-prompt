@@ -134,6 +134,7 @@ export default function AuthPage() {
       setUsernameStatus(prev => ({ ...prev, checking: true }));
       
       try {
+        // @ts-ignore - Supabase type instantiation issue
         const { data, error } = await supabase
           .from('profiles')
           .select('username')
@@ -280,7 +281,7 @@ export default function AuthPage() {
           .from('profiles')
           .select('email')
           .eq('username', identifier.toLowerCase())
-          .single();
+          .single() as { data: { email: string } | null; error: any };
         
         if (profileError || !profile?.email) {
           toast.error('Username not found. Please check your username or use your email.');

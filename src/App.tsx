@@ -38,6 +38,7 @@ const Settings = lazy(() => import("./pages/Settings"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsConditions = lazy(() => import("./pages/TermsConditions"));
 const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
+const Careers = lazy(() => import("./pages/Careers"));
 
 const queryClient = new QueryClient();
 
@@ -271,6 +272,7 @@ const App = () => {
                 <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="/terms" element={<TermsConditions />} />
                 <Route path="/cookies" element={<CookiePolicy />} />
+                <Route path="/careers" element={<Careers />} />
 
                   {/* 404 Fallback */}
                   <Route path="*" element={<NotFound />} />
