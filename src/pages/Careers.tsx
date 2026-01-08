@@ -207,6 +207,30 @@ const Careers = () => {
         </div>
       </section>
 
+      {/* Internship Program */}
+      <section className="py-20 px-6">
+        <div className="container mx-auto max-w-4xl text-center">
+          <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 rounded-3xl p-8 md:p-12 border border-purple-500/20">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              🎓 Internship Program
+            </h2>
+            <p className="text-xl text-white/70 mb-6">
+              4-week experience-focused internship for students and early-career builders
+            </p>
+            <p className="text-white/60 mb-8">
+              Work closely with the founding team • Certificate of Appreciation • Potential team consideration
+            </p>
+            <button
+              onClick={() => navigate('/careers/internships')}
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-white text-black font-semibold text-lg hover:scale-105 transition-transform duration-300"
+            >
+              View Internship Details
+              <ArrowLeft className="w-5 h-5 rotate-180" />
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-24 px-6">
         <div className="container mx-auto max-w-3xl text-center">
@@ -217,7 +241,7 @@ const Careers = () => {
             We're always open to passionate builders, creators, and thinkers.
           </p>
           <a
-            href="https://docs.google.com/forms/d/e/1FAIpQLSfcRQFIiiLZx5yEMbVIeLkHAoTnNZ58avN8JQMM9pJN69baXA/viewform?usp=publish-editor"
+            href="https://oplusai.vercel.app/careers/internships"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold text-lg hover:scale-105 transition-transform duration-300 shadow-lg shadow-purple-500/25"
