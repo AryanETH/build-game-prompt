@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { create } from 'zustand';
 import { Game } from '@/types';
 

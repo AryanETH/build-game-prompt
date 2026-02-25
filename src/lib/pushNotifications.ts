@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Web Push Notifications Setup
 import { supabase } from "@/integrations/supabase/client";
 

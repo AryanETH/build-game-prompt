@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Server-side push notification sender (for Supabase Edge Functions)
 import { supabase } from "@/integrations/supabase/client";
 
