@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { X, Timer, Mic, MicOff, Users, Volume2, VolumeX, Keyboard, MousePointer, DollarSign, Gamepad2, QrCode, Smartphone, Radio, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";

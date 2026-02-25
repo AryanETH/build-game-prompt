@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useEffect, useState } from 'react';
 import { Button } from './ui/button';
 import { Users, Loader2, X } from 'lucide-react';

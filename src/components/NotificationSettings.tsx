@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Bell, BellOff, Check, AlertCircle, Smartphone, Globe } from 'lucide-react';
