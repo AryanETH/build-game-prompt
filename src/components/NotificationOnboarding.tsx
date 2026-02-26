@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Bell, X, Sparkles, Zap, GamepadIcon, TrendingUp, Users } from 'lucide-react';

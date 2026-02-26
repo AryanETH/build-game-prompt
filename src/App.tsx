@@ -167,7 +167,7 @@ const App = () => {
           <LocationProvider>
             <RocketCursor />
             <GlobalNotificationPrompt />
-            <NotificationPermissionPrompt variant="banner" trigger="after_time" />
+            <NotificationPermissionPrompt />
             <ErrorBoundary>
               <Suspense fallback={<LoadingSpinner fullScreen />}>
                 <Routes>

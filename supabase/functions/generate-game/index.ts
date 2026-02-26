@@ -665,7 +665,7 @@ CRITICAL: Use the ${options?.gameEngine || 'vanilla'} engine. Include all necess
           const data = new TextEncoder().encode(`${h}.${p}`);
           const signature = await base64UrlToUint8Array(s);
           const key = await importRsaPublicKey(publicKeyPem);
-          const ok = await crypto.subtle.verify({ name: 'RSASSA-PKCS1-v1_5' }, key, signature, data);
+          const ok = await crypto.subtle.verify({ name: 'RSASSA-PKCS1-v1_5' }, key, signature as BufferSource, data as BufferSource);
           if (!ok) return null;
           const payloadJson = new TextDecoder().decode(await base64UrlToUint8Array(p));
           return JSON.parse(payloadJson);

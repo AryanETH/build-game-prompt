@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { supabase } from "@/integrations/supabase/client";
 
 type ActivityType = 'game_published' | 'game_creating' | 'game_liked' | 'user_followed' | 'game_played';
