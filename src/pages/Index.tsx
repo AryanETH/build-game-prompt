@@ -303,7 +303,7 @@ const Index = () => {
           <p className={`text-2xl md:text-3xl mb-12 max-w-3xl mx-auto transition-colors duration-300 ${
             isDarkMode ? 'text-white/80' : 'text-black/80'
           }`}>
-            The infinite game engine. Turn text into playable worlds, interactive stories, and viral mini-games instantly.
+           Turn text into playable worlds, interactive stories, and viral mini-games & Apps instantly.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center relative z-20">

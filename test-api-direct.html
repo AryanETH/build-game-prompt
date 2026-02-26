@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Supabase API</title>
+</head>
+<body>
+    <h1>Test Supabase API</h1>
+    <button onclick="testAPI()">Test Profile Query</button>
+    <pre id="result"></pre>
+
+    <script>
+        const SUPABASE_URL = 'https://tadxoqrxzzmrksdslthd.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhZHhvcXJ4enptcmtzZHNsdGhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMDM1ODcsImV4cCI6MjA4Mzg3OTU4N30.8zOnfvmbd1uSV2i44ATmMv-p3FCeP4RnLRGfsCYf3d4';
+
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = 'Testing...';
+
+            try {
+                // Test 1: Direct fetch
+                const response = await fetch(
+                    `${SUPABASE_URL}/rest/v1/profiles?select=username,avatar_url&id=eq.4a170262-b6b4-4dde-ba4e-e76d62b1715f`,
+                    {
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+
+                resultDiv.textContent = `Status: ${response.status}\n`;
+                resultDiv.textContent += `Headers: ${JSON.stringify([...response.headers.entries()], null, 2)}\n\n`;
+
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.textContent += `Data: ${JSON.stringify(data, null, 2)}`;
+                } else {
+                    const text = await response.text();
+                    resultDiv.textContent += `Error: ${text}`;
+                }
+            } catch (error) {
+                resultDiv.textContent = `Error: ${error.message}\n${error.stack}`;
+            }
+        }
+    </script>
+</body>
+</html>

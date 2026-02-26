@@ -436,7 +436,7 @@ export default function Create() {
       
       // Use direct fetch with proper headers
       const response = await fetch(
-        'https://zyozjzfkmmtuxvjgryhk.supabase.co/functions/v1/generate-thumbnail',
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-thumbnail`,
         {
           method: 'POST',
           headers: {
@@ -561,7 +561,7 @@ export default function Create() {
       const { data: { session } } = await supabase.auth.getSession();
       
       const response = await fetch(
-        'https://zyozjzfkmmtuxvjgryhk.supabase.co/functions/v1/generate-game',
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-game`,
         {
           method: 'POST',
           headers: {

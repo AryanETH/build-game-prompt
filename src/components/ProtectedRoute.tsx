@@ -61,9 +61,10 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   });
 
   useEffect(() => {
-    if (sessionChecked && userId && !isLoading && (isError || !profile?.username)) {
-      navigate("/onboarding", { replace: true });
-    }
+    // Removed onboarding redirect - users go straight to feed
+    // if (sessionChecked && userId && !isLoading && (isError || !profile?.username)) {
+    //   navigate("/onboarding", { replace: true });
+    // }
   }, [sessionChecked, userId, isLoading, isError, profile, navigate]);
 
   if (isLoading || !sessionChecked) {
@@ -71,6 +72,11 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (userId && profile?.username) {
+    return <>{children}</>;
+  }
+
+  // If profile exists but no username, still allow access (will be set on first login)
+  if (userId && profile) {
     return <>{children}</>;
   }
 

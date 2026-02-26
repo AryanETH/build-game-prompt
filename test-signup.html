@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Supabase Signup</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0a0a0f;
+            color: white;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #1a1a24;
+        }
+        .success { border-left: 4px solid #22c55e; }
+        .error { border-left: 4px solid #ef4444; }
+        button {
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover { background: #7c3aed; }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 6px;
+            border: 1px solid #333;
+            background: #1a1a24;
+            color: white;
+            font-size: 14px;
+        }
+        label {
+            display: block;
+            margin-top: 12px;
+            font-weight: bold;
+        }
+        pre {
+            background: #000;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Supabase Signup</h1>
+    
+    <div>
+        <label>Email:</label>
+        <input type="email" id="email" value="test@example.com" placeholder="test@example.com">
+        
+        <label>Password:</label>
+        <input type="password" id="password" value="Test123456!" placeholder="At least 6 characters">
+        
+        <label>Name:</label>
+        <input type="text" id="name" value="Test User" placeholder="Your name">
+        
+        <label>Username:</label>
+        <input type="text" id="username" value="testuser123" placeholder="username">
+        
+        <button onclick="testConnection()">1. Test Connection</button>
+        <button onclick="testSignup()">2. Test Signup</button>
+        <button onclick="checkProfile()">3. Check Profile</button>
+        <button onclick="testLogin()">4. Test Login</button>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        // Initialize Supabase
+        const SUPABASE_URL = 'https://tadxoqrxzzmrksdslthd.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhZHhvcXJ4enptcmtzZHNsdGhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMDM1ODcsImV4cCI6MjA4Mzg3OTU4N30.8zOnfvmbd1uSV2i44ATmMv-p3FCeP4RnLRGfsCYf3d4';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        function showResult(message, data, isError = false) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = `result ${isError ? 'error' : 'success'}`;
+            resultDiv.innerHTML = `
+                <h3>${isError ? '❌' : '✅'} ${message}</h3>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+        }
+        
+        async function testConnection() {
+            try {
+                const { data, error } = await supabase.from('profiles').select('count').limit(1);
+                if (error) throw error;
+                showResult('Connection Successful!', { 
+                    url: SUPABASE_URL,
+                    status: 'Connected',
+                    profiles_table: 'Accessible'
+                });
+            } catch (error) {
+                showResult('Connection Failed', error, true);
+            }
+        }
+        
+        async function testSignup() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const name = document.getElementById('name').value;
+            const username = document.getElementById('username').value;
+            
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            name: name,
+                            username: username.toLowerCase()
+                        }
+                    }
+                });
+                
+                if (error) throw error;
+                
+                showResult('Signup Successful!', {
+                    user_id: data.user?.id,
+                    email: data.user?.email,
+                    confirmed: data.user?.email_confirmed_at ? 'Yes' : 'No (Check email)',
+                    session: data.session ? 'Created' : 'Pending confirmation'
+                });
+            } catch (error) {
+                showResult('Signup Failed', error, true);
+            }
+        }
+        
+        async function checkProfile() {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) {
+                    showResult('Not Logged In', { message: 'Please signup/login first' }, true);
+                    return;
+                }
+                
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+                
+                if (error) throw error;
+                
+                showResult('Profile Found!', data);
+            } catch (error) {
+                showResult('Profile Check Failed', error, true);
+            }
+        }
+        
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (error) throw error;
+                
+                showResult('Login Successful!', {
+                    user_id: data.user?.id,
+                    email: data.user?.email,
+                    session: 'Active'
+                });
+            } catch (error) {
+                showResult('Login Failed', error, true);
+            }
+        }
+    </script>
+</body>
+</html>
