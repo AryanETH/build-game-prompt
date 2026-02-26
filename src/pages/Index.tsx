@@ -349,7 +349,7 @@ const Index = () => {
             <p className={`text-xl max-w-lg transition-colors duration-300 ${
               isDarkMode ? 'text-white/70' : 'text-black/70'
             }`}>
-              Publish your creations directly to the Oplus Feed. Let the community play, remix, and share your worlds instantly.
+              Publish your creations directly to the Feed. Let the community engage, remix, and share your Ideas instantly.
             </p>
 
             {/* Stats */}
