@@ -117,13 +117,13 @@ export default function Admin() {
   const loadStats = async () => {
     try {
       const [gamesRes, usersRes] = await Promise.all([
-        supabase.from('games').select('likes_count, plays_count, comments_count'),
+        supabase.from('games').select('likes_count, plays_count'),
         supabase.from('profiles').select('id', { count: 'exact', head: true })
       ]);
 
       const totalLikes = gamesRes.data?.reduce((sum, g) => sum + (g.likes_count || 0), 0) || 0;
       const totalPlays = gamesRes.data?.reduce((sum, g) => sum + (g.plays_count || 0), 0) || 0;
-      const totalComments = gamesRes.data?.reduce((sum, g) => sum + (g.comments_count || 0), 0) || 0;
+      const totalComments = 0;
 
       setStats({
         totalGames: gamesRes.data?.length || 0,
@@ -143,7 +143,6 @@ export default function Admin() {
       const { data, error } = await supabase
         .from('games')
         .select('*, creator:profiles!games_creator_id_fkey(username, avatar_url)')
-        .order('feed_position', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -556,10 +555,6 @@ export default function Admin() {
             description,
             game_code: gameCode,
             thumbnail_url: finalThumbnail,
-            cover_url: finalCover,
-            background_sound_url: backgroundSoundUrl || null,
-            media_type: mediaType,
-            media_url: mediaUrl || finalThumbnail,
           })
           .eq('id', editingGameId);
 
@@ -572,13 +567,8 @@ export default function Admin() {
           game_code: gameCode,
           creator_id: user.id,
           thumbnail_url: finalThumbnail,
-          cover_url: finalCover,
-          background_sound_url: backgroundSoundUrl || null,
-          media_type: mediaType,
-          media_url: mediaUrl || finalThumbnail,
           likes_count: 0,
           plays_count: 0,
-          comments_count: 0,
         });
 
         if (error) throw error;
@@ -607,9 +597,7 @@ export default function Admin() {
     setTitle(game.title);
     setDescription(game.description || "");
     setGameCode(game.game_code);
-    setBackgroundSoundUrl(game.background_sound_url || "");
-    setMediaType(game.media_type || "image");
-    setMediaUrl(game.media_url || "");
+    setEditingGameId(game.id);
     setEditingGameId(game.id);
     
     // Switch to upload tab
@@ -699,82 +687,17 @@ export default function Admin() {
 
   // Move game up in feed position (swap with previous game)
   const handleMoveGameUp = async (gameIndex: number) => {
-    if (gameIndex <= 0) return; // Already at top
-    
-    const currentGame = filteredGames[gameIndex];
-    const previousGame = filteredGames[gameIndex - 1];
-    
-    try {
-      // Swap feed_position values
-      const currentPosition = currentGame.feed_position ?? gameIndex;
-      const previousPosition = previousGame.feed_position ?? (gameIndex - 1);
-      
-      // Update both games' positions
-      await Promise.all([
-        supabase
-          .from('games')
-          .update({ feed_position: previousPosition })
-          .eq('id', currentGame.id),
-        supabase
-          .from('games')
-          .update({ feed_position: currentPosition })
-          .eq('id', previousGame.id)
-      ]);
-      
-      toast.success(`"${currentGame.title}" moved up`);
-      loadGames();
-    } catch (error) {
-      console.error('Move up error:', error);
-      toast.error('Failed to move game');
-    }
+    if (gameIndex <= 0) return;
+    toast.info('Feed position ordering is not supported in current schema');
   };
 
-  // Move game down in feed position (swap with next game)
   const handleMoveGameDown = async (gameIndex: number) => {
-    if (gameIndex >= filteredGames.length - 1) return; // Already at bottom
-    
-    const currentGame = filteredGames[gameIndex];
-    const nextGame = filteredGames[gameIndex + 1];
-    
-    try {
-      // Swap feed_position values
-      const currentPosition = currentGame.feed_position ?? gameIndex;
-      const nextPosition = nextGame.feed_position ?? (gameIndex + 1);
-      
-      // Update both games' positions
-      await Promise.all([
-        supabase
-          .from('games')
-          .update({ feed_position: nextPosition })
-          .eq('id', currentGame.id),
-        supabase
-          .from('games')
-          .update({ feed_position: currentPosition })
-          .eq('id', nextGame.id)
-      ]);
-      
-      toast.success(`"${currentGame.title}" moved down`);
-      loadGames();
-    } catch (error) {
-      console.error('Move down error:', error);
-      toast.error('Failed to move game');
-    }
+    if (gameIndex >= filteredGames.length - 1) return;
+    toast.info('Feed position ordering is not supported in current schema');
   };
 
-  // Set specific position for a game
   const handleSetGamePosition = async (gameId: string, newPosition: number) => {
-    try {
-      await supabase
-        .from('games')
-        .update({ feed_position: newPosition })
-        .eq('id', gameId);
-      
-      toast.success('Position updated');
-      loadGames();
-    } catch (error) {
-      console.error('Set position error:', error);
-      toast.error('Failed to update position');
-    }
+    toast.info('Feed position ordering is not supported in current schema');
   };
 
   const handleLogout = async () => {
@@ -984,7 +907,7 @@ export default function Admin() {
                           <div className={`flex gap-4 mt-2 text-xs ${isDarkMode ? 'text-white/70' : 'text-black/50'}`}>
                             <span>Likes: {game.likes_count || 0}</span>
                             <span>Plays: {game.plays_count || 0}</span>
-                            <span>Comments: {game.comments_count || 0}</span>
+                            <span>By: {game.creator?.username || 'Unknown'}</span>
                             <span>By: {game.creator?.username || 'Unknown'}</span>
                           </div>
                         </div>

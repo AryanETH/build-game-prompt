@@ -134,8 +134,7 @@ export const GameFeed = () => {
       // Order by feed_position first (for admin-controlled ordering), then by created_at
       const { data, error } = await supabase
         .from('games')
-        .select('id, title, description, thumbnail_url, cover_url, likes_count, plays_count, comments_count, creator_id, media_type, media_url, background_sound_url, media_duration, feed_position')
-        .order('feed_position', { ascending: true, nullsFirst: false })
+        .select('id, title, description, thumbnail_url, likes_count, plays_count, creator_id, sound_url')
         .order('created_at', { ascending: false })
         .range(from, to);
 
@@ -1186,7 +1185,7 @@ export const GameFeed = () => {
               const gameTitle = mention.substring(1);
               const { data: mentionedGame, error: gameError } = await supabase
                 .from('games')
-                .select('id, title, creator_id, thumbnail_url, cover_url')
+                .select('id, title, creator_id, thumbnail_url')
                 .ilike('title', `%${gameTitle}%`)
                 .limit(1)
                 .single();

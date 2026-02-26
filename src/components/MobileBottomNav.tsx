@@ -19,7 +19,7 @@ export const MobileBottomNav = () => {
 
     const { data } = await supabase
       .from('profiles')
-      .select('avatar_url, username, name')
+      .select('avatar_url, username')
       .eq('id', user.id)
       .single();
 

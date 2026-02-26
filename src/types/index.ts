@@ -4,14 +4,13 @@ export interface Profile {
   id: string;
   username: string;
   avatar_url: string | null;
-  bio: string | null;
-  coins: number;
-  is_plus_member: boolean;
   followers_count: number;
   following_count: number;
   xp: number;
+  level: number;
+  total_plays: number;
+  total_likes: number;
   created_at?: string;
-  updated_at?: string;
 }
 
 export interface Game {
@@ -20,20 +19,16 @@ export interface Game {
   description: string;
   game_code: string;
   thumbnail_url: string;
-  cover_url?: string | null;
   likes_count: number;
   plays_count: number;
-  comments_count?: number;
   creator_id: string;
-  is_multiplayer?: boolean | null;
-  multiplayer_type?: string | null;
-  graphics_quality?: string | null;
   sound_url?: string | null;
-  original_game_id?: string | null;
   country?: string | null;
   city?: string | null;
   created_at?: string;
-  updated_at?: string;
+  duration_minutes?: number;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface GameWithCreator extends Game {

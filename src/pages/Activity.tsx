@@ -71,7 +71,7 @@ export default function Activity() {
       // Fetch user's games
       const { data: games } = await supabase
         .from('games')
-        .select('id, created_at, plays_count, likes_count, comments_count')
+        .select('id, created_at, plays_count, likes_count')
         .eq('creator_id', userId)
         .order('created_at', { ascending: true });
 
@@ -97,7 +97,7 @@ export default function Activity() {
       const totalGames = games?.length || 0;
       const totalPlays = games?.reduce((sum, g) => sum + (g.plays_count || 0), 0) || 0;
       const totalLikes = likesData?.length || 0;
-      const totalComments = games?.reduce((sum, g) => sum + (g.comments_count || 0), 0) || 0;
+      const totalComments = 0; // comments_count not in games table
 
       // Group games by date for chart
       const gamesByDate: Record<string, number> = {};

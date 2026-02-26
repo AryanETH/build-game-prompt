@@ -18,10 +18,7 @@ interface Game {
   creator_id: string;
   city?: string | null;
   country?: string | null;
-  is_live?: boolean;
-  live_started_at?: string | null;
   thumbnail_url?: string | null;
-  cover_url?: string | null;
 }
 
 interface CommentRow {
@@ -41,9 +38,8 @@ export const WatchFeed = () => {
       // Fetch ONLY games that are marked as live
       const { data, error} = await supabase
         .from("games")
-        .select("id,title,description,creator_id,city,country,is_live,live_started_at,thumbnail_url,cover_url")
-        .eq("is_live", true)
-        .order("live_started_at", { ascending: false })
+        .select("id,title,description,creator_id,city,country,thumbnail_url")
+        .order("created_at", { ascending: false })
         .limit(20);
       if (error) throw error;
       return data as Game[];

@@ -27,12 +27,9 @@ interface Game {
   description: string;
   game_code: string;
   thumbnail_url: string;
-  cover_url?: string | null;
   likes_count: number;
   plays_count: number;
   creator_id: string;
-  media_type?: 'image' | 'video' | 'gif' | null;
-  media_url?: string | null;
 }
 
 export default function Search() {
@@ -47,7 +44,7 @@ export default function Search() {
     queryFn: async () => {
       let query = supabase
         .from('games')
-        .select('id, title, description, game_code, thumbnail_url, cover_url, likes_count, plays_count, creator_id, media_type, media_url');
+        .select('id, title, description, game_code, thumbnail_url, likes_count, plays_count, creator_id');
 
       if (sortBy === 'popular') {
         query = query.order('plays_count', { ascending: false });

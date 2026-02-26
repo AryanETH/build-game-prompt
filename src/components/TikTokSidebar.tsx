@@ -43,7 +43,7 @@ export const TikTokSidebar = () => {
       if (data.user?.id) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('avatar_url, username, name')
+          .select('avatar_url, username')
           .eq('id', data.user.id)
           .single();
         setUserProfile(profile);
