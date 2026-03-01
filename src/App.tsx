@@ -10,6 +10,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { setupRealtimeSubscriptions } from "@/lib/realtime";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import { LocationProvider } from "./context/LocationContext";
 import RocketCursor from "@/components/RocketCursor";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -43,6 +44,7 @@ const queryClient = new QueryClient();
 
 const App = () => {
   const [isSessionLoading, setIsSessionLoading] = useState(true);
+  const [showIntro, setShowIntro] = useState(true);
   const cleanupRef = useRef<(() => void) | null>(null);
 
   const handleNewMessage = (payload: any) => {
@@ -146,6 +148,10 @@ const App = () => {
       }
     };
   }, []);
+
+  if (showIntro) {
+    return <LoadingScreen onComplete={() => setShowIntro(false)} />;
+  }
 
   if (isSessionLoading) {
     return <LoadingSpinner fullScreen />;

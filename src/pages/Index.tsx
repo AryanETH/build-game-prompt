@@ -7,7 +7,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Logo } from "@/components/Logo";
 import { GameCreationFlow } from "@/components/GameCreationFlow";
 import { AnimatedButton } from "@/components/AnimatedButton";
-import { NotificationPermissionPrompt } from "@/components/NotificationPermissionPrompt";
 import QRCode from "qrcode";
 import Lenis from "@studio-freight/lenis";
 
@@ -220,8 +219,6 @@ const Index = () => {
         ? 'bg-black text-white' 
         : 'bg-white text-black'
     }`}>
-      {/* Notification Permission Prompt */}
-      <NotificationPermissionPrompt />
       {/* Header */}
       <header className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-lg border-b transition-colors duration-300 ${
         isDarkMode 
@@ -529,7 +526,7 @@ const Index = () => {
                 </li>
                 <li>
                   <a 
-                    href="mailto:playgenofficial@gmail.com" 
+                    href="mailto:hello@playoplus.in" 
                     className={`text-base transition-colors duration-200 ${
                       isDarkMode ? 'text-white/60 hover:text-white' : 'text-black/60 hover:text-black'
                     }`}
