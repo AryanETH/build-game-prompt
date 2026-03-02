@@ -20,6 +20,7 @@ import { AppLayout } from "./components/AppLayout";
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
 const AuthPage = lazy(() => import("./pages/Auth"));
+const VerifyRedirect = lazy(() => import("./pages/VerifyRedirect"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Feed = lazy(() => import("./pages/Feed"));
 const Search = lazy(() => import("./pages/Search"));
@@ -176,6 +177,7 @@ const App = () => {
                   {/* Public routes */}
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<AuthPage />} />
+                  <Route path="/verify" element={<VerifyRedirect />} />
 
                 {/* Admin Panel */}
                 <Route

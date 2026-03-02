@@ -64,7 +64,7 @@ async function migrate() {
   }
 
   // Then migrate database tables
-  const tables = ['profiles', 'games', 'follows', 'notifications'];
+  const tables = ['profiles', 'games', 'likes', 'comments', 'follows', 'notifications'];
 
   for (const table of tables) {
     console.log(`📦 Migrating ${table}...`);
