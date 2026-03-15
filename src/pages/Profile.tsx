@@ -377,17 +377,8 @@ export default function Profile() {
     const { data: userRes } = await supabase.auth.getUser();
     const uid = userRes.user?.id;
     if (uid) {
-      const { data: remixes, error } = await supabase
-        .from('games')
-        .select('*')
-        .eq('creator_id', uid)
-        .not('original_game_id', 'is', null)
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error('Error fetching remixed games:', error);
-      }
-      setRemixedGames(remixes || []);
+      // Remixed games feature not yet available in schema
+      setRemixedGames([]);
     }
     setIsLoadingRemixed(false);
   };
