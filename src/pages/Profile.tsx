@@ -519,37 +519,28 @@ export default function Profile() {
 
   const uploadAvatarAndGetUrl = async (userId: string, file: File): Promise<string> => {
     try {
-      // Use the cropped preview URL directly
-      if (previewUrl && previewUrl.startsWith('data:')) {
-        toast.success("Profile image updated successfully");
-        return previewUrl;
-      }
-      
-      // Fallback: use original file
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          toast.success("Profile image updated successfully");
-          resolve(reader.result as string);
-        };
-        reader.readAsDataURL(file);
-      });
-      
-      /* Commented out Supabase storage upload due to RLS issues
-      const ext = file.name.includes('.') ? file.name.substring(file.name.lastIndexOf('.') + 1) : 'png';
-      const safeExt = ext.toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
-      const path = `public/${userId}_${Date.now()}.${safeExt}`;
-      
-      // Show upload progress to user
       toast.info("Uploading profile image...");
       
-      const { error: uploadError, data: uploadData } = await supabase
+      // Convert cropped data URL to blob if needed
+      let uploadBlob: Blob;
+      if (previewUrl && previewUrl.startsWith('data:')) {
+        const res = await fetch(previewUrl);
+        uploadBlob = await res.blob();
+      } else {
+        // Resize original file
+        uploadBlob = await resizeImage(file, 512);
+      }
+
+      const ext = 'png';
+      const path = `public/${userId}_${Date.now()}.${ext}`;
+      
+      const { error: uploadError } = await supabase
         .storage
         .from('avatars')
-        .upload(path, resizedFile, {
+        .upload(path, uploadBlob, {
           cacheControl: '3600',
           upsert: true,
-          contentType: file.type || 'image/png',
+          contentType: 'image/png',
         });
         
       if (uploadError) {
@@ -557,15 +548,14 @@ export default function Profile() {
         throw uploadError;
       }
       
-      // Get the public URL
       const { data } = supabase.storage.from('avatars').getPublicUrl(path);
       
       if (!data || !data.publicUrl) {
         throw new Error("Failed to get public URL for uploaded image");
       }
       
+      toast.success("Profile image uploaded successfully");
       return data.publicUrl;
-      */
     } catch (error: any) {
       console.error("Image upload error:", error);
       toast.error(error.message || "Failed to upload image");
