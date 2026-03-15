@@ -685,15 +685,12 @@ export default function Create() {
         
         // Check for specific error types
         if (error.message?.includes("402") || error.context?.status === 402) {
-          toast.error("💳 OpenRouter account needs credits");
-          toast.info("Add credits at https://openrouter.ai/credits");
+          toast.error("💳 Usage limit reached");
+          toast.info("Add credits in your workspace settings to continue");
           toast.warning("Using fallback template for now");
-        } else if (error.message?.includes("OPENROUTER_API_KEY")) {
-          toast.error("⚠️ OPENROUTER_API_KEY not configured in Supabase");
-          toast.info("Add OPENROUTER_API_KEY in Edge Function Secrets to generate unique games");
-        } else if (error.message?.includes("401") || error.context?.status === 401) {
-          toast.error("🔑 OpenRouter API key is invalid");
-          toast.info("Check your API key at https://openrouter.ai/keys");
+        } else if (error.message?.includes("LOVABLE_API_KEY")) {
+          toast.error("⚠️ AI not configured");
+          toast.info("Lovable AI key is missing - contact support");
         } else if (error.message?.includes("429") || error.context?.status === 429) {
           toast.error("⏱️ Rate limit exceeded");
           toast.info("Wait a moment and try again");
