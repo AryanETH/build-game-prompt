@@ -403,20 +403,8 @@ export default function Profile() {
   };
 
   const fetchUnreadNotificationsCount = async () => {
-    const { data: userRes } = await supabase.auth.getUser();
-    const uid = userRes.user?.id;
-    if (uid) {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', uid);
-      
-      if (!error && data) {
-        // Count unread notifications from payload
-        const unreadCount = data.filter((n: any) => !n.payload?.read).length;
-        setUnreadNotificationsCount(unreadCount);
-      }
-    }
+    // Notifications table not yet in schema
+    setUnreadNotificationsCount(0);
   };
 
   const calculateTotalLikes = async () => {
