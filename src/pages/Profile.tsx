@@ -645,9 +645,7 @@ export default function Profile() {
       const { error } = await supabase
         .from('profiles')
         .update({ 
-          name: newName,
           username: newUsername, 
-          bio: formBio.trim(), 
           avatar_url: avatarUrl 
         })
         .eq('id', uid);
