@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  ArrowLeft, Send, Paperclip, Music, Image as ImageIcon, Video,
-  RefreshCw, Upload, Play, Pause, Plus, X, Sparkles, Eye, MessageSquare,
-  Loader2, ChevronDown, Check
+  ArrowLeft, Send, Music, Image as ImageIcon, Video,
+  RefreshCw, Plus, X, Sparkles, Eye, MessageSquare,
+  Loader2, Check, Play, Pause, Clock, Upload
 } from "lucide-react";
 import { logActivity } from "@/lib/activityLogger";
 import { playClick, playSuccess, playError } from "@/lib/sounds";
@@ -29,7 +29,6 @@ interface MediaAttachment {
   name: string;
 }
 
-// Fallback game code
 const buildFallbackGameCode = (title: string) => `<!DOCTYPE html>
 <html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>${title}</title>
@@ -69,6 +68,17 @@ else if(e.y>650)enemies.splice(i,1)}
 requestAnimationFrame(loop)}loop();
 </script></body></html>`;
 
+const MUSIC_CATEGORIES = ["Suggested", "Action", "Indie", "Puzzle", "Arcade", "Simulation"];
+
+// Placeholder suggested tracks
+const SUGGESTED_TRACKS = [
+  { id: "1", name: "Birthday", artist: "KP", duration: "3:35", emoji: "🎂" },
+  { id: "2", name: "Sugars", artist: "Maroon 6", duration: "3:55", emoji: "💕" },
+  { id: "3", name: "28K Magic", artist: "Bruno Mars", duration: "3:45", emoji: "✨" },
+  { id: "4", name: "Pixel Dreams", artist: "Synthwave", duration: "4:12", emoji: "🎮" },
+  { id: "5", name: "Neon Rush", artist: "Arcade FM", duration: "2:58", emoji: "🌃" },
+];
+
 export default function Create() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"chat" | "preview">("chat");
@@ -76,7 +86,7 @@ export default function Create() {
     {
       id: "welcome",
       role: "ai",
-      content: "Hey! 👋 I'm your creative AI assistant. Tell me what you'd like to create — a game, mini app, interactive card, or anything else. You can also attach music, images, or videos as assets!",
+      content: "Hey, I'm excited to help you create!",
       type: "text",
       timestamp: new Date(),
     },
@@ -88,15 +98,16 @@ export default function Create() {
   const [gameTitle, setGameTitle] = useState("");
   const [gameDescription, setGameDescription] = useState("");
   const [attachments, setAttachments] = useState<MediaAttachment[]>([]);
-  const [showAttachPanel, setShowAttachPanel] = useState(false);
+  const [showMusicPanel, setShowMusicPanel] = useState(false);
+  const [showAttachOptions, setShowAttachOptions] = useState(false);
+  const [musicCategory, setMusicCategory] = useState("Suggested");
   const [isPublishing, setIsPublishing] = useState(false);
+  const [playingTrack, setPlayingTrack] = useState<string | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Auto-scroll chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -104,26 +115,19 @@ export default function Create() {
   const addMessage = useCallback((role: "ai" | "user", content: string, type?: ChatMessage["type"]) => {
     const msg: ChatMessage = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      role,
-      content,
-      type: type || "text",
-      timestamp: new Date(),
+      role, content, type: type || "text", timestamp: new Date(),
     };
     setMessages((prev) => [...prev, msg]);
     return msg.id;
   }, []);
 
   const updateMessage = useCallback((id: string, content: string, type?: ChatMessage["type"]) => {
-    setMessages((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, content, ...(type ? { type } : {}) } : m))
-    );
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, content, ...(type ? { type } : {}) } : m)));
   }, []);
 
-  // Improve prompt via AI
   const improvePrompt = async (userPrompt: string): Promise<string> => {
     setIsImproving(true);
     const improvingId = addMessage("ai", "✨ Improving your prompt...", "generating");
-
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(
@@ -135,247 +139,131 @@ export default function Create() {
             Authorization: `Bearer ${session?.access_token || ""}`,
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "",
           },
-          body: JSON.stringify({
-            prompt: userPrompt,
-            imagineOnly: true,
-            options: { gameEngine: "vanilla", graphicsQuality: "stylized" },
-          }),
+          body: JSON.stringify({ prompt: userPrompt, imagineOnly: true, options: { gameEngine: "vanilla", graphicsQuality: "stylized" } }),
         }
       );
-
       if (!response.ok) {
         if (response.status === 429) throw new Error("Rate limit exceeded. Try again shortly.");
         if (response.status === 402) throw new Error("Usage limit reached. Add credits in workspace settings.");
         throw new Error("Failed to improve prompt");
       }
-
       const data = await response.json();
       const improved = data.gameDescription || userPrompt;
-      const suggestedTitle = data.suggestedTitle || userPrompt.slice(0, 50);
-
-      setGameTitle(suggestedTitle);
+      setGameTitle(data.suggestedTitle || userPrompt.slice(0, 50));
       setGameDescription(improved);
-
-      updateMessage(
-        improvingId,
-        `🎯 **Enhanced concept:**\n\n${improved.slice(0, 600)}${improved.length > 600 ? "..." : ""}\n\n*Ready to generate! Tap the ✨ button or say "generate" to build it.*`,
-        "improved-prompt"
-      );
-
+      updateMessage(improvingId, improved.length > 300 ? improved.slice(0, 300) + "...\n\nReady to generate! Just say \"generate\" or tap the button below." : improved + "\n\nWhat do you think? Say \"generate\" when ready!", "improved-prompt");
       return improved;
     } catch (err: any) {
-      updateMessage(improvingId, `⚠️ ${err.message || "Couldn't improve prompt. Using your original."}`);
+      updateMessage(improvingId, `⚠️ ${err.message || "Couldn't improve prompt."}`);
       return userPrompt;
     } finally {
       setIsImproving(false);
     }
   };
 
-  // Generate game
   const generateGame = async (prompt: string) => {
     setIsGenerating(true);
-    const genId = addMessage("ai", "🔨 Building your experience... This may take a moment.", "generating");
-
+    const genId = addMessage("ai", "Building your experience... ✨", "generating");
     try {
       const { data, error } = await supabase.functions.invoke("generate-game", {
-        body: {
-          prompt,
-          options: { gameEngine: "vanilla", graphicsQuality: "stylized" },
-          title: gameTitle || prompt.slice(0, 50),
-          description: gameDescription || prompt,
-          autoInsert: false,
-        },
+        body: { prompt, options: { gameEngine: "vanilla", graphicsQuality: "stylized" }, title: gameTitle || prompt.slice(0, 50), description: gameDescription || prompt, autoInsert: false },
       });
-
       if (error) throw error;
-
       let code = data?.gameCode || "";
       if (!code) throw new Error("No game code returned");
-
-      // Inject attached assets into the game code
       if (attachments.length > 0) {
         const assetScript = buildAssetInjectionScript();
         code = code.replace("</head>", `${assetScript}\n</head>`);
       }
-
       setGeneratedCode(code);
       if (!gameTitle) setGameTitle(prompt.slice(0, 50));
       if (!gameDescription) setGameDescription(`AI-generated: ${prompt}`);
-
-      updateMessage(
-        genId,
-        "🎮 **Your experience is ready!** Switch to the Preview tab to try it out, or tap **Publish** to share it.",
-        "preview-ready"
-      );
-
+      updateMessage(genId, "Your experience is ready! 🎮\nSwitch to Preview to try it, or tap Post to share.", "preview-ready");
       playSuccess();
     } catch (err: any) {
-      console.error("Generation error:", err);
-
-      if (err.message?.includes("402") || err.context?.status === 402) {
-        updateMessage(genId, "💳 Usage limit reached. Add credits in your workspace settings. Using fallback template.");
-      } else if (err.message?.includes("429") || err.context?.status === 429) {
-        updateMessage(genId, "⏱️ Rate limit hit. Wait a moment and try again.");
+      if (err.message?.includes("429") || err.context?.status === 429) {
+        updateMessage(genId, "Rate limit hit. Wait a moment and try again.");
         setIsGenerating(false);
         return;
-      } else {
-        updateMessage(genId, "⚠️ AI generation unavailable. Built a template game for you instead!");
       }
-
-      const fallback = buildFallbackGameCode(gameTitle || "Arcade");
-      setGeneratedCode(fallback);
+      updateMessage(genId, "Used a template — AI was unavailable.");
+      setGeneratedCode(buildFallbackGameCode(gameTitle || "Arcade"));
       playError();
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // Build script to inject attachments into game
   const buildAssetInjectionScript = () => {
-    const musicAttachments = attachments.filter((a) => a.type === "music");
-    const imageAttachments = attachments.filter((a) => a.type === "image");
-
-    let script = "<script>window.__OPLUS_ASSETS__ = {";
-    if (musicAttachments.length > 0) {
-      script += `music: ${JSON.stringify(musicAttachments.map((a) => ({ name: a.name, url: a.url })))},`;
-    }
-    if (imageAttachments.length > 0) {
-      script += `images: ${JSON.stringify(imageAttachments.map((a) => ({ name: a.name, url: a.url })))},`;
-    }
-    script += "};</script>";
-    return script;
+    const m = attachments.filter((a) => a.type === "music");
+    const img = attachments.filter((a) => a.type === "image");
+    let s = "<script>window.__OPLUS_ASSETS__={";
+    if (m.length) s += `music:${JSON.stringify(m.map((a) => ({ name: a.name, url: a.url })))},`;
+    if (img.length) s += `images:${JSON.stringify(img.map((a) => ({ name: a.name, url: a.url })))},`;
+    return s + "};</script>";
   };
 
-  // Handle send
   const handleSend = async () => {
     const text = inputText.trim();
     if (!text || isGenerating || isImproving) return;
-
     playClick();
     addMessage("user", text);
     setInputText("");
-
-    // Check if user wants to generate
-    const isGenerateCommand =
-      /^(generate|build|create|make|go|do it|start)/i.test(text) && gameDescription;
-
-    if (isGenerateCommand) {
+    if (/^(generate|build|create it|make it|go|do it|start building)/i.test(text) && gameDescription) {
       await generateGame(gameDescription);
     } else {
-      // Improve the prompt first
-      const improved = await improvePrompt(text);
-      // Don't auto-generate, let user confirm
+      await improvePrompt(text);
     }
   };
 
-  // Handle regenerate
   const handleRegenerate = async () => {
     if (!gameDescription || isGenerating) return;
     playClick();
-    addMessage("user", "🔄 Regenerate");
     await generateGame(gameDescription);
   };
 
-  // Handle file upload
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>, type: MediaAttachment["type"]) => {
     const files = e.target.files;
     if (!files) return;
-
     for (const file of Array.from(files)) {
       const url = URL.createObjectURL(file);
-      const attachment: MediaAttachment = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        type,
-        file,
-        url,
-        name: file.name,
-      };
-      setAttachments((prev) => [...prev, attachment]);
-      addMessage("user", `📎 Attached ${type}: **${file.name}**`);
-      addMessage("ai", `Got it! I'll use this ${type} as an asset in your creation. Keep adding more or describe what you'd like to build.`);
+      setAttachments((prev) => [...prev, { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, type, file, url, name: file.name }]);
+      addMessage("user", `📎 ${file.name}`);
+      addMessage("ai", `Got it! I'll include this ${type} in your creation.`);
     }
-
     e.target.value = "";
-    setShowAttachPanel(false);
+    setShowAttachOptions(false);
+    setShowMusicPanel(false);
   };
 
   const removeAttachment = (id: string) => {
-    setAttachments((prev) => {
-      const att = prev.find((a) => a.id === id);
-      if (att) URL.revokeObjectURL(att.url);
-      return prev.filter((a) => a.id !== id);
-    });
+    setAttachments((prev) => { const a = prev.find((x) => x.id === id); if (a) URL.revokeObjectURL(a.url); return prev.filter((x) => x.id !== id); });
   };
 
-  // Publish
   const handlePublish = async () => {
-    if (!generatedCode || !gameTitle.trim()) {
-      toast.error("Generate an experience first");
-      return;
-    }
-
+    if (!generatedCode || !gameTitle.trim()) { toast.error("Generate something first"); return; }
     setIsPublishing(true);
     playClick();
-
     try {
       const { data: userRes } = await supabase.auth.getUser();
       const userId = userRes.user?.id;
-      if (!userId) {
-        toast.error("Please sign in to publish");
-        setIsPublishing(false);
-        return;
-      }
-
-      // Ensure profile exists
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", userId)
-        .maybeSingle();
-
-      if (!profile) {
-        await supabase.from("profiles").insert({
-          id: userId,
-          username: `user_${userId.slice(0, 8)}`,
-        });
-      }
-
-      // Upload attached media to storage
+      if (!userId) { toast.error("Please sign in to publish"); setIsPublishing(false); return; }
+      const { data: profile } = await supabase.from("profiles").select("id").eq("id", userId).maybeSingle();
+      if (!profile) await supabase.from("profiles").insert({ id: userId, username: `user_${userId.slice(0, 8)}` });
       let thumbnailUrl: string | null = null;
       const imageAtt = attachments.find((a) => a.type === "image");
       if (imageAtt) {
-        const ext = imageAtt.file.name.split(".").pop() || "png";
-        const path = `public/${userId}/${Date.now()}.${ext}`;
-        const { error: uploadErr } = await supabase.storage
-          .from("avatars")
-          .upload(path, imageAtt.file);
-        if (!uploadErr) {
-          const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-          thumbnailUrl = urlData.publicUrl;
-        }
+        const path = `public/${userId}/${Date.now()}.${imageAtt.file.name.split(".").pop() || "png"}`;
+        const { error: ue } = await supabase.storage.from("avatars").upload(path, imageAtt.file);
+        if (!ue) { const { data: u } = supabase.storage.from("avatars").getPublicUrl(path); thumbnailUrl = u.publicUrl; }
       }
-
-      const { data: insertedGame, error } = await supabase
-        .from("games")
-        .insert({
-          title: gameTitle.trim(),
-          description: gameDescription.trim().slice(0, 500),
-          game_code: generatedCode,
-          creator_id: userId,
-          thumbnail_url: thumbnailUrl,
-        })
-        .select()
-        .single();
-
+      const { data: game, error } = await supabase.from("games").insert({ title: gameTitle.trim(), description: gameDescription.trim().slice(0, 500), game_code: generatedCode, creator_id: userId, thumbnail_url: thumbnailUrl }).select().single();
       if (error) throw error;
-
-      await logActivity({ type: "game_published", gameId: insertedGame.id, metadata: { title: insertedGame.title } });
-
+      await logActivity({ type: "game_published", gameId: game.id, metadata: { title: game.title } });
       toast.success("Published! 🎉");
       playSuccess();
       navigate("/feed");
     } catch (err: any) {
-      console.error("Publish error:", err);
       toast.error(err.message || "Failed to publish");
       playError();
     } finally {
@@ -384,133 +272,113 @@ export default function Create() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-background">
-      {/* Header */}
-      <header className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-border/40 bg-card/80 backdrop-blur-xl z-10">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-muted transition-colors">
-            <ArrowLeft className="w-5 h-5 text-foreground" />
+    <div className="h-[100dvh] flex flex-col bg-[hsl(0,0%,0%)]">
+      {/* ───── Header ───── */}
+      <header className="flex-shrink-0 flex items-center justify-between px-3 py-2.5 z-10">
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-[hsl(0,0%,14%)] flex items-center justify-center">
+            <ArrowLeft className="w-4 h-4 text-[hsl(0,0%,100%)]" />
           </button>
-          <h1 className="text-lg font-bold text-foreground">Create Instantly</h1>
+          <button className="w-9 h-9 rounded-full bg-[hsl(0,0%,14%)] flex items-center justify-center">
+            <Clock className="w-4 h-4 text-[hsl(0,0%,100%)]" />
+          </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex items-center bg-muted rounded-full p-0.5">
+        {/* Tabs pill */}
+        <div className="flex items-center bg-[hsl(0,0%,14%)] rounded-full p-[3px]">
           <button
             onClick={() => setActiveTab("chat")}
             className={cn(
-              "px-4 py-1.5 text-xs font-semibold rounded-full transition-all",
-              activeTab === "chat"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+              "px-5 py-1.5 text-[13px] font-semibold rounded-full transition-all",
+              activeTab === "chat" ? "bg-[hsl(0,0%,22%)] text-[hsl(0,0%,100%)]" : "text-[hsl(0,0%,50%)]"
             )}
-          >
-            <MessageSquare className="w-3.5 h-3.5 inline mr-1" />
-            Chat
-          </button>
+          >Chat</button>
           <button
             onClick={() => setActiveTab("preview")}
             className={cn(
-              "px-4 py-1.5 text-xs font-semibold rounded-full transition-all",
-              activeTab === "preview"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+              "px-5 py-1.5 text-[13px] font-semibold rounded-full transition-all",
+              activeTab === "preview" ? "bg-[hsl(0,0%,22%)] text-[hsl(0,0%,100%)]" : "text-[hsl(0,0%,50%)]"
             )}
-          >
-            <Eye className="w-3.5 h-3.5 inline mr-1" />
-            Preview
-          </button>
+          >Preview</button>
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-2">
-          {generatedCode && (
-            <button
-              onClick={handleRegenerate}
-              disabled={isGenerating}
-              className="p-1.5 rounded-full hover:bg-muted transition-colors"
-            >
-              <RefreshCw className={cn("w-5 h-5 text-foreground", isGenerating && "animate-spin")} />
-            </button>
-          )}
-          {generatedCode && (
-            <Button
-              size="sm"
-              onClick={handlePublish}
-              disabled={isPublishing}
-              className="rounded-full text-xs font-semibold px-4"
-            >
-              {isPublishing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Publish"}
-            </Button>
-          )}
+          <button onClick={handleRegenerate} disabled={isGenerating || !generatedCode} className="w-9 h-9 rounded-full bg-[hsl(0,0%,14%)] flex items-center justify-center disabled:opacity-30">
+            <RefreshCw className={cn("w-4 h-4 text-[hsl(0,0%,100%)]", isGenerating && "animate-spin")} />
+          </button>
+          <button
+            onClick={handlePublish}
+            disabled={isPublishing || !generatedCode}
+            className="h-9 px-4 rounded-full bg-[hsl(0,0%,100%)] text-[hsl(0,0%,0%)] text-[13px] font-bold disabled:opacity-30 flex items-center gap-1.5"
+          >
+            {isPublishing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Post"}
+          </button>
         </div>
       </header>
 
-      {/* Content */}
+      {/* ───── Chat Tab ───── */}
       {activeTab === "chat" ? (
         <div className="flex-1 flex flex-col min-h-0">
-          {/* Chat Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
             {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={cn(
-                  "flex",
-                  msg.role === "user" ? "justify-end" : "justify-start"
-                )}
-              >
-                <div
-                  className={cn(
-                    "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
-                    msg.role === "user"
-                      ? "bg-primary text-primary-foreground rounded-br-md"
-                      : "bg-muted text-foreground rounded-bl-md",
-                    msg.type === "generating" && "animate-pulse"
-                  )}
-                >
-                  {msg.content.split("\n").map((line, i) => (
-                    <p key={i} className={i > 0 ? "mt-1.5" : ""}>
-                      {line.split(/(\*\*.*?\*\*)/g).map((part, j) =>
-                        part.startsWith("**") && part.endsWith("**") ? (
-                          <strong key={j} className="font-semibold">
-                            {part.slice(2, -2)}
-                          </strong>
-                        ) : (
-                          <span key={j}>{part}</span>
-                        )
-                      )}
+              <div key={msg.id}>
+                {msg.role === "ai" ? (
+                  <div className={cn(msg.type === "generating" && "animate-pulse")}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg">🌍</span>
+                      <span className="text-[13px] font-semibold text-[hsl(0,0%,60%)]">Oplus AI</span>
+                    </div>
+                    <p className="text-[22px] font-semibold leading-[1.3] text-[hsl(0,0%,100%)]">
+                      {msg.content.split("\n").map((line, i) => (
+                        <span key={i}>
+                          {i > 0 && <br />}
+                          {line}
+                        </span>
+                      ))}
                     </p>
-                  ))}
-                </div>
+                  </div>
+                ) : (
+                  <div className="flex justify-end">
+                    <div className="bg-[hsl(0,0%,92%)] text-[hsl(0,0%,7%)] rounded-2xl rounded-br-md px-5 py-3.5 max-w-[85%]">
+                      <p className="text-[15px] leading-relaxed font-medium">{msg.content}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
+
+            {/* Quick generate button */}
+            {gameDescription && !generatedCode && !isGenerating && !isImproving && (
+              <div className="flex justify-start">
+                <button
+                  onClick={() => generateGame(gameDescription)}
+                  className="flex items-center gap-2 bg-[hsl(262,83%,58%)] text-[hsl(0,0%,100%)] rounded-full px-5 py-2.5 text-[14px] font-semibold active:scale-95 transition-transform"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Generate Now
+                </button>
+              </div>
+            )}
+
             <div ref={chatEndRef} />
           </div>
 
-          {/* Attachments bar */}
+          {/* Attachments strip */}
           {attachments.length > 0 && (
-            <div className="flex-shrink-0 px-4 py-2 border-t border-border/30 bg-card/50">
-              <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="flex-shrink-0 px-5 py-2 border-t border-[hsl(0,0%,12%)]">
+              <div className="flex gap-2 overflow-x-auto">
                 {attachments.map((att) => (
-                  <div
-                    key={att.id}
-                    className="flex items-center gap-2 bg-muted rounded-full pl-3 pr-1 py-1 text-xs text-foreground shrink-0"
-                  >
-                    {att.type === "music" && <Music className="w-3 h-3 text-primary" />}
-                    {att.type === "image" && <ImageIcon className="w-3 h-3 text-primary" />}
-                    {att.type === "video" && <Video className="w-3 h-3 text-primary" />}
-                    <span className="max-w-[100px] truncate">{att.name}</span>
-                    <button
-                      onClick={() => removeAttachment(att.id)}
-                      className="p-1 rounded-full hover:bg-background/50"
-                    >
+                  <div key={att.id} className="flex items-center gap-2 bg-[hsl(0,0%,12%)] rounded-full pl-3 pr-1.5 py-1 text-[12px] text-[hsl(0,0%,80%)] shrink-0">
+                    {att.type === "music" && <Music className="w-3 h-3 text-[hsl(262,83%,58%)]" />}
+                    {att.type === "image" && <ImageIcon className="w-3 h-3 text-[hsl(262,83%,58%)]" />}
+                    {att.type === "video" && <Video className="w-3 h-3 text-[hsl(262,83%,58%)]" />}
+                    <span className="max-w-[80px] truncate">{att.name}</span>
+                    <button onClick={() => removeAttachment(att.id)} className="p-0.5 rounded-full hover:bg-[hsl(0,0%,20%)]">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
@@ -519,184 +387,158 @@ export default function Create() {
             </div>
           )}
 
-          {/* Input Area */}
-          <div className="flex-shrink-0 px-4 pb-4 pt-2 border-t border-border/30 bg-card/80 backdrop-blur-xl">
-            <div className="flex items-end gap-2">
-              {/* Attach button */}
+          {/* Input */}
+          <div className="flex-shrink-0 px-4 pb-5 pt-3 border-t border-[hsl(0,0%,10%)]">
+            <div className="flex items-end gap-2.5">
               <div className="relative">
                 <button
-                  onClick={() => setShowAttachPanel(!showAttachPanel)}
-                  className="p-2.5 rounded-full bg-muted hover:bg-muted/80 transition-colors"
+                  onClick={() => { setShowAttachOptions(!showAttachOptions); setShowMusicPanel(false); }}
+                  className="w-10 h-10 rounded-full bg-[hsl(0,0%,12%)] flex items-center justify-center active:scale-90 transition-transform"
                 >
-                  <Plus className="w-5 h-5 text-foreground" />
+                  <Plus className="w-5 h-5 text-[hsl(0,0%,70%)]" />
                 </button>
-
-                {/* Attach dropdown */}
-                {showAttachPanel && (
-                  <div className="absolute bottom-14 left-0 bg-card border border-border rounded-2xl shadow-lg p-2 min-w-[180px] z-20 animate-in fade-in slide-in-from-bottom-2 duration-200">
-                    <label className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted cursor-pointer transition-colors">
-                      <Music className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-medium">Add Music</span>
-                      <input
-                        type="file"
-                        accept="audio/*"
-                        className="hidden"
-                        onChange={(e) => handleFileSelect(e, "music")}
-                      />
+                {showAttachOptions && (
+                  <div className="absolute bottom-14 left-0 bg-[hsl(0,0%,10%)] border border-[hsl(0,0%,18%)] rounded-2xl p-1.5 min-w-[170px] z-30 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                    <button onClick={() => { setShowMusicPanel(true); setShowAttachOptions(false); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[hsl(0,0%,16%)] w-full transition-colors">
+                      <Music className="w-4 h-4 text-[hsl(262,83%,68%)]" /><span className="text-[13px] font-medium text-[hsl(0,0%,90%)]">Add Music</span>
+                    </button>
+                    <label className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[hsl(0,0%,16%)] cursor-pointer transition-colors">
+                      <ImageIcon className="w-4 h-4 text-[hsl(262,83%,68%)]" /><span className="text-[13px] font-medium text-[hsl(0,0%,90%)]">Add Image</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileSelect(e, "image")} />
                     </label>
-                    <label className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted cursor-pointer transition-colors">
-                      <ImageIcon className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-medium">Add Image</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => handleFileSelect(e, "image")}
-                      />
-                    </label>
-                    <label className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted cursor-pointer transition-colors">
-                      <Video className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-medium">Add Video</span>
-                      <input
-                        type="file"
-                        accept="video/*"
-                        className="hidden"
-                        onChange={(e) => handleFileSelect(e, "video")}
-                      />
+                    <label className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[hsl(0,0%,16%)] cursor-pointer transition-colors">
+                      <Video className="w-4 h-4 text-[hsl(262,83%,68%)]" /><span className="text-[13px] font-medium text-[hsl(0,0%,90%)]">Add Video</span>
+                      <input type="file" accept="video/*" className="hidden" onChange={(e) => handleFileSelect(e, "video")} />
                     </label>
                   </div>
                 )}
               </div>
 
-              {/* Text input */}
-              <div className="flex-1 relative">
+              <div className="flex-1">
                 <textarea
                   ref={inputRef}
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={
-                    gameDescription
-                      ? 'Say "generate" to build, or refine your idea...'
-                      : "Describe your game or app idea..."
-                  }
+                  placeholder={gameDescription ? 'Say "generate" to build...' : "Describe your game or app..."}
                   rows={1}
-                  className="w-full resize-none bg-muted rounded-2xl px-4 py-3 pr-12 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 max-h-32 overflow-y-auto"
+                  className="w-full resize-none bg-[hsl(0,0%,12%)] rounded-2xl px-4 py-3 text-[14px] text-[hsl(0,0%,100%)] placeholder:text-[hsl(0,0%,40%)] focus:outline-none focus:ring-1 focus:ring-[hsl(262,83%,58%)/0.5] max-h-28"
                   style={{ minHeight: 44 }}
-                  onInput={(e) => {
-                    const target = e.target as HTMLTextAreaElement;
-                    target.style.height = "auto";
-                    target.style.height = Math.min(target.scrollHeight, 128) + "px";
-                  }}
+                  onInput={(e) => { const t = e.target as HTMLTextAreaElement; t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 112) + "px"; }}
                 />
               </div>
 
-              {/* Send / Generate */}
               <button
                 onClick={handleSend}
                 disabled={!inputText.trim() || isGenerating || isImproving}
                 className={cn(
-                  "p-2.5 rounded-full transition-all",
-                  inputText.trim()
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : "bg-muted text-muted-foreground"
+                  "w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90",
+                  inputText.trim() ? "bg-[hsl(262,83%,58%)] text-[hsl(0,0%,100%)]" : "bg-[hsl(0,0%,12%)] text-[hsl(0,0%,40%)]"
                 )}
               >
-                {isGenerating || isImproving ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Send className="w-5 h-5" />
-                )}
+                {isGenerating || isImproving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
               </button>
             </div>
-
-            {/* Quick actions */}
-            {gameDescription && !generatedCode && !isGenerating && (
-              <div className="flex gap-2 mt-2">
-                <Button
-                  size="sm"
-                  onClick={() => generateGame(gameDescription)}
-                  className="rounded-full text-xs gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Generate Now
-                </Button>
-              </div>
-            )}
           </div>
+
+          {/* ───── Music Panel (Sekai-style bottom sheet) ───── */}
+          {showMusicPanel && (
+            <>
+              <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowMusicPanel(false)} />
+              <div className="fixed bottom-0 left-0 right-0 z-50 bg-[hsl(0,0%,8%)] rounded-t-3xl animate-in slide-in-from-bottom duration-300 max-h-[55vh] flex flex-col">
+                {/* Handle */}
+                <div className="flex justify-center pt-3 pb-1">
+                  <div className="w-10 h-1 rounded-full bg-[hsl(0,0%,25%)]" />
+                </div>
+
+                <h3 className="text-center text-[16px] font-bold text-[hsl(0,0%,100%)] pb-3">Add Music</h3>
+
+                {/* Category tabs */}
+                <div className="flex gap-1 px-4 pb-3 overflow-x-auto">
+                  {MUSIC_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setMusicCategory(cat)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap transition-colors",
+                        musicCategory === cat
+                          ? "text-[hsl(0,0%,100%)] border-b-2 border-[hsl(0,0%,100%)]"
+                          : "text-[hsl(0,0%,45%)]"
+                      )}
+                    >{cat}</button>
+                  ))}
+                </div>
+
+                {/* Track list */}
+                <div className="flex-1 overflow-y-auto px-4 pb-6">
+                  {SUGGESTED_TRACKS.map((track) => (
+                    <div key={track.id} className="flex items-center gap-3 py-3 border-b border-[hsl(0,0%,12%)] last:border-0">
+                      <div className="w-12 h-12 rounded-xl bg-[hsl(0,0%,15%)] flex items-center justify-center text-xl">{track.emoji}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14px] font-semibold text-[hsl(0,0%,100%)] truncate">{track.name}</p>
+                        <p className="text-[12px] text-[hsl(0,0%,50%)]">{track.artist}</p>
+                      </div>
+                      <span className="text-[12px] text-[hsl(0,0%,45%)] mr-1">{track.duration}</span>
+                      <button className="w-8 h-8 rounded-full bg-[hsl(0,0%,18%)] flex items-center justify-center">
+                        <Plus className="w-4 h-4 text-[hsl(0,0%,70%)]" />
+                      </button>
+                      <button
+                        onClick={() => setPlayingTrack(playingTrack === track.id ? null : track.id)}
+                        className="w-8 h-8 rounded-full bg-[hsl(0,0%,18%)] flex items-center justify-center"
+                      >
+                        {playingTrack === track.id ? <Pause className="w-4 h-4 text-[hsl(0,0%,70%)]" /> : <Play className="w-4 h-4 text-[hsl(0,0%,70%)]" />}
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Upload own */}
+                  <label className="flex items-center gap-3 py-3 cursor-pointer">
+                    <div className="w-12 h-12 rounded-xl border border-dashed border-[hsl(0,0%,25%)] flex items-center justify-center">
+                      <Upload className="w-5 h-5 text-[hsl(0,0%,40%)]" />
+                    </div>
+                    <span className="text-[14px] text-[hsl(0,0%,50%)]">Upload your own</span>
+                    <input type="file" accept="audio/*" className="hidden" onChange={(e) => handleFileSelect(e, "music")} />
+                  </label>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       ) : (
-        /* Preview Tab */
-        <div className="flex-1 flex flex-col items-center justify-center bg-background p-4">
+        /* ───── Preview Tab ───── */
+        <div className="flex-1 flex flex-col items-center justify-center p-4">
           {generatedCode ? (
             <div className="w-full max-w-[360px] mx-auto flex-1 flex flex-col">
-              <div className="relative flex-1 rounded-3xl overflow-hidden border-2 border-border/50 shadow-xl bg-black">
-                {/* Phone frame notch */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-black rounded-b-2xl z-10" />
-                <iframe
-                  ref={iframeRef}
-                  srcDoc={generatedCode}
-                  className="w-full h-full border-0"
-                  sandbox="allow-scripts allow-same-origin"
-                  title="Game Preview"
-                  style={{ minHeight: "calc(100dvh - 200px)" }}
-                />
+              <div className="relative flex-1 rounded-[2rem] overflow-hidden border border-[hsl(0,0%,15%)] shadow-2xl bg-black">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-5 bg-black rounded-b-2xl z-10" />
+                <iframe ref={iframeRef} srcDoc={generatedCode} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" title="Preview" style={{ minHeight: "calc(100dvh - 180px)" }} />
               </div>
               <div className="flex gap-3 mt-4 justify-center">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRegenerate}
-                  disabled={isGenerating}
-                  className="rounded-full text-xs gap-1.5"
-                >
-                  <RefreshCw className={cn("w-3.5 h-3.5", isGenerating && "animate-spin")} />
-                  Regenerate
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handlePublish}
-                  disabled={isPublishing}
-                  className="rounded-full text-xs gap-1.5"
-                >
-                  {isPublishing ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Check className="w-3.5 h-3.5" />
-                  )}
-                  Publish
-                </Button>
+                <button onClick={handleRegenerate} disabled={isGenerating} className="flex items-center gap-2 h-10 px-5 rounded-full bg-[hsl(0,0%,12%)] text-[hsl(0,0%,80%)] text-[13px] font-semibold disabled:opacity-30">
+                  <RefreshCw className={cn("w-3.5 h-3.5", isGenerating && "animate-spin")} /> Regenerate
+                </button>
+                <button onClick={handlePublish} disabled={isPublishing} className="flex items-center gap-2 h-10 px-5 rounded-full bg-[hsl(0,0%,100%)] text-[hsl(0,0%,0%)] text-[13px] font-bold disabled:opacity-30">
+                  {isPublishing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Publish
+                </button>
               </div>
             </div>
           ) : (
             <div className="text-center space-y-4">
-              <div className="w-20 h-20 mx-auto rounded-2xl bg-muted flex items-center justify-center">
-                <Eye className="w-8 h-8 text-muted-foreground" />
+              <div className="w-20 h-20 mx-auto rounded-2xl bg-[hsl(0,0%,10%)] flex items-center justify-center">
+                <Eye className="w-8 h-8 text-[hsl(0,0%,35%)]" />
               </div>
-              <div>
-                <p className="text-foreground font-semibold">No preview yet</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Switch to Chat and describe what you want to create
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setActiveTab("chat")}
-                className="rounded-full text-xs"
-              >
-                <MessageSquare className="w-3.5 h-3.5 mr-1.5" />
-                Go to Chat
-              </Button>
+              <p className="text-[hsl(0,0%,100%)] font-semibold">No preview yet</p>
+              <p className="text-[13px] text-[hsl(0,0%,45%)]">Go to Chat and describe what you want to create</p>
+              <button onClick={() => setActiveTab("chat")} className="text-[13px] text-[hsl(262,83%,68%)] font-semibold">
+                ← Back to Chat
+              </button>
             </div>
           )}
         </div>
       )}
 
-      {/* Click-away for attach panel */}
-      {showAttachPanel && (
-        <div className="fixed inset-0 z-10" onClick={() => setShowAttachPanel(false)} />
-      )}
+      {/* Click-away overlays */}
+      {showAttachOptions && <div className="fixed inset-0 z-20" onClick={() => setShowAttachOptions(false)} />}
     </div>
   );
 }
