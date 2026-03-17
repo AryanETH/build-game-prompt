@@ -59,7 +59,7 @@ export const NotificationPermissionPrompt = ({ onClose }: NotificationPermission
       const subscription = await subscribeToPush();
       
       if (subscription) {
-        toast.success('🔔 Notifications enabled! Stay updated with the latest games and updates.');
+        toast.success('Notifications enabled! Stay updated with the latest games and updates.');
         setIsVisible(false);
         onClose?.();
       } else {

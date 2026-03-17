@@ -1,14 +1,9 @@
 import { GameFeed } from "@/components/GameFeed";
-import { FeedTabs } from "@/components/FeedTabs";
-import { WatchFeed } from "@/components/WatchFeed";
 
 export default function Feed() {
   return (
-    <div className="no-scrollbar">
-      <FeedTabs 
-        playContent={<GameFeed />}
-        watchContent={<WatchFeed />}
-      />
+    <div className="no-scrollbar h-[100dvh]">
+      <GameFeed />
     </div>
   );
 }

@@ -54,14 +54,14 @@ export const WaitlistInline = ({
       }
 
       setIsSubmitted(true);
-      toast.success("You're on the list! 🎉");
+      toast.success("You're on the list!");
       localStorage.setItem('waitlist_submitted', 'true');
       localStorage.setItem('waitlist_email', email);
       
     } catch (error) {
       console.error('Waitlist error:', error);
       setIsSubmitted(true);
-      toast.success("You're on the list! 🎉");
+      toast.success("You're on the list!");
     } finally {
       setIsLoading(false);
     }

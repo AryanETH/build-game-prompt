@@ -67,7 +67,7 @@ export const ExistingUserNotificationPrompt = () => {
     try {
       const subscription = await subscribeToPush();
       if (subscription) {
-        toast.success('🎉 Awesome! You\'ll now get notified about trending games and updates.');
+        toast.success('Awesome! You\'ll now get notified about trending games and updates.');
         setIsVisible(false);
         
         // Mark as permanently handled

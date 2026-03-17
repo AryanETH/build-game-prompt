@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Rocket, Brain, Gamepad2, Globe, Trophy, ExternalLink } from "lucide-react";
+import { ArrowLeft, Rocket, Brain, Gamepad2, Globe, Trophy, ExternalLink, Check } from "lucide-react";
 import { Logo } from "@/components/Logo";
 
 const Careers = () => {
@@ -143,19 +143,19 @@ const Careers = () => {
             <p className="text-lg text-white/80 mb-6">You'll fit in if you are:</p>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
-                <span className="text-purple-400 mt-1">✓</span>
+                <Check className="w-4 h-4 text-purple-400 mt-1 flex-shrink-0" />
                 <span className="text-white/80">A problem solver who loves breaking and rebuilding things</span>
               </li>
               <li className="flex items-start gap-3">
-                <span className="text-purple-400 mt-1">✓</span>
+                <Check className="w-4 h-4 text-purple-400 mt-1 flex-shrink-0" />
                 <span className="text-white/80">Curious about AI, gaming, social platforms, or creator ecosystems</span>
               </li>
               <li className="flex items-start gap-3">
-                <span className="text-purple-400 mt-1">✓</span>
+                <Check className="w-4 h-4 text-purple-400 mt-1 flex-shrink-0" />
                 <span className="text-white/80">Comfortable with ambiguity and fast iteration</span>
               </li>
               <li className="flex items-start gap-3">
-                <span className="text-purple-400 mt-1">✓</span>
+                <Check className="w-4 h-4 text-purple-400 mt-1 flex-shrink-0" />
                 <span className="text-white/80">Excited to build products users actually want to spend time on</span>
               </li>
             </ul>
@@ -212,7 +212,7 @@ const Careers = () => {
         <div className="container mx-auto max-w-4xl text-center">
           <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 rounded-3xl p-8 md:p-12 border border-purple-500/20">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              🎓 Internship Program
+              Internship Program
             </h2>
             <p className="text-xl text-white/70 mb-6">
               4-week experience-focused internship for students and early-career builders

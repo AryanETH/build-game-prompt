@@ -54,6 +54,7 @@ export default function Profile() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [showCropper, setShowCropper] = useState(false);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+  const [croppedDataUrl, setCroppedDataUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [selectedGame, setSelectedGame] = useState<any>(null);
@@ -174,7 +175,7 @@ export default function Profile() {
           // Show toast notification if coins increased
           if (payload.old && payload.new.coins > payload.old.coins) {
             const coinsAdded = payload.new.coins - payload.old.coins;
-            toast.success(`🎉 ${coinsAdded} coins credited to your account!`, {
+            toast.success(`${coinsAdded} coins credited to your account!`, {
               description: "You're now a Plus member!"
             });
           }
@@ -464,6 +465,7 @@ export default function Profile() {
     setFormBio(profile?.bio || "");
     setPreviewUrl(profile?.avatar_url || null);
     setSelectedFile(null);
+    setCroppedDataUrl(null);
     setEditOpen(true);
   };
 
@@ -486,6 +488,7 @@ export default function Profile() {
 
   const handleCropComplete = (croppedImage: string) => {
     setPreviewUrl(croppedImage);
+    setCroppedDataUrl(croppedImage);
     setShowCropper(false);
     setImageToCrop(null);
   };
@@ -494,24 +497,26 @@ export default function Profile() {
     setShowCropper(false);
     setImageToCrop(null);
     setSelectedFile(null);
+    setCroppedDataUrl(null);
   };
 
-  const uploadAvatarAndGetUrl = async (userId: string, file: File): Promise<string> => {
+  const uploadAvatarAndGetUrl = async (userId: string): Promise<string> => {
     try {
       toast.info("Uploading profile image...");
       
-      // Convert cropped data URL to blob if needed
       let uploadBlob: Blob;
-      if (previewUrl && previewUrl.startsWith('data:')) {
-        const res = await fetch(previewUrl);
+      if (croppedDataUrl) {
+        // Use the cropped image (most common path after crop)
+        const res = await fetch(croppedDataUrl);
         uploadBlob = await res.blob();
+      } else if (selectedFile) {
+        // No crop — resize the original file
+        uploadBlob = await resizeImage(selectedFile, 512);
       } else {
-        // Resize original file
-        uploadBlob = await resizeImage(file, 512);
+        throw new Error("No image to upload");
       }
 
-      const ext = 'png';
-      const path = `public/${userId}_${Date.now()}.${ext}`;
+      const path = `public/${userId}_${Date.now()}.png`;
       
       const { error: uploadError } = await supabase
         .storage
@@ -529,7 +534,7 @@ export default function Profile() {
       
       const { data } = supabase.storage.from('avatars').getPublicUrl(path);
       
-      if (!data || !data.publicUrl) {
+      if (!data?.publicUrl) {
         throw new Error("Failed to get public URL for uploaded image");
       }
       
@@ -604,8 +609,8 @@ export default function Profile() {
       }
 
       let avatarUrl = profile?.avatar_url || null;
-      if (selectedFile) {
-        avatarUrl = await uploadAvatarAndGetUrl(uid, selectedFile);
+      if (selectedFile || croppedDataUrl) {
+        avatarUrl = await uploadAvatarAndGetUrl(uid);
       }
 
       const newName = formName.trim();

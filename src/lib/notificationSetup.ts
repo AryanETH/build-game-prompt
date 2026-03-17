@@ -17,7 +17,7 @@ export const promptForNotificationsAfterSignup = async (): Promise<void> => {
       if (Notification.permission === 'granted') {
         // Auto-subscribe if permission already granted
         await subscribeToPush();
-        toast.success('🎉 Notifications enabled! You\'ll get updates about trending games.');
+        toast.success('Notifications enabled! You\'ll get updates about trending games.');
         return;
       }
 
@@ -28,7 +28,7 @@ export const promptForNotificationsAfterSignup = async (): Promise<void> => {
       }
 
       // Show a friendly toast asking for permission
-      toast('🎮 Welcome to Oplus!', {
+      toast('Welcome to Oplus!', {
         description: 'Enable notifications to never miss viral games and updates.',
         action: {
           label: '🔔 Enable',
@@ -36,7 +36,7 @@ export const promptForNotificationsAfterSignup = async (): Promise<void> => {
             try {
               const subscription = await subscribeToPush();
               if (subscription) {
-                toast.success('🎉 Perfect! You\'ll now get notified about trending games and updates.');
+                toast.success('Perfect! You\'ll now get notified about trending games and updates.');
               }
             } catch (error) {
               console.error('Failed to enable notifications:', error);

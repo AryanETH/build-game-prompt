@@ -1,13 +1,14 @@
-import { Home, Search, Sparkles, User, Send } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Home, Search, Bell, Plus } from "lucide-react";
 
 export const MobileBottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [profile, setProfile] = useState<any>(null);
+  const [hasNotif, setHasNotif] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -22,80 +23,70 @@ export const MobileBottomNav = () => {
       .select('avatar_url, username')
       .eq('id', user.id)
       .single();
-
     setProfile(data);
 
-    // Subscribe to profile changes for real-time updates
+    // Check unread notifications
+    const { count } = await supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('read', false);
+    setHasNotif((count ?? 0) > 0);
+
     const profileChannel = supabase
       .channel('bottom-nav-profile-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${user.id}`,
-        },
-        (payload) => {
-          setProfile(payload.new);
-        }
-      )
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
+        (payload) => setProfile(payload.new))
       .subscribe();
 
-    return () => {
-      profileChannel.unsubscribe();
-    };
+    return () => { profileChannel.unsubscribe(); };
   };
 
-  const navItems = [
-    { icon: Home, label: "Feed", path: "/feed" },
-    { icon: Search, label: "Explore", path: "/search" },
-    { icon: Sparkles, label: "Create", path: "/create" },
-    { icon: Send, label: "Messages", path: "/messages" },
-    { icon: User, label: "Profile", path: "/profile", isProfile: true },
-  ];
-
-  const isActive = (path: string) => {
-    if (path === "/feed") {
-      return location.pathname === "/feed";
-    }
-    return location.pathname === path;
-  };
+  const isActive = (path: string) => location.pathname === path;
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-black/95 backdrop-blur-lg border-t border-border/50 safe-area-bottom mobile-bottom-nav">
-      <div className="flex items-center justify-around h-16 px-2">
-        {navItems.map(({ icon: Icon, label, path, isProfile }) => {
-          const active = isActive(path);
-          return (
-            <button
-              key={path}
-              onClick={() => navigate(path)}
-              className={`flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-lg transition-all duration-200 ${
-                active
-                  ? "text-primary dark:text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {isProfile && profile ? (
-                <Avatar className={`h-6 w-6 transition-all duration-200 ${
-                  active ? 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-110' : 'hover:scale-105'
-                }`}>
-                  <AvatarImage src={profile.avatar_url || undefined} className="object-cover" />
-                  <AvatarFallback className="gradient-primary text-white text-xs font-semibold">
-                    {profile.name?.[0]?.toUpperCase() || profile.username?.[0]?.toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-              ) : (
-                <Icon 
-                  className={`h-6 w-6 ${active ? 'scale-110' : ''}`} 
-                  strokeWidth={active ? 2.5 : 2}
-                />
-              )}
-              <span className="text-xs font-medium">{label}</span>
-            </button>
-          );
-        })}
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 safe-area-bottom mobile-bottom-nav">
+      {/* Frosted glass bar */}
+      <div className="bg-white/90 dark:bg-black/90 backdrop-blur-xl border-t border-black/8 dark:border-white/8 flex items-center justify-around h-16 px-4">
+
+        {/* Home */}
+        <button onClick={() => navigate('/feed')}
+          className={`flex flex-col items-center justify-center gap-0.5 transition-all ${isActive('/feed') ? 'text-foreground' : 'text-muted-foreground'}`}>
+          <Home className={`h-6 w-6 ${isActive('/feed') ? 'fill-current' : ''}`} strokeWidth={isActive('/feed') ? 2.5 : 2} />
+        </button>
+
+        {/* Explore */}
+        <button onClick={() => navigate('/search')}
+          className={`flex flex-col items-center justify-center gap-0.5 transition-all ${isActive('/search') ? 'text-foreground' : 'text-muted-foreground'}`}>
+          <Search className="h-6 w-6" strokeWidth={isActive('/search') ? 2.5 : 2} />
+        </button>
+
+        {/* Create — big white circle */}
+        <button onClick={() => navigate('/create')}
+          className="w-12 h-12 rounded-full bg-foreground dark:bg-white flex items-center justify-center shadow-lg active:scale-90 transition-transform -mt-2">
+          <Plus className="h-7 w-7 text-background dark:text-black" strokeWidth={2.5} />
+        </button>
+
+        {/* Notifications with red dot */}
+        <button onClick={() => navigate('/activity')}
+          className={`relative flex flex-col items-center justify-center gap-0.5 transition-all ${isActive('/activity') ? 'text-foreground' : 'text-muted-foreground'}`}>
+          <Bell className="h-6 w-6" strokeWidth={isActive('/activity') ? 2.5 : 2} />
+          {hasNotif && (
+            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-white dark:border-black" />
+          )}
+        </button>
+
+        {/* Profile avatar */}
+        <button onClick={() => navigate('/profile')}
+          className="flex flex-col items-center justify-center transition-all">
+          <Avatar className={`h-7 w-7 transition-all ${isActive('/profile') ? 'ring-2 ring-foreground ring-offset-1 ring-offset-background' : ''}`}>
+            <AvatarImage src={profile?.avatar_url || undefined} className="object-cover" />
+            <AvatarFallback className="gradient-primary text-white text-xs font-semibold">
+              {profile?.username?.[0]?.toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+        </button>
+
       </div>
     </nav>
   );

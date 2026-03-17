@@ -1,11 +1,10 @@
-// @ts-nocheck
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Search as SearchIcon, Play } from "lucide-react";
+import { Search as SearchIcon, Play, Zap, Grid, Gamepad2, Car, Target, Smile, TrendingUp, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GamePlayer } from "@/components/GamePlayer";
 import { useNavigate } from "react-router-dom";
@@ -13,12 +12,12 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { SearchResultsSkeleton, GameGridSkeleton } from "@/components/SkeletonComponents";
 
 const categories = [
-  { id: "action", label: "Action", icon: "💥" },
-  { id: "puzzle", label: "Puzzle", icon: "🧩" },
-  { id: "arcade", label: "Arcade", icon: "🕹️" },
-  { id: "racing", label: "Racing", icon: "🏎️" },
-  { id: "strategy", label: "Strategy", icon: "🎯" },
-  { id: "casual", label: "Casual", icon: "🎮" },
+  { id: "action", label: "Action", icon: Zap },
+  { id: "puzzle", label: "Puzzle", icon: Grid },
+  { id: "arcade", label: "Arcade", icon: Gamepad2 },
+  { id: "racing", label: "Racing", icon: Car },
+  { id: "strategy", label: "Strategy", icon: Target },
+  { id: "casual", label: "Casual", icon: Smile },
 ];
 
 interface Game {
@@ -118,17 +117,17 @@ export default function Search() {
           <div className="flex gap-2">
             <Badge
               variant={sortBy === 'popular' ? "default" : "secondary"}
-              className="cursor-pointer px-4 md:px-5 py-2 text-sm md:text-base hover:bg-primary/90 rounded-lg"
+              className="cursor-pointer px-4 md:px-5 py-2 text-sm md:text-base hover:bg-primary/90 rounded-lg flex items-center gap-1.5"
               onClick={() => setSortBy('popular')}
             >
-              <span className="text-base mr-1.5">💥</span> Popular
+              <TrendingUp className="w-4 h-4" /> Popular
             </Badge>
             <Badge
               variant={sortBy === 'newest' ? "default" : "secondary"}
-              className="cursor-pointer px-4 md:px-5 py-2 text-sm md:text-base hover:bg-primary/90 rounded-lg"
+              className="cursor-pointer px-4 md:px-5 py-2 text-sm md:text-base hover:bg-primary/90 rounded-lg flex items-center gap-1.5"
               onClick={() => setSortBy('newest')}
             >
-              <span className="text-base mr-1.5">✨</span> Newest
+              <Sparkles className="w-4 h-4" /> Newest
             </Badge>
           </div>
         </div>
@@ -146,7 +145,7 @@ export default function Search() {
                   selectedCategory === category.id ? null : category.id
                 )}
               >
-                <span className="text-base mr-1">{category.icon}</span>
+                <span className="text-base mr-1"><category.icon className="w-4 h-4 inline" /></span>
                 {category.label}
               </Badge>
             ))}
@@ -180,7 +179,7 @@ export default function Search() {
           <section className="mb-6 md:mb-8">
             <div className="flex items-center justify-between mb-4 md:mb-5">
               <h2 className="text-base md:text-lg font-bold flex items-center gap-2">
-                <span className="text-xl">✨</span> New games
+                <Sparkles className="w-5 h-5" /> New games
               </h2>
               <Button variant="ghost" size="sm" className="text-muted-foreground text-xs md:text-sm h-8">
                 See more
@@ -213,9 +212,8 @@ export default function Search() {
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
                     
-                    {/* Category Badge */}
-                    <Badge className="absolute top-1.5 left-1.5 text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 md:py-1 rounded-md">
-                      <span className="text-xs mr-0.5">🎮</span> {selectedCategory || "Game"}
+                    <Badge className="absolute top-1.5 left-1.5 text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 md:py-1 rounded-md flex items-center gap-0.5">
+                      <Gamepad2 className="w-3 h-3" /> {selectedCategory || "Game"}
                     </Badge>
 
                     {/* Play Count */}
@@ -240,7 +238,7 @@ export default function Search() {
           <section className="mb-6 md:mb-8">
             <div className="flex items-center justify-between mb-4 md:mb-5">
               <h2 className="text-base md:text-lg font-bold flex items-center gap-2">
-                <span className="text-xl">💥</span> Popular
+                <TrendingUp className="w-5 h-5" /> Popular
               </h2>
               <Button variant="ghost" size="sm" className="text-muted-foreground text-xs md:text-sm h-8">
                 See more

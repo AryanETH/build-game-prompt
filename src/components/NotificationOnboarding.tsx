@@ -93,7 +93,7 @@ export const NotificationOnboarding = ({ trigger = 'signup', onComplete }: Notif
           localStorage.setItem(`notification-onboarding-${user.id}`, 'completed');
         }
 
-        toast.success('🎉 Awesome! You\'ll now get notified about the best games and updates.');
+        toast.success('Awesome! You\'ll now get notified about the best games and updates.');
         setIsVisible(false);
         onComplete?.();
       } else {

@@ -343,7 +343,7 @@ export async function notifyGameTrending(
   return createNotification({
     userId,
     type: 'trending',
-    content: 'Your game is trending! 🔥',
+    content: 'Your game is trending!',
     gameId,
     gameTitle,
     gameThumbnail,
@@ -360,7 +360,7 @@ export async function notifyGameViral(
   return createNotification({
     userId,
     type: 'viral',
-    content: `Your game went viral! ${views.toLocaleString()} views 🚀`,
+    content: `Your game went viral! ${views.toLocaleString()} views`,
     gameId,
     gameTitle,
     gameThumbnail,
@@ -376,10 +376,10 @@ export async function notifyMilestone(
   gameTitle?: string
 ) {
   const milestoneMessages = {
-    likes: `Your game reached ${count.toLocaleString()} likes! ❤️`,
-    plays: `Your game reached ${count.toLocaleString()} plays! 🎮`,
-    followers: `You reached ${count.toLocaleString()} followers! 🎉`,
-    views: `Your game reached ${count.toLocaleString()} views! 👀`,
+    likes: `Your game reached ${count.toLocaleString()} likes!`,
+    plays: `Your game reached ${count.toLocaleString()} plays!`,
+    followers: `You reached ${count.toLocaleString()} followers!`,
+    views: `Your game reached ${count.toLocaleString()} views!`,
   };
 
   return createNotification({
@@ -402,7 +402,7 @@ export async function notifyAchievementUnlocked(
   return createNotification({
     userId,
     type: 'achievement',
-    content: `Achievement unlocked: ${achievementName}! 🏆`,
+    content: `Achievement unlocked: ${achievementName}!`,
   });
 }
 
@@ -413,7 +413,7 @@ export async function notifyBadgeEarned(
   return createNotification({
     userId,
     type: 'badge',
-    content: `You earned the ${badgeName} badge! ⭐`,
+    content: `You earned the ${badgeName} badge!`,
   });
 }
 
@@ -424,7 +424,7 @@ export async function notifyLevelUp(
   return createNotification({
     userId,
     type: 'level_up',
-    content: `Level up! You're now level ${newLevel}! ⚡`,
+    content: `Level up! You're now level ${newLevel}!`,
     milestone: newLevel,
   });
 }
@@ -454,7 +454,7 @@ export async function notifyMonetizationEligible(
   return createNotification({
     userId,
     type: 'monetization',
-    content: 'Your game is now eligible for monetization! 💰',
+    content: 'Your game is now eligible for monetization!',
   });
 }
 
@@ -465,7 +465,7 @@ export async function notifyPayoutCompleted(
   return createNotification({
     userId,
     type: 'payout',
-    content: `Payout completed: $${amount.toFixed(2)} 💵`,
+    content: `Payout completed: $${amount.toFixed(2)}`,
     amount,
   });
 }

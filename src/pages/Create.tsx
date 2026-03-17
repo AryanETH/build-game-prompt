@@ -1,13 +1,12 @@
 // @ts-nocheck
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  ArrowLeft, Send, Music, Image as ImageIcon, Video,
-  RefreshCw, Plus, X, Sparkles, Eye, MessageSquare,
-  Loader2, Check, Play, Pause, Clock, Upload
+  ArrowLeft, Music, Image as ImageIcon, Video, RefreshCw,
+  Plus, X, Sparkles, Eye, MessageSquare, Loader2, Check,
+  Play, Pause, Clock, Upload, Lightbulb, Wrench, Volume2, Mic, Send
 } from "lucide-react";
 import { logActivity } from "@/lib/activityLogger";
 import { playClick, playSuccess, playError } from "@/lib/sounds";
@@ -69,27 +68,33 @@ requestAnimationFrame(loop)}loop();
 </script></body></html>`;
 
 const MUSIC_CATEGORIES = ["Suggested", "Action", "Indie", "Puzzle", "Arcade", "Simulation"];
-
-// Placeholder suggested tracks
 const SUGGESTED_TRACKS = [
-  { id: "1", name: "Birthday", artist: "KP", duration: "3:35", emoji: "🎂" },
-  { id: "2", name: "Sugars", artist: "Maroon 6", duration: "3:55", emoji: "💕" },
-  { id: "3", name: "28K Magic", artist: "Bruno Mars", duration: "3:45", emoji: "✨" },
-  { id: "4", name: "Pixel Dreams", artist: "Synthwave", duration: "4:12", emoji: "🎮" },
-  { id: "5", name: "Neon Rush", artist: "Arcade FM", duration: "2:58", emoji: "🌃" },
+  { id: "1", name: "Birthday", artist: "KP", duration: "3:35" },
+  { id: "2", name: "Sugars", artist: "Maroon 6", duration: "3:55" },
+  { id: "3", name: "28K Magic", artist: "Bruno Mars", duration: "3:45" },
+  { id: "4", name: "Pixel Dreams", artist: "Synthwave", duration: "4:12" },
+  { id: "5", name: "Neon Rush", artist: "Arcade FM", duration: "2:58" },
+];
+const POPULAR_CARDS = [
+  { id: "1", bg: "#e879a0", label: "Tap Here When Done!", dark: false },
+  { id: "2", bg: "#f0f0f0", label: "YOU!", dark: true },
+  { id: "3", bg: "#8b1a1a", label: "Christmas Week", dark: false },
+  { id: "4", bg: "#4f46e5", label: "Get Ready", dark: false },
+];
+const IDEAS = ["Endless runner","Quiz app","Music visualizer","Clicker game","Puzzle game","Drawing canvas","Trivia game","Platformer"];
+const TOOLS = [
+  { label: "Change style", desc: "Pixel art, 3D, cartoon..." },
+  { label: "Add controls", desc: "Touch, keyboard, tilt" },
+  { label: "Add scoring", desc: "Points, leaderboard" },
+  { label: "Add sound effects", desc: "Jumps, hits, music" },
+  { label: "Make responsive", desc: "Fit any screen size" },
 ];
 
 export default function Create() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"chat" | "preview">("chat");
   const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "welcome",
-      role: "ai",
-      content: "Hey, I'm excited to help you create!",
-      type: "text",
-      timestamp: new Date(),
-    },
+    { id: "welcome", role: "ai", content: "Hey, I'm excited to help you create.\n\nTell me your idea: an app, a game, anything that you can imagine.", type: "text", timestamp: new Date() },
   ]);
   const [inputText, setInputText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -99,7 +104,8 @@ export default function Create() {
   const [gameDescription, setGameDescription] = useState("");
   const [attachments, setAttachments] = useState<MediaAttachment[]>([]);
   const [showMusicPanel, setShowMusicPanel] = useState(false);
-  const [showAttachOptions, setShowAttachOptions] = useState(false);
+  const [showIdeasPanel, setShowIdeasPanel] = useState(false);
+  const [showToolboxPanel, setShowToolboxPanel] = useState(false);
   const [musicCategory, setMusicCategory] = useState("Suggested");
   const [isPublishing, setIsPublishing] = useState(false);
   const [playingTrack, setPlayingTrack] = useState<string | null>(null);
@@ -108,15 +114,10 @@ export default function Create() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   const addMessage = useCallback((role: "ai" | "user", content: string, type?: ChatMessage["type"]) => {
-    const msg: ChatMessage = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      role, content, type: type || "text", timestamp: new Date(),
-    };
+    const msg: ChatMessage = { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, role, content, type: type || "text", timestamp: new Date() };
     setMessages((prev) => [...prev, msg]);
     return msg.id;
   }, []);
@@ -127,34 +128,27 @@ export default function Create() {
 
   const improvePrompt = async (userPrompt: string): Promise<string> => {
     setIsImproving(true);
-    const improvingId = addMessage("ai", "✨ Improving your prompt...", "generating");
+    const improvingId = addMessage("ai", "Improving your prompt...", "generating");
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-game`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token || ""}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "",
-          },
-          body: JSON.stringify({ prompt: userPrompt, imagineOnly: true, options: { gameEngine: "vanilla", graphicsQuality: "stylized" } }),
-        }
-      );
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-game`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token || ""}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "" },
+        body: JSON.stringify({ prompt: userPrompt, imagineOnly: true, options: { gameEngine: "vanilla", graphicsQuality: "stylized" } }),
+      });
       if (!response.ok) {
         if (response.status === 429) throw new Error("Rate limit exceeded. Try again shortly.");
-        if (response.status === 402) throw new Error("Usage limit reached. Add credits in workspace settings.");
+        if (response.status === 402) throw new Error("Usage limit reached.");
         throw new Error("Failed to improve prompt");
       }
       const data = await response.json();
       const improved = data.gameDescription || userPrompt;
       setGameTitle(data.suggestedTitle || userPrompt.slice(0, 50));
       setGameDescription(improved);
-      updateMessage(improvingId, improved.length > 300 ? improved.slice(0, 300) + "...\n\nReady to generate! Just say \"generate\" or tap the button below." : improved + "\n\nWhat do you think? Say \"generate\" when ready!", "improved-prompt");
+      updateMessage(improvingId, improved.length > 300 ? improved.slice(0, 300) + '...\n\nReady to generate! Say "generate" or tap below.' : improved + '\n\nWhat do you think? Say "generate" when ready!', "improved-prompt");
       return improved;
     } catch (err: any) {
-      updateMessage(improvingId, `⚠️ ${err.message || "Couldn't improve prompt."}`);
+      updateMessage(improvingId, `Error: ${err.message || "Couldn't improve prompt."}`);
       return userPrompt;
     } finally {
       setIsImproving(false);
@@ -163,7 +157,7 @@ export default function Create() {
 
   const generateGame = async (prompt: string) => {
     setIsGenerating(true);
-    const genId = addMessage("ai", "Building your experience... ✨", "generating");
+    const genId = addMessage("ai", "Building your experience...", "generating");
     try {
       const { data, error } = await supabase.functions.invoke("generate-game", {
         body: { prompt, options: { gameEngine: "vanilla", graphicsQuality: "stylized" }, title: gameTitle || prompt.slice(0, 50), description: gameDescription || prompt, autoInsert: false },
@@ -172,35 +166,26 @@ export default function Create() {
       let code = data?.gameCode || "";
       if (!code) throw new Error("No game code returned");
       if (attachments.length > 0) {
-        const assetScript = buildAssetInjectionScript();
-        code = code.replace("</head>", `${assetScript}\n</head>`);
+        const m = attachments.filter((a) => a.type === "music");
+        const img = attachments.filter((a) => a.type === "image");
+        let s = "<script>window.__OPLUS_ASSETS__={";
+        if (m.length) s += `music:${JSON.stringify(m.map((a) => ({ name: a.name, url: a.url })))},`;
+        if (img.length) s += `images:${JSON.stringify(img.map((a) => ({ name: a.name, url: a.url })))},`;
+        code = code.replace("</head>", `${s}};</script>\n</head>`);
       }
       setGeneratedCode(code);
       if (!gameTitle) setGameTitle(prompt.slice(0, 50));
       if (!gameDescription) setGameDescription(`AI-generated: ${prompt}`);
-      updateMessage(genId, "Your experience is ready! 🎮\nSwitch to Preview to try it, or tap Post to share.", "preview-ready");
+      updateMessage(genId, "Your experience is ready.\nSwitch to Preview to try it, or tap Post to share.", "preview-ready");
       playSuccess();
     } catch (err: any) {
-      if (err.message?.includes("429") || err.context?.status === 429) {
-        updateMessage(genId, "Rate limit hit. Wait a moment and try again.");
-        setIsGenerating(false);
-        return;
-      }
+      if (err.message?.includes("429") || err.context?.status === 429) { updateMessage(genId, "Rate limit hit. Wait a moment and try again."); setIsGenerating(false); return; }
       updateMessage(genId, "Used a template — AI was unavailable.");
       setGeneratedCode(buildFallbackGameCode(gameTitle || "Arcade"));
       playError();
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  const buildAssetInjectionScript = () => {
-    const m = attachments.filter((a) => a.type === "music");
-    const img = attachments.filter((a) => a.type === "image");
-    let s = "<script>window.__OPLUS_ASSETS__={";
-    if (m.length) s += `music:${JSON.stringify(m.map((a) => ({ name: a.name, url: a.url })))},`;
-    if (img.length) s += `images:${JSON.stringify(img.map((a) => ({ name: a.name, url: a.url })))},`;
-    return s + "};</script>";
   };
 
   const handleSend = async () => {
@@ -216,23 +201,16 @@ export default function Create() {
     }
   };
 
-  const handleRegenerate = async () => {
-    if (!gameDescription || isGenerating) return;
-    playClick();
-    await generateGame(gameDescription);
-  };
-
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>, type: MediaAttachment["type"]) => {
     const files = e.target.files;
     if (!files) return;
     for (const file of Array.from(files)) {
       const url = URL.createObjectURL(file);
       setAttachments((prev) => [...prev, { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, type, file, url, name: file.name }]);
-      addMessage("user", `📎 ${file.name}`);
+      addMessage("user", `Attached: ${file.name}`);
       addMessage("ai", `Got it! I'll include this ${type} in your creation.`);
     }
     e.target.value = "";
-    setShowAttachOptions(false);
     setShowMusicPanel(false);
   };
 
@@ -260,7 +238,7 @@ export default function Create() {
       const { data: game, error } = await supabase.from("games").insert({ title: gameTitle.trim(), description: gameDescription.trim().slice(0, 500), game_code: generatedCode, creator_id: userId, thumbnail_url: thumbnailUrl }).select().single();
       if (error) throw error;
       await logActivity({ type: "game_published", gameId: game.id, metadata: { title: game.title } });
-      toast.success("Published! 🎉");
+      toast.success("Published!");
       playSuccess();
       navigate("/feed");
     } catch (err: any) {
@@ -275,110 +253,112 @@ export default function Create() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
+  const closeAllPanels = () => { setShowMusicPanel(false); setShowIdeasPanel(false); setShowToolboxPanel(false); };
+
   return (
-    <div className="h-[100dvh] flex flex-col bg-[hsl(0,0%,0%)]">
-      {/* ───── Header ───── */}
-      <header className="flex-shrink-0 flex items-center justify-between px-3 py-2.5 z-10">
+    <div className="h-[100dvh] flex flex-col bg-black text-white overflow-hidden">
+
+      {/* Header */}
+      <header className="flex-shrink-0 flex items-center justify-between px-4 pt-3 pb-2">
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-[hsl(0,0%,14%)] flex items-center justify-center">
-            <ArrowLeft className="w-4 h-4 text-[hsl(0,0%,100%)]" />
+          <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center active:scale-90 transition-transform">
+            <ArrowLeft className="w-5 h-5" />
           </button>
-          <button className="w-9 h-9 rounded-full bg-[hsl(0,0%,14%)] flex items-center justify-center">
-            <Clock className="w-4 h-4 text-[hsl(0,0%,100%)]" />
+          <button className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+            <Clock className="w-5 h-5" />
           </button>
         </div>
-
-        {/* Tabs pill */}
-        <div className="flex items-center bg-[hsl(0,0%,14%)] rounded-full p-[3px]">
-          <button
-            onClick={() => setActiveTab("chat")}
-            className={cn(
-              "px-5 py-1.5 text-[13px] font-semibold rounded-full transition-all",
-              activeTab === "chat" ? "bg-[hsl(0,0%,22%)] text-[hsl(0,0%,100%)]" : "text-[hsl(0,0%,50%)]"
-            )}
-          >Chat</button>
-          <button
-            onClick={() => setActiveTab("preview")}
-            className={cn(
-              "px-5 py-1.5 text-[13px] font-semibold rounded-full transition-all",
-              activeTab === "preview" ? "bg-[hsl(0,0%,22%)] text-[hsl(0,0%,100%)]" : "text-[hsl(0,0%,50%)]"
-            )}
-          >Preview</button>
+        <div className="flex items-center bg-white/10 rounded-full p-[3px]">
+          {(["chat", "preview"] as const).map((tab) => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className={cn("px-5 py-1.5 text-[13px] font-semibold rounded-full capitalize transition-all",
+                activeTab === tab ? "bg-white text-black" : "text-white/50")}>
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
         </div>
-
         <div className="flex items-center gap-2">
-          <button onClick={handleRegenerate} disabled={isGenerating || !generatedCode} className="w-9 h-9 rounded-full bg-[hsl(0,0%,14%)] flex items-center justify-center disabled:opacity-30">
-            <RefreshCw className={cn("w-4 h-4 text-[hsl(0,0%,100%)]", isGenerating && "animate-spin")} />
+          <button className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+            <MessageSquare className="w-5 h-5" />
           </button>
-          <button
-            onClick={handlePublish}
-            disabled={isPublishing || !generatedCode}
-            className="h-9 px-4 rounded-full bg-[hsl(0,0%,100%)] text-[hsl(0,0%,0%)] text-[13px] font-bold disabled:opacity-30 flex items-center gap-1.5"
-          >
-            {isPublishing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Post"}
+          <button onClick={handlePublish} disabled={isPublishing || !generatedCode}
+            className="h-10 px-5 rounded-full bg-white text-black text-[13px] font-bold disabled:opacity-30 flex items-center gap-1.5 active:scale-95 transition-transform">
+            {isPublishing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Post"}
           </button>
         </div>
       </header>
 
-      {/* ───── Chat Tab ───── */}
+      {/* Chat Tab */}
       {activeTab === "chat" ? (
         <div className="flex-1 flex flex-col min-h-0">
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
-            {messages.map((msg) => (
-              <div key={msg.id}>
-                {msg.role === "ai" ? (
-                  <div className={cn(msg.type === "generating" && "animate-pulse")}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-lg">🌍</span>
-                      <span className="text-[13px] font-semibold text-[hsl(0,0%,60%)]">Oplus AI</span>
-                    </div>
-                    <p className="text-[22px] font-semibold leading-[1.3] text-[hsl(0,0%,100%)]">
-                      {msg.content.split("\n").map((line, i) => (
-                        <span key={i}>
-                          {i > 0 && <br />}
-                          {line}
-                        </span>
-                      ))}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex justify-end">
-                    <div className="bg-[hsl(0,0%,92%)] text-[hsl(0,0%,7%)] rounded-2xl rounded-br-md px-5 py-3.5 max-w-[85%]">
-                      <p className="text-[15px] leading-relaxed font-medium">{msg.content}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+          <div className="flex-1 overflow-y-auto">
 
-            {/* Quick generate button */}
-            {gameDescription && !generatedCode && !isGenerating && !isImproving && (
-              <div className="flex justify-start">
-                <button
-                  onClick={() => generateGame(gameDescription)}
-                  className="flex items-center gap-2 bg-[hsl(262,83%,58%)] text-[hsl(0,0%,100%)] rounded-full px-5 py-2.5 text-[14px] font-semibold active:scale-95 transition-transform"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  Generate Now
-                </button>
+            {/* Popular cards carousel */}
+            {messages.length <= 1 && (
+              <div className="px-4 pt-3 pb-2">
+                <p className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-2">Popular • Remix one</p>
+                <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+                  {POPULAR_CARDS.map((card) => (
+                    <button key={card.id}
+                      onClick={() => { setInputText(`Remix: ${card.label}`); inputRef.current?.focus(); }}
+                      style={{ backgroundColor: card.bg }}
+                      className="flex-shrink-0 w-[110px] h-[160px] rounded-2xl flex flex-col items-center justify-center gap-2 text-center p-3 active:scale-95 transition-transform">
+                      <Sparkles className={cn("w-8 h-8", card.dark ? "text-black" : "text-white")} strokeWidth={1.5} />
+                      <span className={cn("text-[11px] font-bold leading-tight", card.dark ? "text-black" : "text-white")}>{card.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
-            <div ref={chatEndRef} />
+            {/* Messages */}
+            <div className="px-5 py-3 space-y-5">
+              {messages.map((msg) => (
+                <div key={msg.id}>
+                  {msg.role === "ai" ? (
+                    <div className={cn(msg.type === "generating" && "animate-pulse")}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
+                          <Sparkles className="w-4 h-4 text-white/70" strokeWidth={1.5} />
+                        </div>
+                        <span className="text-[12px] font-semibold text-white/50">Oplus AI</span>
+                      </div>
+                      <p className="text-[20px] font-semibold leading-snug text-white">
+                        {msg.content.split("\n").map((line, i) => (
+                          <span key={i}>{i > 0 && <br />}{line}</span>
+                        ))}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex justify-end">
+                      <div className="bg-white/90 text-black rounded-2xl rounded-br-sm px-4 py-3 max-w-[85%]">
+                        <p className="text-[14px] leading-relaxed font-medium">{msg.content}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {gameDescription && !generatedCode && !isGenerating && !isImproving && (
+                <button onClick={() => generateGame(gameDescription)}
+                  className="flex items-center gap-2 bg-violet-600 text-white rounded-full px-5 py-2.5 text-[14px] font-semibold active:scale-95 transition-transform">
+                  <Sparkles className="w-4 h-4" /> Generate Now
+                </button>
+              )}
+              <div ref={chatEndRef} />
+            </div>
           </div>
 
           {/* Attachments strip */}
           {attachments.length > 0 && (
-            <div className="flex-shrink-0 px-5 py-2 border-t border-[hsl(0,0%,12%)]">
-              <div className="flex gap-2 overflow-x-auto">
+            <div className="flex-shrink-0 px-4 py-2 border-t border-white/5">
+              <div className="flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
                 {attachments.map((att) => (
-                  <div key={att.id} className="flex items-center gap-2 bg-[hsl(0,0%,12%)] rounded-full pl-3 pr-1.5 py-1 text-[12px] text-[hsl(0,0%,80%)] shrink-0">
-                    {att.type === "music" && <Music className="w-3 h-3 text-[hsl(262,83%,58%)]" />}
-                    {att.type === "image" && <ImageIcon className="w-3 h-3 text-[hsl(262,83%,58%)]" />}
-                    {att.type === "video" && <Video className="w-3 h-3 text-[hsl(262,83%,58%)]" />}
+                  <div key={att.id} className="flex items-center gap-1.5 bg-white/10 rounded-full pl-3 pr-1.5 py-1 text-[12px] text-white/70 shrink-0">
+                    {att.type === "music" && <Music className="w-3 h-3 text-violet-400" />}
+                    {att.type === "image" && <ImageIcon className="w-3 h-3 text-violet-400" />}
+                    {att.type === "video" && <Video className="w-3 h-3 text-violet-400" />}
                     <span className="max-w-[80px] truncate">{att.name}</span>
-                    <button onClick={() => removeAttachment(att.id)} className="p-0.5 rounded-full hover:bg-[hsl(0,0%,20%)]">
+                    <button onClick={() => removeAttachment(att.id)} className="p-0.5 rounded-full hover:bg-white/10">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
@@ -387,158 +367,184 @@ export default function Create() {
             </div>
           )}
 
-          {/* Input */}
-          <div className="flex-shrink-0 px-4 pb-5 pt-3 border-t border-[hsl(0,0%,10%)]">
-            <div className="flex items-end gap-2.5">
-              <div className="relative">
-                <button
-                  onClick={() => { setShowAttachOptions(!showAttachOptions); setShowMusicPanel(false); }}
-                  className="w-10 h-10 rounded-full bg-[hsl(0,0%,12%)] flex items-center justify-center active:scale-90 transition-transform"
-                >
-                  <Plus className="w-5 h-5 text-[hsl(0,0%,70%)]" />
-                </button>
-                {showAttachOptions && (
-                  <div className="absolute bottom-14 left-0 bg-[hsl(0,0%,10%)] border border-[hsl(0,0%,18%)] rounded-2xl p-1.5 min-w-[170px] z-30 animate-in fade-in slide-in-from-bottom-2 duration-150">
-                    <button onClick={() => { setShowMusicPanel(true); setShowAttachOptions(false); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[hsl(0,0%,16%)] w-full transition-colors">
-                      <Music className="w-4 h-4 text-[hsl(262,83%,68%)]" /><span className="text-[13px] font-medium text-[hsl(0,0%,90%)]">Add Music</span>
-                    </button>
-                    <label className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[hsl(0,0%,16%)] cursor-pointer transition-colors">
-                      <ImageIcon className="w-4 h-4 text-[hsl(262,83%,68%)]" /><span className="text-[13px] font-medium text-[hsl(0,0%,90%)]">Add Image</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileSelect(e, "image")} />
-                    </label>
-                    <label className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[hsl(0,0%,16%)] cursor-pointer transition-colors">
-                      <Video className="w-4 h-4 text-[hsl(262,83%,68%)]" /><span className="text-[13px] font-medium text-[hsl(0,0%,90%)]">Add Video</span>
-                      <input type="file" accept="video/*" className="hidden" onChange={(e) => handleFileSelect(e, "video")} />
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex-1">
-                <textarea
-                  ref={inputRef}
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={gameDescription ? 'Say "generate" to build...' : "Describe your game or app..."}
-                  rows={1}
-                  className="w-full resize-none bg-[hsl(0,0%,12%)] rounded-2xl px-4 py-3 text-[14px] text-[hsl(0,0%,100%)] placeholder:text-[hsl(0,0%,40%)] focus:outline-none focus:ring-1 focus:ring-[hsl(262,83%,58%)/0.5] max-h-28"
-                  style={{ minHeight: 44 }}
-                  onInput={(e) => { const t = e.target as HTMLTextAreaElement; t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 112) + "px"; }}
-                />
-              </div>
-
-              <button
-                onClick={handleSend}
-                disabled={!inputText.trim() || isGenerating || isImproving}
-                className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90",
-                  inputText.trim() ? "bg-[hsl(262,83%,58%)] text-[hsl(0,0%,100%)]" : "bg-[hsl(0,0%,12%)] text-[hsl(0,0%,40%)]"
-                )}
-              >
-                {isGenerating || isImproving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+          {/* Input area */}
+          <div className="flex-shrink-0 px-4 pt-2 pb-4 border-t border-white/5">
+            {/* Text input */}
+            <div className="flex items-center gap-2 bg-white/8 rounded-2xl px-4 py-2 mb-3 border border-white/10">
+              <textarea
+                ref={inputRef}
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type your idea and start"
+                rows={1}
+                className="flex-1 resize-none bg-transparent text-[15px] text-white placeholder:text-white/35 focus:outline-none"
+                style={{ minHeight: 28, maxHeight: 100 }}
+                onInput={(e) => {
+                  const t = e.target as HTMLTextAreaElement;
+                  t.style.height = "auto";
+                  t.style.height = Math.min(t.scrollHeight, 100) + "px";
+                }}
+              />
+              <button onClick={handleSend} disabled={!inputText.trim() || isGenerating || isImproving}
+                className="w-8 h-8 flex items-center justify-center text-white/50 hover:text-white transition-colors disabled:opacity-30">
+                {isGenerating || isImproving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mic className="w-5 h-5" />}
               </button>
+            </div>
+
+            {/* Bottom toolbar */}
+            <div className="flex items-center justify-around">
+              <button onClick={() => { closeAllPanels(); setShowIdeasPanel(true); }}
+                className="flex flex-col items-center gap-1 text-white/55 hover:text-white transition-colors active:scale-90">
+                <Lightbulb className="w-5 h-5" />
+                <span className="text-[10px] font-medium">Ideas</span>
+              </button>
+              <button onClick={() => { closeAllPanels(); setShowToolboxPanel(true); }}
+                className="flex flex-col items-center gap-1 text-white/55 hover:text-white transition-colors active:scale-90">
+                <Wrench className="w-5 h-5" />
+                <span className="text-[10px] font-medium">Toolbox</span>
+              </button>
+              <label className="flex flex-col items-center gap-1 text-white/55 hover:text-white transition-colors active:scale-90 cursor-pointer">
+                <ImageIcon className="w-5 h-5" />
+                <span className="text-[10px] font-medium">Image</span>
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileSelect(e, "image")} />
+              </label>
+              <button onClick={() => { closeAllPanels(); setShowMusicPanel(true); }}
+                className="flex flex-col items-center gap-1 text-white/55 hover:text-white transition-colors active:scale-90">
+                <Music className="w-5 h-5" />
+                <span className="text-[10px] font-medium">Music</span>
+              </button>
+              <label className="flex flex-col items-center gap-1 text-white/55 hover:text-white transition-colors active:scale-90 cursor-pointer">
+                <Volume2 className="w-5 h-5" />
+                <span className="text-[10px] font-medium">SFX</span>
+                <input type="file" accept="audio/*" className="hidden" onChange={(e) => handleFileSelect(e, "music")} />
+              </label>
             </div>
           </div>
 
-          {/* ───── Music Panel (Sekai-style bottom sheet) ───── */}
+          {/* Music bottom sheet */}
           {showMusicPanel && (
             <>
-              <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowMusicPanel(false)} />
-              <div className="fixed bottom-0 left-0 right-0 z-50 bg-[hsl(0,0%,8%)] rounded-t-3xl animate-in slide-in-from-bottom duration-300 max-h-[55vh] flex flex-col">
-                {/* Handle */}
-                <div className="flex justify-center pt-3 pb-1">
-                  <div className="w-10 h-1 rounded-full bg-[hsl(0,0%,25%)]" />
-                </div>
-
-                <h3 className="text-center text-[16px] font-bold text-[hsl(0,0%,100%)] pb-3">Add Music</h3>
-
-                {/* Category tabs */}
-                <div className="flex gap-1 px-4 pb-3 overflow-x-auto">
+              <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowMusicPanel(false)} />
+              <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#111] rounded-t-3xl max-h-[60vh] flex flex-col animate-in slide-in-from-bottom duration-250">
+                <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-white/20" /></div>
+                <h3 className="text-center text-[15px] font-bold pb-3">Add Music</h3>
+                <div className="flex gap-1 px-4 pb-3 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
                   {MUSIC_CATEGORIES.map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => setMusicCategory(cat)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap transition-colors",
-                        musicCategory === cat
-                          ? "text-[hsl(0,0%,100%)] border-b-2 border-[hsl(0,0%,100%)]"
-                          : "text-[hsl(0,0%,45%)]"
-                      )}
-                    >{cat}</button>
+                    <button key={cat} onClick={() => setMusicCategory(cat)}
+                      className={cn("px-3 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap transition-colors",
+                        musicCategory === cat ? "text-white border-b-2 border-white" : "text-white/40")}>
+                      {cat}
+                    </button>
                   ))}
                 </div>
-
-                {/* Track list */}
                 <div className="flex-1 overflow-y-auto px-4 pb-6">
                   {SUGGESTED_TRACKS.map((track) => (
-                    <div key={track.id} className="flex items-center gap-3 py-3 border-b border-[hsl(0,0%,12%)] last:border-0">
-                      <div className="w-12 h-12 rounded-xl bg-[hsl(0,0%,15%)] flex items-center justify-center text-xl">{track.emoji}</div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[14px] font-semibold text-[hsl(0,0%,100%)] truncate">{track.name}</p>
-                        <p className="text-[12px] text-[hsl(0,0%,50%)]">{track.artist}</p>
+                    <div key={track.id} className="flex items-center gap-3 py-3 border-b border-white/8 last:border-0">
+                      <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center">
+                        <Music className="w-5 h-5 text-white/60" strokeWidth={1.5} />
                       </div>
-                      <span className="text-[12px] text-[hsl(0,0%,45%)] mr-1">{track.duration}</span>
-                      <button className="w-8 h-8 rounded-full bg-[hsl(0,0%,18%)] flex items-center justify-center">
-                        <Plus className="w-4 h-4 text-[hsl(0,0%,70%)]" />
-                      </button>
-                      <button
-                        onClick={() => setPlayingTrack(playingTrack === track.id ? null : track.id)}
-                        className="w-8 h-8 rounded-full bg-[hsl(0,0%,18%)] flex items-center justify-center"
-                      >
-                        {playingTrack === track.id ? <Pause className="w-4 h-4 text-[hsl(0,0%,70%)]" /> : <Play className="w-4 h-4 text-[hsl(0,0%,70%)]" />}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14px] font-semibold truncate">{track.name}</p>
+                        <p className="text-[12px] text-white/40">{track.artist}</p>
+                      </div>
+                      <span className="text-[12px] text-white/35 mr-1">{track.duration}</span>
+                      <button className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><Plus className="w-4 h-4" /></button>
+                      <button onClick={() => setPlayingTrack(playingTrack === track.id ? null : track.id)}
+                        className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                        {playingTrack === track.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                       </button>
                     </div>
                   ))}
-
-                  {/* Upload own */}
                   <label className="flex items-center gap-3 py-3 cursor-pointer">
-                    <div className="w-12 h-12 rounded-xl border border-dashed border-[hsl(0,0%,25%)] flex items-center justify-center">
-                      <Upload className="w-5 h-5 text-[hsl(0,0%,40%)]" />
+                    <div className="w-11 h-11 rounded-xl border border-dashed border-white/20 flex items-center justify-center">
+                      <Upload className="w-5 h-5 text-white/30" />
                     </div>
-                    <span className="text-[14px] text-[hsl(0,0%,50%)]">Upload your own</span>
+                    <span className="text-[14px] text-white/40">Upload your own</span>
                     <input type="file" accept="audio/*" className="hidden" onChange={(e) => handleFileSelect(e, "music")} />
                   </label>
                 </div>
               </div>
             </>
           )}
+
+          {/* Ideas bottom sheet */}
+          {showIdeasPanel && (
+            <>
+              <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowIdeasPanel(false)} />
+              <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#111] rounded-t-3xl max-h-[55vh] flex flex-col animate-in slide-in-from-bottom duration-250">
+                <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-white/20" /></div>
+                <h3 className="text-center text-[15px] font-bold py-3">Ideas</h3>
+                <div className="flex-1 overflow-y-auto px-4 pb-6 grid grid-cols-2 gap-3">
+                  {IDEAS.map((idea) => (
+                    <button key={idea} onClick={() => { setInputText(idea); setShowIdeasPanel(false); inputRef.current?.focus(); }}
+                      className="bg-white/8 border border-white/10 rounded-2xl px-4 py-3 text-left text-[13px] font-medium text-white/80 hover:bg-white/12 active:scale-95 transition-all">
+                      {idea}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Toolbox bottom sheet */}
+          {showToolboxPanel && (
+            <>
+              <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowToolboxPanel(false)} />
+              <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#111] rounded-t-3xl max-h-[55vh] flex flex-col animate-in slide-in-from-bottom duration-250">
+                <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-white/20" /></div>
+                <h3 className="text-center text-[15px] font-bold py-3">Toolbox</h3>
+                <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-2">
+                  {TOOLS.map((tool) => (
+                    <button key={tool.label} onClick={() => { setInputText(tool.label); setShowToolboxPanel(false); inputRef.current?.focus(); }}
+                      className="w-full flex items-center gap-3 bg-white/8 border border-white/10 rounded-2xl px-4 py-3 text-left hover:bg-white/12 active:scale-[0.98] transition-all">
+                      <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                        <Wrench className="w-4 h-4 text-white/70" strokeWidth={1.5} />
+                      </div>
+                      <div>
+                        <p className="text-[14px] font-semibold">{tool.label}</p>
+                        <p className="text-[12px] text-white/40">{tool.desc}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       ) : (
-        /* ───── Preview Tab ───── */
+        /* Preview Tab */
         <div className="flex-1 flex flex-col items-center justify-center p-4">
           {generatedCode ? (
-            <div className="w-full max-w-[360px] mx-auto flex-1 flex flex-col">
-              <div className="relative flex-1 rounded-[2rem] overflow-hidden border border-[hsl(0,0%,15%)] shadow-2xl bg-black">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-5 bg-black rounded-b-2xl z-10" />
-                <iframe ref={iframeRef} srcDoc={generatedCode} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" title="Preview" style={{ minHeight: "calc(100dvh - 180px)" }} />
+            <div className="w-full max-w-[400px] mx-auto flex-1 flex flex-col">
+              <div className="relative flex-1 rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl bg-black">
+                <iframe ref={iframeRef} srcDoc={generatedCode} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" title="Preview" style={{ minHeight: "calc(100dvh - 200px)" }} />
               </div>
               <div className="flex gap-3 mt-4 justify-center">
-                <button onClick={handleRegenerate} disabled={isGenerating} className="flex items-center gap-2 h-10 px-5 rounded-full bg-[hsl(0,0%,12%)] text-[hsl(0,0%,80%)] text-[13px] font-semibold disabled:opacity-30">
+                <button onClick={() => generateGame(gameDescription)} disabled={isGenerating}
+                  className="flex items-center gap-2 h-10 px-5 rounded-full bg-white/10 text-white/80 text-[13px] font-semibold disabled:opacity-30">
                   <RefreshCw className={cn("w-3.5 h-3.5", isGenerating && "animate-spin")} /> Regenerate
                 </button>
-                <button onClick={handlePublish} disabled={isPublishing} className="flex items-center gap-2 h-10 px-5 rounded-full bg-[hsl(0,0%,100%)] text-[hsl(0,0%,0%)] text-[13px] font-bold disabled:opacity-30">
+                <button onClick={handlePublish} disabled={isPublishing}
+                  className="flex items-center gap-2 h-10 px-5 rounded-full bg-white text-black text-[13px] font-bold disabled:opacity-30">
                   {isPublishing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Publish
                 </button>
               </div>
             </div>
           ) : (
             <div className="text-center space-y-4">
-              <div className="w-20 h-20 mx-auto rounded-2xl bg-[hsl(0,0%,10%)] flex items-center justify-center">
-                <Eye className="w-8 h-8 text-[hsl(0,0%,35%)]" />
+              <div className="w-20 h-20 mx-auto rounded-2xl bg-white/8 flex items-center justify-center">
+                <Eye className="w-8 h-8 text-white/30" />
               </div>
-              <p className="text-[hsl(0,0%,100%)] font-semibold">No preview yet</p>
-              <p className="text-[13px] text-[hsl(0,0%,45%)]">Go to Chat and describe what you want to create</p>
-              <button onClick={() => setActiveTab("chat")} className="text-[13px] text-[hsl(262,83%,68%)] font-semibold">
-                ← Back to Chat
+              <p className="font-semibold">No preview yet</p>
+              <p className="text-[13px] text-white/40">Go to Chat and describe what you want to create</p>
+              <button onClick={() => setActiveTab("chat")} className="text-[13px] text-violet-400 font-semibold">
+                Back to Chat
               </button>
             </div>
           )}
         </div>
       )}
-
-      {/* Click-away overlays */}
-      {showAttachOptions && <div className="fixed inset-0 z-20" onClick={() => setShowAttachOptions(false)} />}
     </div>
   );
 }

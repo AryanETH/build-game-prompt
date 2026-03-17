@@ -107,7 +107,7 @@ export const UserAchievementsPanel = ({ userId }: UserAchievementsPanelProps) =>
           {lockedAchievements.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Trophy className="w-12 h-12 mx-auto mb-4 text-yellow-500" />
-              <p className="text-xl font-bold mb-2">🎉 All Achievements Unlocked!</p>
+              <p className="text-xl font-bold mb-2">All Achievements Unlocked!</p>
               <p className="text-sm">Legend status achieved!</p>
             </div>
           ) : (

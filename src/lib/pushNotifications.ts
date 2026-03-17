@@ -140,7 +140,7 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
 
     // Show welcome notification after a short delay
     setTimeout(() => {
-      showLocalNotification('Welcome to Oplus! 🎮', {
+      showLocalNotification('Welcome to Oplus!', {
         body: 'You\'re all set! You\'ll now get notified about trending games and updates.',
         icon: '/Oplus only.png',
         image: '/Oplus full logo.png',

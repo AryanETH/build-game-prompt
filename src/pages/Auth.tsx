@@ -244,8 +244,8 @@ export default function AuthPage() {
           toast.success("Admin account created! You can log in immediately.");
         } else {
           // Enhanced email verification notification
-          toast.success("🎉 Account created successfully!", {
-            description: `📧 Verification email sent to ${formData.email}. Please check your inbox and click the verification link to activate your account.`,
+          toast.success("Account created successfully!", {
+            description: `Verification email sent to ${formData.email}. Please check your inbox and click the verification link to activate your account.`,
             duration: 8000, // Show for 8 seconds
           });
           
@@ -263,7 +263,7 @@ export default function AuthPage() {
           
           // Show additional helpful message after a delay
           setTimeout(() => {
-            toast.info("📬 Don't see the email?", {
+            toast.info("Don't see the email?", {
               description: "Check your spam folder or try signing up again. The verification link expires in 24 hours.",
               duration: 6000,
             });
@@ -436,7 +436,7 @@ export default function AuthPage() {
       if (error) {
         toast.error(error.message);
       } else {
-        toast.success("📧 Verification email resent!", {
+        toast.success("Verification email resent!", {
           description: `New verification email sent to ${verificationEmail}. Please check your inbox.`,
           duration: 5000,
         });
@@ -955,7 +955,7 @@ export default function AuthPage() {
                 
                 <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
                   <p className="text-yellow-400 text-xs">
-                    💡 <strong>Tip:</strong> If you don't see the email, check your spam folder. The verification link expires in 24 hours.
+                    <strong>Tip:</strong> If you don't see the email, check your spam folder. The verification link expires in 24 hours.
                   </p>
                 </div>
                 

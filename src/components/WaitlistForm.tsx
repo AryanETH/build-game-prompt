@@ -54,7 +54,7 @@ export const WaitlistForm = ({
       }
 
       setIsSubmitted(true);
-      toast.success("You're on the list! 🎉");
+      toast.success("You're on the list!");
       
       // Store in localStorage to remember submission
       localStorage.setItem('waitlist_submitted', 'true');
@@ -64,7 +64,7 @@ export const WaitlistForm = ({
       console.error('Waitlist submission error:', error);
       // Still show success since no-cors doesn't return response
       setIsSubmitted(true);
-      toast.success("You're on the list! 🎉");
+      toast.success("You're on the list!");
     } finally {
       setIsLoading(false);
     }

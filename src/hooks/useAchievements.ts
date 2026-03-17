@@ -172,7 +172,7 @@ export const useAchievements = () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
 
       unlocked.forEach((ua) => {
-        toast.success(`🏆 Achievement Unlocked: ${ua.achievement?.name}`, {
+        toast.success(`Achievement Unlocked: ${ua.achievement?.name}`, {
           description: `+${ua.achievement?.coins_reward} coins`,
         });
       });

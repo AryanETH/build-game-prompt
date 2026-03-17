@@ -214,8 +214,8 @@ export default function Messages() {
             user_id: partnerId,
             username: partner.username,
             avatar_url: partner.avatar_url,
-            last_message: msg.content.startsWith('[GIF]') ? '🎬 GIF' : 
-                         msg.content.startsWith('[IMAGE]') ? '📷 Image' : 
+            last_message: msg.content.startsWith('[GIF]') ? 'GIF' : 
+                         msg.content.startsWith('[IMAGE]') ? 'Image' : 
                          msg.content,
             last_message_time: msg.created_at,
             unread_count: unreadCount,

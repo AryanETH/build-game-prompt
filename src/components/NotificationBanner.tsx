@@ -49,7 +49,7 @@ export const NotificationBanner = () => {
     try {
       const subscription = await subscribeToPush();
       if (subscription) {
-        toast.success('🎉 Notifications enabled! You\'ll now get updates about trending games.');
+        toast.success('Notifications enabled! You\'ll now get updates about trending games.');
         setIsVisible(false);
       } else {
         toast.error('Failed to enable notifications. Please try again.');

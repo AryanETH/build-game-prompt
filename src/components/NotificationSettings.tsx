@@ -74,7 +74,7 @@ export const NotificationSettings = () => {
           
           // Show a test notification
           setTimeout(() => {
-            showLocalNotification('Notifications Enabled! 🎉', {
+            showLocalNotification('Notifications Enabled!', {
               body: 'You\'ll now get alerts about trending games and updates',
               icon: '/Oplus only.png',
               image: '/Oplus full logo.png'

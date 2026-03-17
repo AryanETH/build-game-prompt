@@ -59,7 +59,7 @@ export const EarlyNotificationPrompt = () => {
     try {
       const subscription = await subscribeToPush();
       if (subscription) {
-        toast.success('🎉 Perfect! You\'ll now get notified about trending games and updates.');
+        toast.success('Perfect! You\'ll now get notified about trending games and updates.');
         setIsVisible(false);
         
         // Mark as handled

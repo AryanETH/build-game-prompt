@@ -27,7 +27,8 @@ import {
   Globe,
   Moon,
   Volume2,
-  Check
+  Check,
+  Heart
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -358,7 +359,7 @@ export default function Settings() {
 
           {/* Footer */}
           <div className="text-center text-sm text-muted-foreground py-4">
-            <p>Made with ❤️ by Oplus AI Team</p>
+            <p className="flex items-center justify-center gap-1">Made with <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500" /> by Oplus AI Team</p>
             <p className="mt-1">© 2024 Oplus AI. All rights reserved.</p>
           </div>
         </div>

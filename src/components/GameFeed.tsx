@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { GamePlayer } from "./GamePlayer";
-import { Loader2, Heart, MessageCircle, Share2, Play, Sparkles, Smile, ChevronDown, ChevronUp, Trash2, Volume2, VolumeX } from "lucide-react";
+import { Loader2, Heart, MessageCircle, Share2, Play, Sparkles, Smile, ChevronDown, ChevronUp, Trash2, Volume2, VolumeX, Bookmark, Camera } from "lucide-react";
 import { playClick, playSuccess, playError } from "@/lib/sounds";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/activityLogger";
@@ -74,6 +74,49 @@ interface Profile {
   username: string;
   avatar_url: string | null;
 }
+
+// Inline game iframe shown directly in the feed card (no thumbnail)
+const GameIframeCard = ({ game }: { game: GameWithCreator }) => {
+  const [gameCode, setGameCode] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setGameCode(null);
+    supabase
+      .from('games')
+      .select('game_code')
+      .eq('id', game.id)
+      .single()
+      .then(({ data }) => {
+        if (!cancelled) {
+          setGameCode(data?.game_code || null);
+          setLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [game.id]);
+
+  return (
+    <div className="absolute inset-0 w-full h-full bg-black">
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
+          <Loader2 className="w-8 h-8 animate-spin text-white/60" />
+        </div>
+      )}
+      {gameCode && (
+        <iframe
+          srcDoc={gameCode}
+          className="absolute inset-0 w-full h-full border-0"
+          sandbox="allow-scripts allow-same-origin"
+          title={game.title}
+          style={{ pointerEvents: 'auto' }}
+        />
+      )}
+    </div>
+  );
+};
 
 export const GameFeed = () => {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
@@ -1466,6 +1509,12 @@ export const GameFeed = () => {
     return `${years}y`;
   };
 
+  const formatCount = (n: number) => {
+    if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    return String(n);
+  };
+
   if (isLoading) {
     return (
       <>
@@ -1474,20 +1523,25 @@ export const GameFeed = () => {
           <MobileFeedSkeleton count={3} />
         </div>
         
-        {/* Desktop Loading - Existing layout */}
-        <div className="hidden md:block relative w-full bg-[#F8F9FA]" style={{ height: '100dvh' }}>
-          <div className="h-full overflow-y-auto no-scrollbar pb-16 md:pb-0">
-            <div className="flex flex-col items-start w-full max-w-[900px] mx-auto justify-start min-h-screen py-8 gap-8">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="w-full flex items-center justify-center">
-                  <div className="relative w-auto h-auto flex items-center gap-6">
-                    <div className="relative w-[374px] h-[660px]">
-                      <GameCardSkeleton />
-                    </div>
+        {/* Desktop Loading */}
+        <div className="hidden md:block relative w-full bg-background dark:bg-black" style={{ height: '100dvh' }}>
+          <div className="h-full overflow-y-auto no-scrollbar snap-feed-container">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="snap-item w-full flex items-center justify-center">
+                <div className="relative w-auto h-[760px] flex items-end gap-6">
+                  {/* Card */}
+                  <div className="relative w-[424px] h-[760px]">
+                    <GameCardSkeleton />
+                  </div>
+                  {/* Action buttons column */}
+                  <div className="flex flex-col gap-4 items-center mb-8">
+                    {[...Array(5)].map((_, j) => (
+                      <div key={j} className="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         </div>
       </>
@@ -1541,7 +1595,7 @@ export const GameFeed = () => {
       {PromptComponent && <PromptComponent />}
       
       {/* Snap scrolling feed - TikTok style on mobile, centered on desktop */}
-      <div className="relative w-full bg-white dark:bg-black md:bg-[#F8F9FA]" style={{ height: '100' }}>
+      <div className="relative w-full h-[100dvh] bg-black dark:bg-black md:bg-[#F8F9FA]">
         {/* Desktop Navigation Buttons */}
         <div className="hidden md:flex fixed right-8 top-1/2 -translate-y-1/2 flex-col gap-4 z-50 p-3">
           <button
@@ -1566,105 +1620,21 @@ export const GameFeed = () => {
             <div key={game.id} data-game-index={index} className="snap-item">
               {/* Mobile: Full bleed, Desktop: Centered card with action buttons */}
               <div className="relative w-full h-full md:w-auto md:h-[760px] md:flex md:items-end md:gap-6">
-                  {/* Card container - Desktop: Fixed size with stacked effect */}
-                  <div className="relative w-full h-full md:w-[424px] md:h-[760px] ">
-                    <Card className="relative w-full h-full overflow-hidden md:overflow-hidden rounded-none md:rounded-2xl border-0 md:border md:border-gray-200 md:shadow-lg bg-black md:bg-gray-300">
-                      {/* Conditional Media Rendering */}
-                      {game.media_type === 'video' && game.media_url ? (
-                        <video
-                          ref={(el) => {
-                            if (el) {
-                              videoRefs.current.set(game.id, el);
-                            } else {
-                              videoRefs.current.delete(game.id);
-                            }
-                          }}
-                          data-game-id={game.id}
-                          key={game.id + '-video'}
-                          className="absolute inset-0 w-full h-full object-cover"
-                          autoPlay
-                          loop
-                          muted
-                          playsInline
-                          preload="auto"
-                          poster={game.thumbnail_url || game.cover_url || undefined}
-                          onLoadStart={() => setLoadingVideos(prev => new Set(prev).add(game.id))}
-                          onCanPlay={() => setLoadingVideos(prev => { const s = new Set(prev); s.delete(game.id); return s; })}
-                          onPlaying={() => setLoadingVideos(prev => { const s = new Set(prev); s.delete(game.id); return s; })}
-                          onError={() => setLoadingVideos(prev => { const s = new Set(prev); s.delete(game.id); return s; })}
-                          style={{ transform: 'translateZ(0)', willChange: 'transform', backfaceVisibility: 'hidden' }}
-                          // Long press to pause (mobile touch)
-                          onTouchStart={(e) => {
-                            const video = e.currentTarget;
-                            if (!video.paused) {
-                              video.pause();
-                            }
-                          }}
-                          onTouchEnd={(e) => {
-                            const video = e.currentTarget;
-                            if (video.paused) {
-                              video.play().catch(() => {});
-                            }
-                          }}
-                          onTouchCancel={(e) => {
-                            const video = e.currentTarget;
-                            if (video.paused) {
-                              video.play().catch(() => {});
-                            }
-                          }}
-                          // Long press to pause (desktop mouse)
-                          onMouseDown={(e) => {
-                            if (e.button === 0) { // Left mouse button only
-                              const video = e.currentTarget;
-                              if (!video.paused) {
-                                video.pause();
-                              }
-                            }
-                          }}
-                          onMouseUp={(e) => {
-                            if (e.button === 0) { // Left mouse button only
-                              const video = e.currentTarget;
-                              if (video.paused) {
-                                video.play().catch(() => {});
-                              }
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            const video = e.currentTarget;
-                            if (video.paused) {
-                              video.play().catch(() => {});
-                            }
-                          }}
-                        >
-                          <source src={game.media_url} type="video/mp4" />
-                        </video>
-                      ) : (
-                        <img
-                          src={game.media_url || game.cover_url || game.thumbnail_url || '/placeholder.svg'}
-                          alt={game.title}
-                          className="absolute inset-0 w-full h-full object-cover"
-                          onLoad={() => {
-                            // Auto-play background sound when image loads (if not muted)
-                            if (game.background_sound_url && !mutedGames.has(game.id)) {
-                              playBackgroundSound(game.id, game.background_sound_url);
-                            }
-                          }}
-                        />
-                      )}
-                      
+                  {/* Card container */}
+                  <div className="relative w-full h-full md:w-[424px] md:h-[760px]">
+                    <Card className="relative w-full h-full overflow-hidden rounded-[20px] border-0 md:border md:border-gray-200 dark:md:border-gray-700 md:shadow-lg bg-black">
+                      {/* ── LIVE GAME IFRAME (no thumbnail) ── */}
+                      <GameIframeCard game={game} onPlay={handlePlay} />
+
                       {/* Video Loading Indicator */}
                       {game.media_type === 'video' && loadingVideos.has(game.id) && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm z-20">
-                          <div className="flex flex-col items-center gap-2">
-                            <Loader2 className="w-8 h-8 animate-spin text-white" />
-                            <span className="text-white text-sm font-medium">Loading video...</span>
-                          </div>
+                          <Loader2 className="w-8 h-8 animate-spin text-white" />
                         </div>
                       )}
-                      
 
-                      {/* Remix button - top right */}
-                      <div className="absolute top-4 right-4 z-10">
+                      {/* Remix button - top right on desktop */}
+                      <div className="hidden md:block absolute top-4 right-4 z-10">
                         <button
                           className="px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all duration-200"
                           onClick={() => setRemixFor(game)}
@@ -1674,145 +1644,130 @@ export const GameFeed = () => {
                         </button>
                       </div>
 
-
-
-                      {/* Game info - bottom left - fixed position on mobile to avoid browser UI */}
-                      <div className="absolute left-0 right-[70px] md:right-[80px] bottom-20 md:bottom-2 p-3 md:p-5 pb-4 text-white z-10">
-                        <div className="flex items-center gap-2 mb-2">
+                      {/* ── MOBILE BOTTOM OVERLAY ── */}
+                      <div className="md:hidden absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
+                        <div className="h-24 bg-gradient-to-t from-black/75 to-transparent" />
+                      </div>
+                      <div className="md:hidden absolute bottom-0 left-0 right-0 z-30">
+                        {/* Stats row */}
+                        <div className="bg-black/55 backdrop-blur-md px-4 py-2 flex items-center gap-4">
                           <button
-                            className="flex items-center gap-2 hover:opacity-80 transition-opacity group"
-                            onClick={() => game.creator?.username && navigate(`/u/${game.creator.username}`)}
+                            className="flex items-center gap-1.5 active:scale-95 transition-transform"
+                            onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
                           >
-                            <div className="relative">
-                              <Avatar className="w-9 h-9 md:w-12 md:h-12 border-2 border-white/50 group-hover:border-white transition-colors">
+                            <Heart className={`w-[18px] h-[18px] ${likedGames.has(game.id) ? 'fill-red-500 stroke-red-500' : 'fill-none stroke-white'}`} strokeWidth={2} />
+                            <span className="text-white text-[13px] font-semibold">{formatCount(game.likes_count ?? 0)}</span>
+                          </button>
+                          <button
+                            className="flex items-center gap-1.5 active:scale-95 transition-transform"
+                            onClick={() => setCommentsOpenFor(game)}
+                          >
+                            <MessageCircle className="w-[18px] h-[18px] stroke-white fill-none" strokeWidth={2} />
+                            <span className="text-white text-[13px] font-semibold">
+                              {commentsOpenFor?.id === game.id ? comments.length : (game.comments_count || 0)}
+                            </span>
+                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <Bookmark className="w-[18px] h-[18px] stroke-white fill-none" strokeWidth={2} />
+                            <span className="text-white text-[13px] font-semibold">{formatCount(game.plays_count ?? 0)}</span>
+                          </div>
+                          <div className="flex-1" />
+                          <button
+                            className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition-transform"
+                            onClick={() => handleShare(game)}
+                          >
+                            <Camera className="w-4 h-4 stroke-white" strokeWidth={2} />
+                          </button>
+                          <button
+                            className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition-transform"
+                            onClick={() => handleShare(game)}
+                          >
+                            <Share2 className="w-4 h-4 stroke-white" strokeWidth={2} />
+                          </button>
+                        </div>
+
+                        {/* Creator row */}
+                        <div className="bg-black/65 backdrop-blur-md px-4 py-2.5 flex items-center gap-3">
+                          <div className="relative flex-shrink-0">
+                            <button onClick={() => game.creator?.username && navigate(`/u/${game.creator.username}`)}>
+                              <Avatar className="w-10 h-10 border-2 border-white/30">
                                 <AvatarImage src={game.creator?.avatar_url || undefined} className="object-cover" />
-                                <AvatarFallback className="gradient-primary text-white text-xs md:text-sm font-semibold">
+                                <AvatarFallback className="gradient-primary text-white text-sm font-semibold">
                                   {game.creator?.username?.[0]?.toUpperCase() || 'U'}
                                 </AvatarFallback>
                               </Avatar>
-                              {/* Plus icon for follow - only show if not following */}
-                              {game.creator_id !== userId && !followedUsers.has(game.creator_id) && (
-                                <button
-                                  className="absolute -bottom-0.5 -right-0.5 w-5 h-5 md:w-6 md:h-6 rounded-full gradient-primary flex items-center justify-center text-white shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 border-2 border-white"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleFollowUser(game.creator_id);
-                                  }}
-                                >
-                                  <span className="text-xs md:text-sm font-bold leading-none">+</span>
-                                </button>
-                              )}
-                            </div>
-                            <span className="text-sm md:text-base font-bold drop-shadow-lg">@{game.creator?.username || 'creator'}</span>
-                          </button>
-                        </div>
-                        <div className="text-sm md:text-lg font-semibold leading-tight mb-1 drop-shadow-lg line-clamp-2">{game.title}</div>
-                        {game.description && (
-                          <div>
-                            <div className={`text-xs md:text-sm text-white/95 drop-shadow-md leading-snug ${expandedDescriptions.has(game.id) ? '' : 'line-clamp-2'}`}>
-                              <LinkifiedText text={game.description} />
-                            </div>
-                            {game.description.length > 80 && (
+                            </button>
+                            {game.creator_id !== userId && !followedUsers.has(game.creator_id) && (
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setExpandedDescriptions(prev => {
-                                    const next = new Set(prev);
-                                    if (next.has(game.id)) {
-                                      next.delete(game.id);
-                                    } else {
-                                      next.add(game.id);
-                                    }
-                                    return next;
-                                  });
-                                }}
-                                className="text-xs md:text-sm font-semibold text-white/90 hover:text-white mt-1 drop-shadow-lg"
+                                className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white shadow border-[1.5px] border-black active:scale-90 transition-transform"
+                                onClick={(e) => { e.stopPropagation(); handleFollowUser(game.creator_id); }}
                               >
-                                {expandedDescriptions.has(game.id) ? 'Less' : 'More'}
+                                <span className="text-[10px] font-bold leading-none">+</span>
                               </button>
                             )}
                           </div>
-                        )}
-                      </div>
-
-                      {/* Right action bar - Mobile only (desktop buttons are on right outside card) */}
-                      <div className="md:hidden absolute right-3 bottom-32 flex flex-col gap-3 items-center text-white z-30">
-                        {/* Play button - Purple gradient on desktop, primary on mobile */}
-                        <button
-                          aria-label="Play game"
-                          className="h-10 w-10 md:h-10 md:w-10 mb-2 rounded-full flex items-center justify-center gradient-primary md:bg-[#5B4AF4] text-white hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg"
-                          onClick={() => handlePlay(game)}
-                        >
-                          <Play className="h-5 w-5 md:h-5 md:w-5 fill-current md:ml-1" strokeWidth={2} />
-                        </button>
-
-                        {/* Like button */}
-                        <div className="flex flex-col items-center gap-0.5 md:gap-1">
-                          <button
-                            aria-label={likedGames.has(game.id) ? 'Unlike game' : 'Like game'}
-                            className={`h-10 w-10 md:h-10 md:w-10 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 ${likedGames.has(game.id)
-                                ? 'bg-transparent text-white'
-                                : 'bg-transparent md:bg-transparent text-white hover:bg-transparent'
-                              }`}
-                            onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
-                          >
-                            <Heart className={`h-7 w-7 md:h-8 md:w-8 hover:scale-110 active:scale-95 transition-all duration-200 ${likedGames.has(game.id)
-                                ? 'fill-red-500 stroke-red-500'
-                                : 'fill-none '
-                              }`} strokeWidth={2} />
-                          </button>
-                          <span className="text-[12px] md:text-xs font-bold text-white md:text-gray-500 drop-shadow-lg md:drop-shadow-none md:mt-1">{game.likes_count ?? 0}</span>
-                        </div>
-
-                        {/* Comments button */}
-                        <div className="flex flex-col items-center gap-0.5 md:gap-1">
-                          <button
-                            aria-label="View comments"
-                            className="h-10 w-10 md:h-10 md:w-10 rounded-full flex items-center justify-center bg-transparent md:backdrop-blur-sm text-white hover:scale-110 active:scale-95 transition-all duration-200"
-                            onClick={() => setCommentsOpenFor(game)}
-                          >
-                            <MessageCircle className="h-7 w-7 md:h-8 md:w-8 fill-none transform -scale-x-100" strokeWidth={2} />
-                          </button>
-                          <span className="text-[12px] md:text-xs font-bold text-white md:text-gray-500 drop-shadow-lg md:drop-shadow-none md:mt-0">
-                            {commentsOpenFor?.id === game.id ? comments.length : (game.comments_count || 0)}
-                          </span>
-                        </div>
-
-                        {/* Share button */}
-                        <div className="flex flex-col items-center">
-                          <button
-                            aria-label="Share game"
-                            className="h-12 w-12 md:h-12 md:w-12 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200"
-                            onClick={() => handleShare(game)}
-                          >
-                            <Share2 className="h-7 w-7 md:h-8 md:w-8 ml-[-2px]" strokeWidth={2} />
-                          </button>
-                        </div>
-
-                        {/* Mute/Unmute button - show for videos or games with background sound */}
-                        {(game.media_type === 'video' || game.background_sound_url) && (
-                          <div className="flex flex-col items-center">
+                          <div className="flex-1 min-w-0">
                             <button
-                              aria-label={mutedGames.has(game.id) ? 'Unmute sound' : 'Mute sound'}
-                              className={`h-12 w-12 md:h-12 md:w-12 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 ${
-                                mutedGames.has(game.id)
-                                  ? 'text-red-500'
-                                  : 'text-white'
-                              }`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleGameMute(game.id);
-                              }}
+                              className="hover:opacity-80 transition-opacity"
+                              onClick={() => game.creator?.username && navigate(`/u/${game.creator.username}`)}
                             >
-                              {mutedGames.has(game.id) ? (
-                                <VolumeX className="h-7 w-7 md:h-8 md:w-8" strokeWidth={2} />
-                              ) : (
-                                <Volume2 className="h-7 w-7 md:h-8 md:w-8" strokeWidth={2} />
-                              )}
+                              <span className="text-white text-[14px] font-bold">{game.creator?.username || 'creator'}</span>
                             </button>
+                            <div className="flex items-center gap-1 text-[12px] leading-tight">
+                              <svg className="w-3 h-3 text-white/60 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+                              <span className="text-white/70 truncate max-w-[90px]">[{game.title}]</span>
+                              <span className="text-white/55 truncate max-w-[80px]">{game.title.slice(0, 20)}{game.title.length > 20 ? '...' : ''}</span>
+                              {game.description && (
+                                <button
+                                  className="text-white font-semibold flex-shrink-0 ml-0.5"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedDescriptions(prev => {
+                                      const next = new Set(prev);
+                                      next.has(game.id) ? next.delete(game.id) : next.add(game.id);
+                                      return next;
+                                    });
+                                  }}
+                                >
+                                  ...More
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          {/* Remix badge */}
+                          <button
+                            className="flex-shrink-0 flex flex-col items-center gap-0.5 active:scale-90 transition-transform"
+                            onClick={() => setRemixFor(game)}
+                          >
+                            <div className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center shadow-lg">
+                              <Sparkles className="w-[18px] h-[18px] text-white" strokeWidth={2} />
+                            </div>
+                            <span className="text-white text-[10px] font-bold">{game.plays_count ?? 0}</span>
+                          </button>
+                        </div>
+
+                        {/* Expanded description */}
+                        {expandedDescriptions.has(game.id) && game.description && (
+                          <div className="bg-black/80 px-4 py-2">
+                            <p className="text-white/90 text-[13px] leading-snug">{game.description}</p>
                           </div>
                         )}
                       </div>
+
+                      {/* Mute button - top left on mobile for videos */}
+                      {(game.media_type === 'video' || game.background_sound_url) && (
+                        <div className="md:hidden absolute top-4 left-4 z-30">
+                          <button
+                            aria-label={mutedGames.has(game.id) ? 'Unmute sound' : 'Mute sound'}
+                            className={`h-9 w-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center active:scale-90 transition-transform ${
+                              mutedGames.has(game.id) ? 'text-red-400' : 'text-white'
+                            }`}
+                            onClick={(e) => { e.stopPropagation(); toggleGameMute(game.id); }}
+                          >
+                            {mutedGames.has(game.id) ? <VolumeX className="h-5 w-5" strokeWidth={2} /> : <Volume2 className="h-5 w-5" strokeWidth={2} />}
+                          </button>
+                        </div>
+                      )}
                     </Card>
 
 

@@ -163,21 +163,21 @@ async function sendPushToSubscription(subscription: any, payload: NotificationPa
 // Predefined notification templates with Oplus branding
 export const NotificationTemplates = {
   newLike: (username: string, gameName: string, gameImage?: string): NotificationPayload => ({
-    title: '❤️ New Like!',
+    title: 'New Like!',
     body: `${username} liked your game "${gameName}"`,
     icon: '/Oplus only.png',
     badge: '/Oplus only.png',
-    image: gameImage, // Game thumbnail as large image
+    image: gameImage,
     tag: 'like',
     data: { type: 'like', username, gameName },
     actions: [
-      { action: 'view', title: '👀 View Game' },
-      { action: 'close', title: '✕ Close' }
+      { action: 'view', title: 'View Game' },
+      { action: 'close', title: 'Close' }
     ]
   }),
 
   newComment: (username: string, gameName: string, gameImage?: string): NotificationPayload => ({
-    title: '💬 New Comment!',
+    title: 'New Comment!',
     body: `${username} commented on your game "${gameName}"`,
     icon: '/Oplus only.png',
     badge: '/Oplus only.png',
@@ -185,27 +185,27 @@ export const NotificationTemplates = {
     tag: 'comment',
     data: { type: 'comment', username, gameName },
     actions: [
-      { action: 'reply', title: '💬 Reply' },
-      { action: 'view', title: '👀 View' }
+      { action: 'reply', title: 'Reply' },
+      { action: 'view', title: 'View' }
     ]
   }),
 
   newFollower: (username: string, userAvatar?: string): NotificationPayload => ({
-    title: '👥 New Follower!',
+    title: 'New Follower!',
     body: `${username} started following you`,
     icon: '/Oplus only.png',
     badge: '/Oplus only.png',
-    image: userAvatar, // User's avatar as large image
+    image: userAvatar,
     tag: 'follow',
     data: { type: 'follow', username },
     actions: [
-      { action: 'follow_back', title: '👥 Follow Back' },
-      { action: 'view_profile', title: '👤 View Profile' }
+      { action: 'follow_back', title: 'Follow Back' },
+      { action: 'view_profile', title: 'View Profile' }
     ]
   }),
 
   gamePublished: (gameName: string, gameImage?: string): NotificationPayload => ({
-    title: '🎮 Game Published!',
+    title: 'Game Published!',
     body: `Your game "${gameName}" is now live!`,
     icon: '/Oplus only.png',
     badge: '/Oplus only.png',
@@ -213,21 +213,21 @@ export const NotificationTemplates = {
     tag: 'publish',
     data: { type: 'publish', gameName },
     actions: [
-      { action: 'share', title: '📤 Share' },
-      { action: 'view', title: '🎮 Play' }
+      { action: 'share', title: 'Share' },
+      { action: 'view', title: 'Play' }
     ]
   }),
 
   broadcast: (title: string, body: string, image?: string): NotificationPayload => ({
-    title: `📢 ${title}`,
+    title,
     body,
-    icon: '/Oplus full logo.png', // Use full logo for broadcasts
+    icon: '/Oplus full logo.png',
     badge: '/Oplus only.png',
     image,
     tag: 'broadcast',
     data: { type: 'broadcast' },
     actions: [
-      { action: 'open', title: '🚀 Open App' },
+      { action: 'open', title: 'Open App' },
       { action: 'close', title: '✕ Close' }
     ]
   }),
