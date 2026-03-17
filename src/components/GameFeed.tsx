@@ -76,7 +76,7 @@ interface Profile {
 }
 
 // Inline game iframe shown directly in the feed card (no thumbnail)
-const GameIframeCard = ({ game }: { game: GameWithCreator }) => {
+const GameIframeCard = ({ game, className }: { game: GameWithCreator; className?: string }) => {
   const [gameCode, setGameCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -99,7 +99,7 @@ const GameIframeCard = ({ game }: { game: GameWithCreator }) => {
   }, [game.id]);
 
   return (
-    <div className="absolute inset-0 w-full h-full bg-black">
+    <div className={className ?? "absolute inset-0 w-full h-full bg-black"}>
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
           <Loader2 className="w-8 h-8 animate-spin text-white/60" />
@@ -1622,9 +1622,14 @@ export const GameFeed = () => {
               <div className="relative w-full h-full md:w-auto md:h-[760px] md:flex md:items-end md:gap-6">
                   {/* Card container */}
                   <div className="relative w-full h-full md:w-[424px] md:h-[760px]">
-                    <Card className="relative w-full h-full overflow-hidden rounded-[20px] border-0 md:border md:border-gray-200 dark:md:border-gray-700 md:shadow-lg bg-black">
+                    <Card className="relative w-full h-full overflow-hidden rounded-[20px] border-0 md:border md:border-gray-200 dark:md:border-gray-700 md:shadow-lg bg-black flex flex-col md:block">
                       {/* ── LIVE GAME IFRAME (no thumbnail) ── */}
-                      <GameIframeCard game={game} onPlay={handlePlay} />
+                      {/* Mobile: flex-1 so it stops above the overlay. Desktop: absolute fill */}
+                      <div className="relative flex-1 md:absolute md:inset-0 bg-black overflow-hidden">
+                        <GameIframeCard game={game} className="absolute inset-0 w-full h-full bg-black" />
+                        {/* Subtle gradient fade at bottom of game area on mobile */}
+                        <div className="md:hidden absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-black/60 to-transparent pointer-events-none z-10" />
+                      </div>
 
                       {/* Video Loading Indicator */}
                       {game.media_type === 'video' && loadingVideos.has(game.id) && (
@@ -1645,10 +1650,9 @@ export const GameFeed = () => {
                       </div>
 
                       {/* ── MOBILE BOTTOM OVERLAY ── */}
-                      <div className="md:hidden absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
-                        <div className="h-24 bg-gradient-to-t from-black/75 to-transparent" />
-                      </div>
-                      <div className="md:hidden absolute bottom-0 left-0 right-0 z-30">
+                      {/* On mobile: normal flow (flex-shrink-0) so it pushes the iframe up */}
+                      {/* On desktop: absolute positioned over the card */}
+                      <div className="md:hidden flex-shrink-0 z-30">
                         {/* Stats row */}
                         <div className="bg-black/55 backdrop-blur-md px-4 py-2 flex items-center gap-4">
                           <button
