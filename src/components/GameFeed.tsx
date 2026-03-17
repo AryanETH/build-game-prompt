@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { GamePlayer } from "./GamePlayer";
-import { Loader2, Heart, MessageCircle, Share2, Play, Sparkles, Smile, ChevronDown, ChevronUp, Trash2, Volume2, VolumeX, Bookmark, Camera } from "lucide-react";
+import { Loader2, Heart, MessageCircle, Share2, Play, Sparkles, Smile, ChevronDown, ChevronUp, Trash2, Volume2, VolumeX, Bookmark, Camera, Mic, MicOff } from "lucide-react";
 import { playClick, playSuccess, playError } from "@/lib/sounds";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/activityLogger";
@@ -76,9 +76,10 @@ interface Profile {
 }
 
 // Inline game iframe shown directly in the feed card (no thumbnail)
-const GameIframeCard = ({ game, className }: { game: GameWithCreator; className?: string }) => {
+const GameIframeCard = ({ game, className, isMuted }: { game: GameWithCreator; className?: string; isMuted?: boolean }) => {
   const [gameCode, setGameCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +99,47 @@ const GameIframeCard = ({ game, className }: { game: GameWithCreator; className?
     return () => { cancelled = true; };
   }, [game.id]);
 
+  // Inject mute/unmute via postMessage whenever isMuted changes
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe?.contentWindow) return;
+    iframe.contentWindow.postMessage({ type: isMuted ? 'MUTE' : 'UNMUTE' }, '*');
+  }, [isMuted]);
+
+  // Inject a mute-listener snippet into the game code
+  const muteSnippet = `<script>
+(function(){
+  var _muted=false;
+  window.addEventListener('message',function(e){
+    if(!e.data||!e.data.type)return;
+    if(e.data.type==='MUTE'){_muted=true;applyMute();}
+    else if(e.data.type==='UNMUTE'){_muted=false;applyMute();}
+  });
+  function applyMute(){
+    // HTMLMediaElements
+    document.querySelectorAll('audio,video').forEach(function(el){el.muted=_muted;});
+    // Web Audio API - suspend/resume AudioContext
+    if(window.AudioContext||window.webkitAudioContext){
+      var ctxKey=Object.keys(window).find(function(k){
+        try{return window[k] instanceof (window.AudioContext||window.webkitAudioContext);}catch(e){return false;}
+      });
+      if(ctxKey){_muted?window[ctxKey].suspend():window[ctxKey].resume();}
+    }
+  }
+  // Also patch AudioContext constructor to auto-suspend if muted
+  var OrigAC=window.AudioContext||window.webkitAudioContext;
+  if(OrigAC){
+    var Patched=function(){var ac=new OrigAC();if(_muted)ac.suspend();return ac;};
+    Patched.prototype=OrigAC.prototype;
+    try{window.AudioContext=Patched;window.webkitAudioContext=Patched;}catch(e){}
+  }
+})();
+</script>`;
+
+  const patchedCode = gameCode
+    ? gameCode.replace(/<head>/i, `<head>${muteSnippet}`)
+    : null;
+
   return (
     <div className={className ?? "absolute inset-0 w-full h-full bg-black"}>
       {loading && (
@@ -105,9 +147,10 @@ const GameIframeCard = ({ game, className }: { game: GameWithCreator; className?
           <Loader2 className="w-8 h-8 animate-spin text-white/60" />
         </div>
       )}
-      {gameCode && (
+      {patchedCode && (
         <iframe
-          srcDoc={gameCode}
+          ref={iframeRef}
+          srcDoc={patchedCode}
           className="absolute inset-0 w-full h-full border-0"
           sandbox="allow-scripts allow-same-origin"
           title={game.title}
@@ -129,6 +172,31 @@ export const GameFeed = () => {
   const [preloadedVideos, setPreloadedVideos] = useState<Set<string>>(new Set());
   const [loadingVideos, setLoadingVideos] = useState<Set<string>>(new Set());
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null); // Track which video should have audio
+  const [isMicOn, setIsMicOn] = useState(false);
+  const micStreamRef = useRef<MediaStream | null>(null);
+
+  const toggleMic = async () => {
+    if (isMicOn) {
+      // Stop all mic tracks
+      micStreamRef.current?.getTracks().forEach(t => t.stop());
+      micStreamRef.current = null;
+      setIsMicOn(false);
+      toast.info("Mic off");
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        micStreamRef.current = stream;
+        setIsMicOn(true);
+        toast.success("Mic on — others can hear you");
+      } catch (err: any) {
+        if (err.name === 'NotAllowedError') {
+          toast.error("Mic permission denied");
+        } else {
+          toast.error("Could not access mic");
+        }
+      }
+    }
+  };
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
   const queryClient = useQueryClient();
   const routerLocation = useRouterLocation();
@@ -953,6 +1021,8 @@ export const GameFeed = () => {
         currentAudio.pause();
         currentAudio.currentTime = 0;
       }
+      // Stop mic if active
+      micStreamRef.current?.getTracks().forEach(t => t.stop());
     };
   }, [currentAudio]);
 
@@ -1626,7 +1696,7 @@ export const GameFeed = () => {
                       {/* ── LIVE GAME IFRAME (no thumbnail) ── */}
                       {/* Mobile: flex-1 so it stops above the overlay. Desktop: absolute fill */}
                       <div className="relative flex-1 md:absolute md:inset-0 bg-black overflow-hidden">
-                        <GameIframeCard game={game} className="absolute inset-0 w-full h-full bg-black" />
+                        <GameIframeCard game={game} className="absolute inset-0 w-full h-full bg-black" isMuted={mutedGames.has(game.id)} />
                         {/* Subtle gradient fade at bottom of game area on mobile */}
                         <div className="md:hidden absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-black/60 to-transparent pointer-events-none z-10" />
                       </div>
@@ -1676,6 +1746,15 @@ export const GameFeed = () => {
                             <span className="text-white text-[13px] font-semibold">{formatCount(game.plays_count ?? 0)}</span>
                           </div>
                           <div className="flex-1" />
+                          <button
+                            className={`w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all ${
+                              isMicOn ? 'bg-red-500 text-white animate-pulse' : 'bg-white/15 text-white'
+                            }`}
+                            onClick={(e) => { e.stopPropagation(); toggleMic(); }}
+                            aria-label={isMicOn ? 'Turn mic off' : 'Turn mic on'}
+                          >
+                            {isMicOn ? <MicOff className="w-4 h-4" strokeWidth={2} /> : <Mic className="w-4 h-4" strokeWidth={2} />}
+                          </button>
                           <button
                             className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition-transform"
                             onClick={() => handleShare(game)}
@@ -1758,20 +1837,32 @@ export const GameFeed = () => {
                         )}
                       </div>
 
-                      {/* Mute button - top left on mobile for videos */}
-                      {(game.media_type === 'video' || game.background_sound_url) && (
-                        <div className="md:hidden absolute top-4 left-4 z-30">
-                          <button
-                            aria-label={mutedGames.has(game.id) ? 'Unmute sound' : 'Mute sound'}
-                            className={`h-9 w-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center active:scale-90 transition-transform ${
-                              mutedGames.has(game.id) ? 'text-red-400' : 'text-white'
-                            }`}
-                            onClick={(e) => { e.stopPropagation(); toggleGameMute(game.id); }}
-                          >
-                            {mutedGames.has(game.id) ? <VolumeX className="h-5 w-5" strokeWidth={2} /> : <Volume2 className="h-5 w-5" strokeWidth={2} />}
-                          </button>
-                        </div>
-                      )}
+                      {/* Mute button - always visible, top left */}
+                      <div className="absolute top-4 left-4 z-30">
+                        <button
+                          aria-label={mutedGames.has(game.id) ? 'Unmute' : 'Mute'}
+                          className={`h-9 w-9 rounded-full backdrop-blur-sm flex items-center justify-center active:scale-90 transition-all ${
+                            mutedGames.has(game.id)
+                              ? 'bg-red-500/80 text-white'
+                              : 'bg-black/40 text-white hover:bg-black/60'
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleGameMute(game.id);
+                            // Also mute/unmute the iframe via postMessage
+                            const iframe = document.querySelector(`iframe[title="${game.title}"]`) as HTMLIFrameElement;
+                            if (iframe?.contentWindow) {
+                              const muting = !mutedGames.has(game.id);
+                              iframe.contentWindow.postMessage({ type: muting ? 'MUTE' : 'UNMUTE' }, '*');
+                            }
+                          }}
+                        >
+                          {mutedGames.has(game.id)
+                            ? <VolumeX className="h-5 w-5" strokeWidth={2} />
+                            : <Volume2 className="h-5 w-5" strokeWidth={2} />
+                          }
+                        </button>
+                      </div>
                     </Card>
 
 
@@ -1826,6 +1917,27 @@ export const GameFeed = () => {
                       >
                         <Share2 className="h-6 w-6 ml-[-2px] stroke-gray-700 dark:stroke-white" strokeWidth={2} />
                       </button>
+                    </div>
+
+                    {/* Mic / Live voice button */}
+                    <div className="flex flex-col items-center gap-1">
+                      <button
+                        aria-label={isMicOn ? 'Turn mic off' : 'Turn mic on'}
+                        className={`h-14 w-14 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 ${
+                          isMicOn
+                            ? 'bg-red-500 text-white shadow-lg shadow-red-500/40 animate-pulse'
+                            : 'bg-transparent text-gray-700 dark:text-white'
+                        }`}
+                        onClick={toggleMic}
+                      >
+                        {isMicOn
+                          ? <MicOff className="h-6 w-6" strokeWidth={2} />
+                          : <Mic className="h-6 w-6" strokeWidth={2} />
+                        }
+                      </button>
+                      <span className={`text-xs font-bold ${isMicOn ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
+                        {isMicOn ? 'Live' : 'Mic'}
+                      </span>
                     </div>
 
                     {/* Mute/Unmute button - show for videos or games with background sound */}

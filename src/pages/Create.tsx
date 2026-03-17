@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   ArrowLeft, Music, Image as ImageIcon, Video, RefreshCw,
   Plus, X, Sparkles, Eye, MessageSquare, Loader2, Check,
-  Play, Pause, Clock, Upload, Lightbulb, Wrench, Volume2, Mic, Send
+  Play, Pause, Clock, Upload, Lightbulb, Wrench, Volume2, Mic, MicOff, Send
 } from "lucide-react";
 import { logActivity } from "@/lib/activityLogger";
 import { playClick, playSuccess, playError } from "@/lib/sounds";
@@ -249,6 +249,47 @@ export default function Create() {
     }
   };
 
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  const toggleMic = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("Speech recognition not supported in this browser");
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognitionRef.current = recognition;
+
+    recognition.onstart = () => setIsListening(true);
+
+    recognition.onresult = (e: any) => {
+      const transcript = Array.from(e.results)
+        .map((r: any) => r[0].transcript)
+        .join("");
+      setInputText(transcript);
+    };
+
+    recognition.onerror = (e: any) => {
+      if (e.error !== "aborted") toast.error("Mic error: " + e.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => setIsListening(false);
+
+    recognition.start();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
@@ -369,6 +410,18 @@ export default function Create() {
 
           {/* Input area */}
           <div className="flex-shrink-0 px-4 pt-2 pb-4 border-t border-white/5">
+            {/* Listening indicator */}
+            {isListening && (
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <div className="flex gap-0.5 items-end h-4">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="w-1 bg-red-400 rounded-full animate-pulse"
+                      style={{ height: `${40 + i * 20}%`, animationDelay: `${i * 0.1}s` }} />
+                  ))}
+                </div>
+                <span className="text-red-400 text-[12px] font-semibold">Listening... tap mic to stop</span>
+              </div>
+            )}
             {/* Text input */}
             <div className="flex items-center gap-2 bg-white/8 rounded-2xl px-4 py-2 mb-3 border border-white/10">
               <textarea
@@ -386,9 +439,25 @@ export default function Create() {
                   t.style.height = Math.min(t.scrollHeight, 100) + "px";
                 }}
               />
-              <button onClick={handleSend} disabled={!inputText.trim() || isGenerating || isImproving}
-                className="w-8 h-8 flex items-center justify-center text-white/50 hover:text-white transition-colors disabled:opacity-30">
-                {isGenerating || isImproving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mic className="w-5 h-5" />}
+              <button
+                onClick={inputText.trim() && !isGenerating && !isImproving ? handleSend : toggleMic}
+                disabled={isGenerating || isImproving}
+                className={`w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-full transition-all active:scale-90 disabled:opacity-30 ${
+                  isListening
+                    ? "bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/40"
+                    : inputText.trim()
+                    ? "bg-violet-600 text-white shadow-lg shadow-violet-500/30"
+                    : "bg-white/15 text-white hover:bg-white/25"
+                }`}
+              >
+                {isGenerating || isImproving
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : inputText.trim()
+                  ? <Send className="w-4 h-4" />
+                  : isListening
+                  ? <MicOff className="w-4 h-4" />
+                  : <Mic className="w-4 h-4" />
+                }
               </button>
             </div>
 
