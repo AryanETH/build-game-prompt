@@ -25,13 +25,8 @@ export const MobileBottomNav = () => {
       .single();
     setProfile(data);
 
-    // Check unread notifications
-    const { count } = await supabase
-      .from('notifications')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('read', false);
-    setHasNotif((count ?? 0) > 0);
+    // Notifications table doesn't exist yet, skip check
+    setHasNotif(false);
 
     const profileChannel = supabase
       .channel('bottom-nav-profile-changes')
