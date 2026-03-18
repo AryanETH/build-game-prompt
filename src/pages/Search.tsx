@@ -240,23 +240,11 @@ export default function Search() {
                   onClick={() => handlePlayGame(game)}
                 >
                   <div className="aspect-[4/5] relative overflow-hidden bg-gradient-to-br from-accent to-accent/50">
-                    {game.media_type === 'video' && game.media_url ? (
-                      <video
-                        src={game.media_url}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        poster={game.thumbnail_url || game.cover_url || undefined}
-                      />
-                    ) : (
                       <img
-                        src={game.thumbnail_url || game.cover_url || "/placeholder.svg"}
+                        src={game.thumbnail_url || "/placeholder.svg"}
                         alt={game.title}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
-                    )}
                   </div>
                   <div className="p-2 bg-card">
                     <h3 className="font-semibold text-xs line-clamp-2 mb-1 leading-tight">{game.title}</h3>
