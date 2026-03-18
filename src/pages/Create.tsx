@@ -297,33 +297,33 @@ export default function Create() {
   const closeAllPanels = () => { setShowMusicPanel(false); setShowIdeasPanel(false); setShowToolboxPanel(false); };
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-black text-white overflow-hidden">
+    <div className="h-[100dvh] flex flex-col bg-background text-foreground overflow-hidden">
 
       {/* Header */}
       <header className="flex-shrink-0 flex items-center justify-between px-4 pt-3 pb-2">
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center active:scale-90 transition-transform">
+          <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center active:scale-90 transition-transform">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <button className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+          <button className="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center">
             <Clock className="w-5 h-5" />
           </button>
         </div>
-        <div className="flex items-center bg-white/10 rounded-full p-[3px]">
+        <div className="flex items-center bg-foreground/10 rounded-full p-[3px]">
           {(["chat", "preview"] as const).map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={cn("px-5 py-1.5 text-[13px] font-semibold rounded-full capitalize transition-all",
-                activeTab === tab ? "bg-white text-black" : "text-white/50")}>
+                activeTab === tab ? "bg-foreground text-background" : "text-foreground/50")}>
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <button className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+          <button className="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center">
             <MessageSquare className="w-5 h-5" />
           </button>
           <button onClick={handlePublish} disabled={isPublishing || !generatedCode}
-            className="h-10 px-5 rounded-full bg-white text-black text-[13px] font-bold disabled:opacity-30 flex items-center gap-1.5 active:scale-95 transition-transform">
+            className="h-10 px-5 rounded-full bg-foreground text-background text-[13px] font-bold disabled:opacity-30 flex items-center gap-1.5 active:scale-95 transition-transform">
             {isPublishing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Post"}
           </button>
         </div>
@@ -337,7 +337,7 @@ export default function Create() {
             {/* Popular cards carousel */}
             {messages.length <= 1 && (
               <div className="px-4 pt-3 pb-2">
-                <p className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-2">Popular • Remix one</p>
+                <p className="text-[11px] font-semibold text-foreground/40 uppercase tracking-widest mb-2">Popular • Remix one</p>
                 <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
                   {POPULAR_CARDS.map((card) => (
                     <button key={card.id}
@@ -359,12 +359,12 @@ export default function Create() {
                   {msg.role === "ai" ? (
                     <div className={cn(msg.type === "generating" && "animate-pulse")}>
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
-                          <Sparkles className="w-4 h-4 text-white/70" strokeWidth={1.5} />
+                        <div className="w-7 h-7 rounded-full bg-foreground/10 flex items-center justify-center">
+                          <Sparkles className="w-4 h-4 text-foreground/70" strokeWidth={1.5} />
                         </div>
-                        <span className="text-[12px] font-semibold text-white/50">Oplus AI</span>
+                        <span className="text-[12px] font-semibold text-foreground/50">Oplus AI</span>
                       </div>
-                      <p className="text-[20px] font-semibold leading-snug text-white">
+                      <p className="text-[20px] font-semibold leading-snug text-foreground">
                         {msg.content.split("\n").map((line, i) => (
                           <span key={i}>{i > 0 && <br />}{line}</span>
                         ))}
@@ -372,7 +372,7 @@ export default function Create() {
                     </div>
                   ) : (
                     <div className="flex justify-end">
-                      <div className="bg-white/90 text-black rounded-2xl rounded-br-sm px-4 py-3 max-w-[85%]">
+                      <div className="bg-foreground/10 text-foreground rounded-2xl rounded-br-sm px-4 py-3 max-w-[85%]">
                         <p className="text-[14px] leading-relaxed font-medium">{msg.content}</p>
                       </div>
                     </div>
@@ -391,15 +391,15 @@ export default function Create() {
 
           {/* Attachments strip */}
           {attachments.length > 0 && (
-            <div className="flex-shrink-0 px-4 py-2 border-t border-white/5">
+            <div className="flex-shrink-0 px-4 py-2 border-t border-foreground/10">
               <div className="flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
                 {attachments.map((att) => (
-                  <div key={att.id} className="flex items-center gap-1.5 bg-white/10 rounded-full pl-3 pr-1.5 py-1 text-[12px] text-white/70 shrink-0">
+                  <div key={att.id} className="flex items-center gap-1.5 bg-foreground/10 rounded-full pl-3 pr-1.5 py-1 text-[12px] text-foreground/70 shrink-0">
                     {att.type === "music" && <Music className="w-3 h-3 text-violet-400" />}
                     {att.type === "image" && <ImageIcon className="w-3 h-3 text-violet-400" />}
                     {att.type === "video" && <Video className="w-3 h-3 text-violet-400" />}
                     <span className="max-w-[80px] truncate">{att.name}</span>
-                    <button onClick={() => removeAttachment(att.id)} className="p-0.5 rounded-full hover:bg-white/10">
+                    <button onClick={() => removeAttachment(att.id)} className="p-0.5 rounded-full hover:bg-foreground/10">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
@@ -409,7 +409,7 @@ export default function Create() {
           )}
 
           {/* Input area */}
-          <div className="flex-shrink-0 px-4 pt-2 pb-4 border-t border-white/5">
+          <div className="flex-shrink-0 px-4 pt-2 pb-4 border-t border-foreground/10">
             {/* Listening indicator */}
             {isListening && (
               <div className="flex items-center gap-2 mb-2 px-1">
@@ -423,7 +423,7 @@ export default function Create() {
               </div>
             )}
             {/* Text input */}
-            <div className="flex items-center gap-2 bg-white/8 rounded-2xl px-4 py-2 mb-3 border border-white/10">
+            <div className="flex items-center gap-2 bg-foreground/8 rounded-2xl px-4 py-2 mb-3 border border-foreground/10">
               <textarea
                 ref={inputRef}
                 value={inputText}
@@ -431,7 +431,7 @@ export default function Create() {
                 onKeyDown={handleKeyDown}
                 placeholder="Type your idea and start"
                 rows={1}
-                className="flex-1 resize-none bg-transparent text-[15px] text-white placeholder:text-white/35 focus:outline-none"
+                className="flex-1 resize-none bg-transparent text-[15px] text-foreground placeholder:text-foreground/35 focus:outline-none"
                 style={{ minHeight: 28, maxHeight: 100 }}
                 onInput={(e) => {
                   const t = e.target as HTMLTextAreaElement;
@@ -447,7 +447,7 @@ export default function Create() {
                     ? "bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/40"
                     : inputText.trim()
                     ? "bg-violet-600 text-white shadow-lg shadow-violet-500/30"
-                    : "bg-white/15 text-white hover:bg-white/25"
+                    : "bg-foreground/15 text-foreground hover:bg-foreground/25"
                 }`}
               >
                 {isGenerating || isImproving
@@ -464,26 +464,26 @@ export default function Create() {
             {/* Bottom toolbar */}
             <div className="flex items-center justify-around">
               <button onClick={() => { closeAllPanels(); setShowIdeasPanel(true); }}
-                className="flex flex-col items-center gap-1 text-white/55 hover:text-white transition-colors active:scale-90">
+                className="flex flex-col items-center gap-1 text-foreground/55 hover:text-foreground transition-colors active:scale-90">
                 <Lightbulb className="w-5 h-5" />
                 <span className="text-[10px] font-medium">Ideas</span>
               </button>
               <button onClick={() => { closeAllPanels(); setShowToolboxPanel(true); }}
-                className="flex flex-col items-center gap-1 text-white/55 hover:text-white transition-colors active:scale-90">
+                className="flex flex-col items-center gap-1 text-foreground/55 hover:text-foreground transition-colors active:scale-90">
                 <Wrench className="w-5 h-5" />
                 <span className="text-[10px] font-medium">Toolbox</span>
               </button>
-              <label className="flex flex-col items-center gap-1 text-white/55 hover:text-white transition-colors active:scale-90 cursor-pointer">
+              <label className="flex flex-col items-center gap-1 text-foreground/55 hover:text-foreground transition-colors active:scale-90 cursor-pointer">
                 <ImageIcon className="w-5 h-5" />
                 <span className="text-[10px] font-medium">Image</span>
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileSelect(e, "image")} />
               </label>
               <button onClick={() => { closeAllPanels(); setShowMusicPanel(true); }}
-                className="flex flex-col items-center gap-1 text-white/55 hover:text-white transition-colors active:scale-90">
+                className="flex flex-col items-center gap-1 text-foreground/55 hover:text-foreground transition-colors active:scale-90">
                 <Music className="w-5 h-5" />
                 <span className="text-[10px] font-medium">Music</span>
               </button>
-              <label className="flex flex-col items-center gap-1 text-white/55 hover:text-white transition-colors active:scale-90 cursor-pointer">
+              <label className="flex flex-col items-center gap-1 text-foreground/55 hover:text-foreground transition-colors active:scale-90 cursor-pointer">
                 <Volume2 className="w-5 h-5" />
                 <span className="text-[10px] font-medium">SFX</span>
                 <input type="file" accept="audio/*" className="hidden" onChange={(e) => handleFileSelect(e, "music")} />
@@ -495,41 +495,41 @@ export default function Create() {
           {showMusicPanel && (
             <>
               <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowMusicPanel(false)} />
-              <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#111] rounded-t-3xl max-h-[60vh] flex flex-col animate-in slide-in-from-bottom duration-250">
-                <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-white/20" /></div>
+              <div className="fixed bottom-0 left-0 right-0 z-50 bg-card rounded-t-3xl max-h-[60vh] flex flex-col animate-in slide-in-from-bottom duration-250">
+                <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-foreground/20" /></div>
                 <h3 className="text-center text-[15px] font-bold pb-3">Add Music</h3>
                 <div className="flex gap-1 px-4 pb-3 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
                   {MUSIC_CATEGORIES.map((cat) => (
                     <button key={cat} onClick={() => setMusicCategory(cat)}
                       className={cn("px-3 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap transition-colors",
-                        musicCategory === cat ? "text-white border-b-2 border-white" : "text-white/40")}>
+                        musicCategory === cat ? "text-foreground border-b-2 border-foreground" : "text-foreground/40")}>
                       {cat}
                     </button>
                   ))}
                 </div>
                 <div className="flex-1 overflow-y-auto px-4 pb-6">
                   {SUGGESTED_TRACKS.map((track) => (
-                    <div key={track.id} className="flex items-center gap-3 py-3 border-b border-white/8 last:border-0">
-                      <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center">
-                        <Music className="w-5 h-5 text-white/60" strokeWidth={1.5} />
+                    <div key={track.id} className="flex items-center gap-3 py-3 border-b border-foreground/8 last:border-0">
+                      <div className="w-11 h-11 rounded-xl bg-foreground/10 flex items-center justify-center">
+                        <Music className="w-5 h-5 text-foreground/60" strokeWidth={1.5} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[14px] font-semibold truncate">{track.name}</p>
-                        <p className="text-[12px] text-white/40">{track.artist}</p>
+                        <p className="text-[12px] text-foreground/40">{track.artist}</p>
                       </div>
-                      <span className="text-[12px] text-white/35 mr-1">{track.duration}</span>
-                      <button className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><Plus className="w-4 h-4" /></button>
+                      <span className="text-[12px] text-foreground/35 mr-1">{track.duration}</span>
+                      <button className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center"><Plus className="w-4 h-4" /></button>
                       <button onClick={() => setPlayingTrack(playingTrack === track.id ? null : track.id)}
-                        className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                        className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center">
                         {playingTrack === track.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                       </button>
                     </div>
                   ))}
                   <label className="flex items-center gap-3 py-3 cursor-pointer">
-                    <div className="w-11 h-11 rounded-xl border border-dashed border-white/20 flex items-center justify-center">
-                      <Upload className="w-5 h-5 text-white/30" />
+                    <div className="w-11 h-11 rounded-xl border border-dashed border-foreground/20 flex items-center justify-center">
+                      <Upload className="w-5 h-5 text-foreground/30" />
                     </div>
-                    <span className="text-[14px] text-white/40">Upload your own</span>
+                    <span className="text-[14px] text-foreground/40">Upload your own</span>
                     <input type="file" accept="audio/*" className="hidden" onChange={(e) => handleFileSelect(e, "music")} />
                   </label>
                 </div>
@@ -541,13 +541,13 @@ export default function Create() {
           {showIdeasPanel && (
             <>
               <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowIdeasPanel(false)} />
-              <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#111] rounded-t-3xl max-h-[55vh] flex flex-col animate-in slide-in-from-bottom duration-250">
-                <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-white/20" /></div>
+              <div className="fixed bottom-0 left-0 right-0 z-50 bg-card rounded-t-3xl max-h-[55vh] flex flex-col animate-in slide-in-from-bottom duration-250">
+                <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-foreground/20" /></div>
                 <h3 className="text-center text-[15px] font-bold py-3">Ideas</h3>
                 <div className="flex-1 overflow-y-auto px-4 pb-6 grid grid-cols-2 gap-3">
                   {IDEAS.map((idea) => (
                     <button key={idea} onClick={() => { setInputText(idea); setShowIdeasPanel(false); inputRef.current?.focus(); }}
-                      className="bg-white/8 border border-white/10 rounded-2xl px-4 py-3 text-left text-[13px] font-medium text-white/80 hover:bg-white/12 active:scale-95 transition-all">
+                      className="bg-foreground/8 border border-foreground/10 rounded-2xl px-4 py-3 text-left text-[13px] font-medium text-foreground/80 hover:bg-foreground/12 active:scale-95 transition-all">
                       {idea}
                     </button>
                   ))}
@@ -560,19 +560,19 @@ export default function Create() {
           {showToolboxPanel && (
             <>
               <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowToolboxPanel(false)} />
-              <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#111] rounded-t-3xl max-h-[55vh] flex flex-col animate-in slide-in-from-bottom duration-250">
-                <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-white/20" /></div>
+              <div className="fixed bottom-0 left-0 right-0 z-50 bg-card rounded-t-3xl max-h-[55vh] flex flex-col animate-in slide-in-from-bottom duration-250">
+                <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-foreground/20" /></div>
                 <h3 className="text-center text-[15px] font-bold py-3">Toolbox</h3>
                 <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-2">
                   {TOOLS.map((tool) => (
                     <button key={tool.label} onClick={() => { setInputText(tool.label); setShowToolboxPanel(false); inputRef.current?.focus(); }}
-                      className="w-full flex items-center gap-3 bg-white/8 border border-white/10 rounded-2xl px-4 py-3 text-left hover:bg-white/12 active:scale-[0.98] transition-all">
-                      <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
-                        <Wrench className="w-4 h-4 text-white/70" strokeWidth={1.5} />
+                      className="w-full flex items-center gap-3 bg-foreground/8 border border-foreground/10 rounded-2xl px-4 py-3 text-left hover:bg-foreground/12 active:scale-[0.98] transition-all">
+                      <div className="w-9 h-9 rounded-xl bg-foreground/10 flex items-center justify-center flex-shrink-0">
+                        <Wrench className="w-4 h-4 text-foreground/70" strokeWidth={1.5} />
                       </div>
                       <div>
                         <p className="text-[14px] font-semibold">{tool.label}</p>
-                        <p className="text-[12px] text-white/40">{tool.desc}</p>
+                        <p className="text-[12px] text-foreground/40">{tool.desc}</p>
                       </div>
                     </button>
                   ))}
@@ -586,27 +586,27 @@ export default function Create() {
         <div className="flex-1 flex flex-col items-center justify-center p-4">
           {generatedCode ? (
             <div className="w-full max-w-[400px] mx-auto flex-1 flex flex-col">
-              <div className="relative flex-1 rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl bg-black">
+              <div className="relative flex-1 rounded-[2rem] overflow-hidden border border-foreground/10 shadow-2xl bg-black">
                 <iframe ref={iframeRef} srcDoc={generatedCode} className="w-full h-full border-0" sandbox="allow-scripts allow-same-origin" title="Preview" style={{ minHeight: "calc(100dvh - 200px)" }} />
               </div>
               <div className="flex gap-3 mt-4 justify-center">
                 <button onClick={() => generateGame(gameDescription)} disabled={isGenerating}
-                  className="flex items-center gap-2 h-10 px-5 rounded-full bg-white/10 text-white/80 text-[13px] font-semibold disabled:opacity-30">
+                  className="flex items-center gap-2 h-10 px-5 rounded-full bg-foreground/10 text-foreground/80 text-[13px] font-semibold disabled:opacity-30">
                   <RefreshCw className={cn("w-3.5 h-3.5", isGenerating && "animate-spin")} /> Regenerate
                 </button>
                 <button onClick={handlePublish} disabled={isPublishing}
-                  className="flex items-center gap-2 h-10 px-5 rounded-full bg-white text-black text-[13px] font-bold disabled:opacity-30">
+                  className="flex items-center gap-2 h-10 px-5 rounded-full bg-foreground text-background text-[13px] font-bold disabled:opacity-30">
                   {isPublishing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Publish
                 </button>
               </div>
             </div>
           ) : (
             <div className="text-center space-y-4">
-              <div className="w-20 h-20 mx-auto rounded-2xl bg-white/8 flex items-center justify-center">
-                <Eye className="w-8 h-8 text-white/30" />
+              <div className="w-20 h-20 mx-auto rounded-2xl bg-foreground/8 flex items-center justify-center">
+                <Eye className="w-8 h-8 text-foreground/30" />
               </div>
               <p className="font-semibold">No preview yet</p>
-              <p className="text-[13px] text-white/40">Go to Chat and describe what you want to create</p>
+              <p className="text-[13px] text-foreground/40">Go to Chat and describe what you want to create</p>
               <button onClick={() => setActiveTab("chat")} className="text-[13px] text-violet-400 font-semibold">
                 Back to Chat
               </button>

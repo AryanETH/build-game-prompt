@@ -1665,7 +1665,7 @@ export const GameFeed = () => {
       {PromptComponent && <PromptComponent />}
       
       {/* Snap scrolling feed - TikTok style on mobile, centered on desktop */}
-      <div className="relative w-full h-[100dvh] bg-black dark:bg-black md:bg-[#F8F9FA]">
+      <div className="relative w-full h-[100dvh] bg-background md:bg-background">
         {/* Desktop Navigation Buttons */}
         <div className="hidden md:flex fixed right-8 top-1/2 -translate-y-1/2 flex-col gap-4 z-50 p-3">
           <button
@@ -1673,14 +1673,14 @@ export const GameFeed = () => {
             className="h-12 w-12 rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg hover:shadow-xl"
             aria-label="Previous game"
           >
-            <ChevronUp className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+            <ChevronUp className="h-6 w-6 text-foreground/70" />
           </button>
           <button
             onClick={navigateDown}
             className="h-12 w-12 rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 shadow-lg hover:shadow-xl"
             aria-label="Next game"
           >
-            <ChevronDown className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+            <ChevronDown className="h-6 w-6 text-foreground/70" />
           </button>
         </div>
 
@@ -1720,11 +1720,9 @@ export const GameFeed = () => {
                       </div>
 
                       {/* ── MOBILE BOTTOM OVERLAY ── */}
-                      {/* On mobile: normal flow (flex-shrink-0) so it pushes the iframe up */}
-                      {/* On desktop: absolute positioned over the card */}
-                      <div className="md:hidden flex-shrink-0 z-30">
+                      <div className="md:hidden flex-shrink-0 z-30 overflow-hidden rounded-b-[20px]">
                         {/* Stats row */}
-                        <div className="bg-black/55 backdrop-blur-md px-4 py-2 flex items-center gap-4">
+                        <div className="bg-black/60 dark:bg-black/55 backdrop-blur-md px-4 py-2 flex items-center gap-4">
                           <button
                             className="flex items-center gap-1.5 active:scale-95 transition-transform"
                             onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
@@ -1770,7 +1768,7 @@ export const GameFeed = () => {
                         </div>
 
                         {/* Creator row */}
-                        <div className="bg-black/65 backdrop-blur-md px-4 py-2.5 flex items-center gap-3">
+                        <div className="bg-black/70 dark:bg-black/65 backdrop-blur-md px-4 py-2.5 flex items-center gap-3">
                           <div className="relative flex-shrink-0">
                             <button onClick={() => game.creator?.username && navigate(`/u/${game.creator.username}`)}>
                               <Avatar className="w-10 h-10 border-2 border-white/30">
@@ -1883,27 +1881,27 @@ export const GameFeed = () => {
                     <div className="flex flex-col items-center gap-1">
                       <button
                         aria-label={likedGames.has(game.id) ? 'Unlike game' : 'Like game'}
-                        className="h-14 w-14 rounded-full flex items-center justify-center bg-transparent text-gray-700 dark:text-white hover:scale-110 active:scale-95 transition-all duration-200"
+                        className="h-14 w-14 rounded-full flex items-center justify-center bg-transparent text-foreground hover:scale-110 active:scale-95 transition-all duration-200"
                         onClick={() => likeMutation.mutate({ gameId: game.id, isLiked: likedGames.has(game.id) })}
                       >
                         <Heart className={`h-6 w-6 ${likedGames.has(game.id)
                             ? 'fill-red-500 stroke-red-500'
-                            : 'fill-none stroke-gray-700 dark:stroke-white'
+                            : 'fill-none stroke-foreground'
                           }`} strokeWidth={2} />
                       </button>
-                      <span className="text-sm font-bold text-gray-500 dark:text-gray-400">{game.likes_count ?? 0}</span>
+                      <span className="text-sm font-bold text-muted-foreground">{game.likes_count ?? 0}</span>
                     </div>
 
                     {/* Comments button */}
                     <div className="flex flex-col items-center gap-1">
                       <button
                         aria-label="View comments"
-                        className="h-14 w-14 rounded-full flex items-center justify-center bg-transparent text-gray-700 dark:text-white hover:scale-110 active:scale-95 transition-all duration-200"
+                        className="h-14 w-14 rounded-full flex items-center justify-center bg-transparent text-foreground hover:scale-110 active:scale-95 transition-all duration-200"
                         onClick={() => setCommentsOpenFor(game)}
                       >
-                        <MessageCircle className="h-6 w-6 fill-none transform -scale-x-100 stroke-gray-700 dark:stroke-white" strokeWidth={2} />
+                        <MessageCircle className="h-6 w-6 fill-none transform -scale-x-100 stroke-foreground" strokeWidth={2} />
                       </button>
-                      <span className="text-sm font-bold text-gray-500 dark:text-gray-400">
+                      <span className="text-sm font-bold text-muted-foreground">
                         {commentsOpenFor?.id === game.id ? comments.length : (game.comments_count || 0)}
                       </span>
                     </div>
@@ -1912,10 +1910,10 @@ export const GameFeed = () => {
                     <div className="flex flex-col items-center">
                       <button
                         aria-label="Share game"
-                        className="h-14 w-14 rounded-full flex items-center justify-center bg-transparent text-gray-700 dark:text-white hover:scale-110 active:scale-95 transition-all duration-200"
+                        className="h-14 w-14 rounded-full flex items-center justify-center bg-transparent text-foreground hover:scale-110 active:scale-95 transition-all duration-200"
                         onClick={() => handleShare(game)}
                       >
-                        <Share2 className="h-6 w-6 ml-[-2px] stroke-gray-700 dark:stroke-white" strokeWidth={2} />
+                        <Share2 className="h-6 w-6 ml-[-2px] stroke-foreground" strokeWidth={2} />
                       </button>
                     </div>
 
@@ -1926,7 +1924,7 @@ export const GameFeed = () => {
                         className={`h-14 w-14 rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 ${
                           isMicOn
                             ? 'bg-red-500 text-white shadow-lg shadow-red-500/40 animate-pulse'
-                            : 'bg-transparent text-gray-700 dark:text-white'
+                            : 'bg-transparent text-foreground'
                         }`}
                         onClick={toggleMic}
                       >
@@ -1935,7 +1933,7 @@ export const GameFeed = () => {
                           : <Mic className="h-6 w-6" strokeWidth={2} />
                         }
                       </button>
-                      <span className={`text-xs font-bold ${isMicOn ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
+                      <span className={`text-xs font-bold ${isMicOn ? 'text-red-500' : 'text-muted-foreground'}`}>
                         {isMicOn ? 'Live' : 'Mic'}
                       </span>
                     </div>
@@ -1948,7 +1946,7 @@ export const GameFeed = () => {
                           className={`h-14 w-14 rounded-full flex items-center justify-center bg-transparent hover:scale-110 active:scale-95 transition-all duration-200 ${
                             mutedGames.has(game.id)
                               ? 'text-red-500'
-                              : 'text-gray-700 dark:text-white'
+                              : 'text-foreground'
                           }`}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1958,7 +1956,7 @@ export const GameFeed = () => {
                           {mutedGames.has(game.id) ? (
                             <VolumeX className="h-6 w-6 stroke-current" strokeWidth={2} />
                           ) : (
-                            <Volume2 className="h-6 w-6 stroke-gray-700 dark:stroke-white" strokeWidth={2} />
+                            <Volume2 className="h-6 w-6 stroke-foreground" strokeWidth={2} />
                           )}
                         </button>
                       </div>
