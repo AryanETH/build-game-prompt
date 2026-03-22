@@ -76,15 +76,21 @@ interface Profile {
 }
 
 // Inline game iframe shown directly in the feed card (no thumbnail)
-const GameIframeCard = ({ game, className, isMuted }: { game: GameWithCreator; className?: string; isMuted?: boolean }) => {
+// Only loads game code when card is visible in viewport
+const GameIframeCard = ({ game, className, isMuted, isVisible }: { game: GameWithCreator; className?: string; isMuted?: boolean; isVisible?: boolean }) => {
   const [gameCode, setGameCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const hasLoadedRef = useRef(false);
 
+  // Only fetch game code when card becomes visible
   useEffect(() => {
+    if (!isVisible || hasLoadedRef.current) return;
+    
     let cancelled = false;
+    hasLoadedRef.current = true;
     setLoading(true);
-    setGameCode(null);
+    
     supabase
       .from('games')
       .select('game_code')
@@ -96,8 +102,9 @@ const GameIframeCard = ({ game, className, isMuted }: { game: GameWithCreator; c
           setLoading(false);
         }
       });
+    
     return () => { cancelled = true; };
-  }, [game.id]);
+  }, [game.id, isVisible]);
 
   // Inject mute/unmute via postMessage whenever isMuted changes
   useEffect(() => {
@@ -174,6 +181,8 @@ export const GameFeed = () => {
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null); // Track which video should have audio
   const [isMicOn, setIsMicOn] = useState(false);
   const micStreamRef = useRef<MediaStream | null>(null);
+  const [visibleGames, setVisibleGames] = useState<Set<string>>(new Set());
+  const gameCardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const toggleMic = async () => {
     if (isMicOn) {
@@ -1026,6 +1035,50 @@ export const GameFeed = () => {
     };
   }, [currentAudio]);
 
+  // Track which game cards are visible in viewport (for lazy loading games)
+  useEffect(() => {
+    if (!hydratedGames || hydratedGames.length === 0) return;
+
+    // Immediately mark first game as visible
+    if (hydratedGames[0]) {
+      setVisibleGames(new Set([hydratedGames[0].id]));
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const gameId = entry.target.getAttribute('data-game-id');
+          if (!gameId) return;
+
+          setVisibleGames((prev) => {
+            const next = new Set(prev);
+            if (entry.isIntersecting && entry.intersectionRatio > 0.1) {
+              // Card is visible — load the game
+              next.add(gameId);
+            } else if (entry.intersectionRatio < 0.05) {
+              // Card is off-screen — can unload if needed (but keep loaded for now for smooth scrolling)
+              // next.delete(gameId); // Uncomment to aggressively unload off-screen games
+            }
+            return next;
+          });
+        });
+      },
+      {
+        threshold: [0.05, 0.1, 0.5], // Trigger at 5% (off-screen), 10% (load), 50% (fully visible)
+        rootMargin: '100px', // Preload games 100px before they enter viewport
+      }
+    );
+
+    // Observe all game cards
+    gameCardRefs.current.forEach((element) => {
+      if (element) observer.observe(element);
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hydratedGames]);
+
   // Give first video sound when feed loads (videos autoplay muted by default)
   useEffect(() => {
     if (!hydratedGames || hydratedGames.length === 0) return;
@@ -1691,12 +1744,24 @@ export const GameFeed = () => {
               {/* Mobile: Full bleed, Desktop: Centered card with action buttons */}
               <div className="relative w-full h-full md:w-auto md:h-[760px] md:flex md:items-end md:gap-6">
                   {/* Card container */}
-                  <div className="relative w-full h-full md:w-[424px] md:h-[760px]">
+                  <div 
+                    className="relative w-full h-full md:w-[424px] md:h-[760px]"
+                    ref={(el) => {
+                      if (el) gameCardRefs.current.set(game.id, el);
+                      else gameCardRefs.current.delete(game.id);
+                    }}
+                    data-game-id={game.id}
+                  >
                     <Card className="relative w-full h-full overflow-hidden rounded-[20px] border-0 md:border md:border-gray-200 dark:md:border-gray-700 md:shadow-lg bg-black flex flex-col md:block">
                       {/* ── LIVE GAME IFRAME (no thumbnail) ── */}
                       {/* Mobile: flex-1 so it stops above the overlay. Desktop: absolute fill */}
                       <div className="relative flex-1 md:absolute md:inset-0 bg-black overflow-hidden">
-                        <GameIframeCard game={game} className="absolute inset-0 w-full h-full bg-black" isMuted={mutedGames.has(game.id)} />
+                        <GameIframeCard 
+                          game={game} 
+                          className="absolute inset-0 w-full h-full bg-black" 
+                          isMuted={mutedGames.has(game.id)}
+                          isVisible={visibleGames.has(game.id)}
+                        />
                         {/* Subtle gradient fade at bottom of game area on mobile */}
                         <div className="md:hidden absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-black/60 to-transparent pointer-events-none z-10" />
                       </div>
