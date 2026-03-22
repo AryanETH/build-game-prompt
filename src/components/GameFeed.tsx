@@ -106,12 +106,21 @@ const GameIframeCard = ({ game, className, isMuted, isVisible }: { game: GameWit
     return () => { cancelled = true; };
   }, [game.id, isVisible]);
 
+  // CRITICAL: Destroy iframe when game goes off-screen to stop camera/mic access
+  useEffect(() => {
+    if (!isVisible && gameCode) {
+      // Game is off-screen - remove the iframe to stop all execution
+      setGameCode(null);
+      hasLoadedRef.current = false; // Allow reload when visible again
+    }
+  }, [isVisible, gameCode]);
+
   // Inject mute/unmute via postMessage whenever isMuted changes
   useEffect(() => {
     const iframe = iframeRef.current;
-    if (!iframe?.contentWindow) return;
+    if (!iframe?.contentWindow || !gameCode) return;
     iframe.contentWindow.postMessage({ type: isMuted ? 'MUTE' : 'UNMUTE' }, '*');
-  }, [isMuted]);
+  }, [isMuted, gameCode]);
 
   // Inject a mute-listener snippet into the game code
   const muteSnippet = `<script>
@@ -1052,20 +1061,20 @@ export const GameFeed = () => {
 
           setVisibleGames((prev) => {
             const next = new Set(prev);
-            if (entry.isIntersecting && entry.intersectionRatio > 0.1) {
-              // Card is visible — load the game
+            if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+              // Card is MORE than 50% visible — load and run the game
               next.add(gameId);
-            } else if (entry.intersectionRatio < 0.05) {
-              // Card is off-screen — can unload if needed (but keep loaded for now for smooth scrolling)
-              // next.delete(gameId); // Uncomment to aggressively unload off-screen games
+            } else {
+              // Card is off-screen or less than 50% visible — UNLOAD to stop camera/mic
+              next.delete(gameId);
             }
             return next;
           });
         });
       },
       {
-        threshold: [0.05, 0.1, 0.5], // Trigger at 5% (off-screen), 10% (load), 50% (fully visible)
-        rootMargin: '100px', // Preload games 100px before they enter viewport
+        threshold: [0, 0.5, 1.0], // Check at 0%, 50%, and 100% visibility
+        rootMargin: '0px', // No preloading - only load when actually visible
       }
     );
 
