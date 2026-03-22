@@ -1045,13 +1045,9 @@ export const GameFeed = () => {
   }, [currentAudio]);
 
   // Track which game cards are visible in viewport (for lazy loading games)
+  // CRITICAL: Only load games that are CURRENTLY in view to prevent camera/mic access from off-screen games
   useEffect(() => {
     if (!hydratedGames || hydratedGames.length === 0) return;
-
-    // Immediately mark first game as visible
-    if (hydratedGames[0]) {
-      setVisibleGames(new Set([hydratedGames[0].id]));
-    }
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -1061,20 +1057,22 @@ export const GameFeed = () => {
 
           setVisibleGames((prev) => {
             const next = new Set(prev);
-            if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
-              // Card is MORE than 50% visible — load and run the game
+            
+            // STRICT: Only load if card is MORE than 80% visible (almost fully on screen)
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.8) {
               next.add(gameId);
             } else {
-              // Card is off-screen or less than 50% visible — UNLOAD to stop camera/mic
+              // Immediately unload when less than 80% visible
               next.delete(gameId);
             }
+            
             return next;
           });
         });
       },
       {
-        threshold: [0, 0.5, 1.0], // Check at 0%, 50%, and 100% visibility
-        rootMargin: '0px', // No preloading - only load when actually visible
+        threshold: [0, 0.8, 1.0], // Only trigger at 80%+ visibility
+        rootMargin: '0px', // Zero preloading - must be on screen
       }
     );
 
