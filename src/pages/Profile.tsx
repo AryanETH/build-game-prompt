@@ -649,7 +649,15 @@ export default function Profile() {
 
       toast.success('Profile updated');
       setEditOpen(false);
+      setSelectedFile(null);
+      setCroppedDataUrl(null);
+      setPreviewUrl(null);
       await fetchProfile();
+      
+      // Force re-render of avatar by updating state
+      if (avatarUrl) {
+        setProfile(prev => prev ? { ...prev, avatar_url: avatarUrl } : prev);
+      }
     } catch (e) {
       // no-op: toast already shown
     } finally {
@@ -812,7 +820,10 @@ export default function Profile() {
                     }}
                   >
                     <Avatar className="w-full h-full">
-                      <AvatarImage src={profile?.avatar_url || undefined} className="object-cover" />
+                      <AvatarImage 
+                        src={profile?.avatar_url ? `${profile.avatar_url}?t=${Date.now()}` : undefined} 
+                        className="object-cover" 
+                      />
                       <AvatarFallback className="text-3xl md:text-4xl bg-primary/20">
                         {profile?.username?.[0]?.toUpperCase()}
                       </AvatarFallback>
@@ -821,7 +832,10 @@ export default function Profile() {
                 </div>
               ) : (
                 <Avatar className="w-32 h-32 md:w-36 md:h-36 flex-shrink-0">
-                  <AvatarImage src={profile?.avatar_url || undefined} className="object-cover" />
+                  <AvatarImage 
+                    src={profile?.avatar_url ? `${profile.avatar_url}?t=${Date.now()}` : undefined} 
+                    className="object-cover" 
+                  />
                   <AvatarFallback className="text-3xl md:text-4xl bg-primary/20">
                     {profile?.username?.[0]?.toUpperCase()}
                   </AvatarFallback>

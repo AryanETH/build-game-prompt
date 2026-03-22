@@ -1780,17 +1780,6 @@ export const GameFeed = () => {
                         </div>
                       )}
 
-                      {/* Remix button - top right on desktop */}
-                      <div className="hidden md:block absolute top-4 right-4 z-10">
-                        <button
-                          className="px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all duration-200"
-                          onClick={() => setRemixFor(game)}
-                        >
-                          <Sparkles className="w-4 h-4" strokeWidth={2} />
-                          Remix
-                        </button>
-                      </div>
-
                       {/* ── MOBILE BOTTOM OVERLAY ── */}
                       <div className="md:hidden flex-shrink-0 z-30 overflow-hidden rounded-b-[20px]">
                         {/* Stats row */}
@@ -1887,16 +1876,6 @@ export const GameFeed = () => {
                               )}
                             </div>
                           </div>
-                          {/* Remix badge */}
-                          <button
-                            className="flex-shrink-0 flex flex-col items-center gap-0.5 active:scale-90 transition-transform"
-                            onClick={() => setRemixFor(game)}
-                          >
-                            <div className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center shadow-lg">
-                              <Sparkles className="w-[18px] h-[18px] text-white" strokeWidth={2} />
-                            </div>
-                            <span className="text-white text-[10px] font-bold">{game.plays_count ?? 0}</span>
-                          </button>
                         </div>
 
                         {/* Expanded description */}
@@ -1907,32 +1886,6 @@ export const GameFeed = () => {
                         )}
                       </div>
 
-                      {/* Mute button - always visible, top left */}
-                      <div className="absolute top-4 left-4 z-30">
-                        <button
-                          aria-label={mutedGames.has(game.id) ? 'Unmute' : 'Mute'}
-                          className={`h-9 w-9 rounded-full backdrop-blur-sm flex items-center justify-center active:scale-90 transition-all ${
-                            mutedGames.has(game.id)
-                              ? 'bg-red-500/80 text-white'
-                              : 'bg-black/40 text-white hover:bg-black/60'
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleGameMute(game.id);
-                            // Also mute/unmute the iframe via postMessage
-                            const iframe = document.querySelector(`iframe[title="${game.title}"]`) as HTMLIFrameElement;
-                            if (iframe?.contentWindow) {
-                              const muting = !mutedGames.has(game.id);
-                              iframe.contentWindow.postMessage({ type: muting ? 'MUTE' : 'UNMUTE' }, '*');
-                            }
-                          }}
-                        >
-                          {mutedGames.has(game.id)
-                            ? <VolumeX className="h-5 w-5" strokeWidth={2} />
-                            : <Volume2 className="h-5 w-5" strokeWidth={2} />
-                          }
-                        </button>
-                      </div>
                     </Card>
 
 
@@ -2009,30 +1962,6 @@ export const GameFeed = () => {
                         {isMicOn ? 'Live' : 'Mic'}
                       </span>
                     </div>
-
-                    {/* Mute/Unmute button - show for videos or games with background sound */}
-                    {(game.media_type === 'video' || game.background_sound_url) && (
-                      <div className="flex flex-col items-center">
-                        <button
-                          aria-label={mutedGames.has(game.id) ? 'Unmute sound' : 'Mute sound'}
-                          className={`h-14 w-14 rounded-full flex items-center justify-center bg-transparent hover:scale-110 active:scale-95 transition-all duration-200 ${
-                            mutedGames.has(game.id)
-                              ? 'text-red-500'
-                              : 'text-foreground'
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleGameMute(game.id);
-                          }}
-                        >
-                          {mutedGames.has(game.id) ? (
-                            <VolumeX className="h-6 w-6 stroke-current" strokeWidth={2} />
-                          ) : (
-                            <Volume2 className="h-6 w-6 stroke-foreground" strokeWidth={2} />
-                          )}
-                        </button>
-                      </div>
-                    )}
                   </div>
 
                 </div>
