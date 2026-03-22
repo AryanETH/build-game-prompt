@@ -76,44 +76,35 @@ interface Profile {
 }
 
 // Inline game iframe shown directly in the feed card (no thumbnail)
-// Only loads game code when card is visible in viewport
-const GameIframeCard = ({ game, className, isMuted, isVisible }: { game: GameWithCreator; className?: string; isMuted?: boolean; isVisible?: boolean }) => {
+// CRITICAL: Only loads when this specific card is the ACTIVE/CURRENT card in view
+const GameIframeCard = ({ game, className, isMuted, isActive }: { game: GameWithCreator; className?: string; isMuted?: boolean; isActive?: boolean }) => {
   const [gameCode, setGameCode] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const hasLoadedRef = useRef(false);
 
-  // Only fetch game code when card becomes visible
+  // ONLY load game code when this card is ACTIVE (currently in view)
   useEffect(() => {
-    if (!isVisible || hasLoadedRef.current) return;
-    
-    let cancelled = false;
-    hasLoadedRef.current = true;
-    setLoading(true);
-    
-    supabase
-      .from('games')
-      .select('game_code')
-      .eq('id', game.id)
-      .single()
-      .then(({ data }) => {
-        if (!cancelled) {
+    if (isActive && !gameCode) {
+      // This game is NOW active - load it
+      setLoading(true);
+      supabase
+        .from('games')
+        .select('game_code')
+        .eq('id', game.id)
+        .single()
+        .then(({ data }) => {
           setGameCode(data?.game_code || null);
           setLoading(false);
-        }
-      });
-    
-    return () => { cancelled = true; };
-  }, [game.id, isVisible]);
-
-  // CRITICAL: Destroy iframe when game goes off-screen to stop camera/mic access
-  useEffect(() => {
-    if (!isVisible && gameCode) {
-      // Game is off-screen - remove the iframe to stop all execution
+        })
+        .catch(() => {
+          setLoading(false);
+        });
+    } else if (!isActive && gameCode) {
+      // This game is NO LONGER active - DESTROY the iframe to stop camera/mic
       setGameCode(null);
-      hasLoadedRef.current = false; // Allow reload when visible again
+      setLoading(false);
     }
-  }, [isVisible, gameCode]);
+  }, [isActive, game.id]);
 
   // Inject mute/unmute via postMessage whenever isMuted changes
   useEffect(() => {
@@ -190,7 +181,7 @@ export const GameFeed = () => {
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null); // Track which video should have audio
   const [isMicOn, setIsMicOn] = useState(false);
   const micStreamRef = useRef<MediaStream | null>(null);
-  const [visibleGames, setVisibleGames] = useState<Set<string>>(new Set());
+  const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const gameCardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const toggleMic = async () => {
@@ -1044,34 +1035,41 @@ export const GameFeed = () => {
     };
   }, [currentAudio]);
 
-  // Track which game cards are visible in viewport (for lazy loading games)
-  // CRITICAL: Only load games that are CURRENTLY in view to prevent camera/mic access from off-screen games
+  // Track which SINGLE game is currently active (centered in viewport)
+  // CRITICAL: Only ONE game should be active at a time to prevent camera/mic access from off-screen games
   useEffect(() => {
     if (!hydratedGames || hydratedGames.length === 0) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
+        // Find the entry with the HIGHEST intersection ratio (most visible)
+        let maxRatio = 0;
+        let mostVisibleGameId: string | null = null;
+
         entries.forEach((entry) => {
           const gameId = entry.target.getAttribute('data-game-id');
           if (!gameId) return;
 
-          setVisibleGames((prev) => {
-            const next = new Set(prev);
-            
-            // STRICT: Only load if card is MORE than 80% visible (almost fully on screen)
-            if (entry.isIntersecting && entry.intersectionRatio >= 0.8) {
-              next.add(gameId);
-            } else {
-              // Immediately unload when less than 80% visible
-              next.delete(gameId);
+          // Only consider games that are at least 50% visible
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+            if (entry.intersectionRatio > maxRatio) {
+              maxRatio = entry.intersectionRatio;
+              mostVisibleGameId = gameId;
             }
-            
-            return next;
-          });
+          }
         });
+
+        // Set ONLY the most visible game as active
+        // All other games will be inactive and their iframes will be destroyed
+        if (mostVisibleGameId) {
+          setActiveGameId(mostVisibleGameId);
+        } else if (maxRatio === 0) {
+          // No games are visible enough - deactivate all
+          setActiveGameId(null);
+        }
       },
       {
-        threshold: [0, 0.8, 1.0], // Only trigger at 80%+ visibility
+        threshold: [0, 0.5, 0.8, 1.0], // Check at multiple thresholds to find the most visible
         rootMargin: '0px', // Zero preloading - must be on screen
       }
     );
@@ -1767,7 +1765,7 @@ export const GameFeed = () => {
                           game={game} 
                           className="absolute inset-0 w-full h-full bg-black" 
                           isMuted={mutedGames.has(game.id)}
-                          isVisible={visibleGames.has(game.id)}
+                          isActive={game.id === activeGameId}
                         />
                         {/* Subtle gradient fade at bottom of game area on mobile */}
                         <div className="md:hidden absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-black/60 to-transparent pointer-events-none z-10" />
