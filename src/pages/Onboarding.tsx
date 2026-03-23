@@ -97,16 +97,17 @@ const Onboarding = () => {
       return;
     }
 
-    if (!["image/png", "image/jpeg"].includes(file.type)) {
+    if (!["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(file.type)) {
       toast({
         title: "Error",
-        description: "File must be a PNG or JPG.",
+        description: "File must be a PNG, JPG, or WebP image.",
       });
       return;
     }
 
     setAvatarFile(file);
-    setAvatarUrl(URL.createObjectURL(file));
+    const objectUrl = URL.createObjectURL(file);
+    setAvatarUrl(objectUrl);
   };
 
   const handleOnboarding = async (e: React.FormEvent) => {
@@ -125,10 +126,15 @@ const Onboarding = () => {
     let avatarPublicUrl = null;
     if (avatarFile) {
       const fileExt = avatarFile.name.split(".").pop();
-      const filePath = `${user.id}/${Math.random()}.${fileExt}`;
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+      
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(filePath, avatarFile);
+        .upload(filePath, avatarFile, {
+          cacheControl: '3600',
+          upsert: true
+        });
 
       if (uploadError) {
         toast({
@@ -142,7 +148,7 @@ const Onboarding = () => {
       const {
         data: { publicUrl },
       } = supabase.storage.from("avatars").getPublicUrl(filePath);
-      avatarPublicUrl = publicUrl;
+      avatarPublicUrl = `${publicUrl}?t=${Date.now()}`;
     }
 
     try {
@@ -189,16 +195,30 @@ const Onboarding = () => {
         <form onSubmit={handleOnboarding}>
           <CardContent className="space-y-4">
             <div className="flex flex-col items-center space-y-4">
-              <Avatar className="w-24 h-24">
-                <AvatarImage src={avatarUrl ?? undefined}  className="object-cover"/>
-                <AvatarFallback>
-                  <Upload className="w-8 h-8" />
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="w-24 h-24 ring-4 ring-primary/20">
+                  <AvatarImage src={avatarUrl ?? undefined} className="object-cover" />
+                  <AvatarFallback className="bg-muted">
+                    <Upload className="w-8 h-8 text-muted-foreground" />
+                  </AvatarFallback>
+                </Avatar>
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAvatarUrl(null);
+                      setAvatarFile(null);
+                    }}
+                    className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
               <Input
                 id="avatar"
                 type="file"
-                accept="image/png, image/jpeg"
+                accept="image/png, image/jpeg, image/jpg, image/webp"
                 onChange={(e) => {
                   if (e.target.files && e.target.files.length > 0) {
                     handleAvatarUpload(e.target.files[0]);
@@ -207,11 +227,14 @@ const Onboarding = () => {
                 className="hidden"
               />
               <Label htmlFor="avatar" className="cursor-pointer">
-                <Button type="button" variant="outline">
+                <Button type="button" variant="outline" className="w-full">
                   <Upload className="w-4 h-4 mr-2" />
-                  Upload Avatar
+                  {avatarUrl ? 'Change Avatar' : 'Upload Avatar'}
                 </Button>
               </Label>
+              <p className="text-xs text-muted-foreground text-center">
+                PNG, JPG or WebP (max 2MB)
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
