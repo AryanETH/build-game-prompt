@@ -157,15 +157,35 @@ export default function Create() {
 
   const generateGame = async (prompt: string) => {
     setIsGenerating(true);
-    const genId = addMessage("ai", "Building your experience...", "generating");
+    const genId = addMessage("ai", "Creating your game...", "generating");
     try {
       const { data, error } = await supabase.functions.invoke("generate-game", {
-        body: { prompt, options: { gameEngine: "vanilla", graphicsQuality: "stylized" }, title: gameTitle || prompt.slice(0, 50), description: gameDescription || prompt, autoInsert: false },
+        body: { 
+          prompt, 
+          options: { gameEngine: "vanilla", graphicsQuality: "stylized" }, 
+          title: gameTitle || prompt.slice(0, 50), 
+          description: gameDescription || prompt, 
+          autoInsert: false,
+          useJsonSchema: true // Enable JSON schema generation
+        },
       });
       if (error) throw error;
       let code = data?.gameCode || "";
       if (!code) throw new Error("No game code returned");
-      if (attachments.length > 0) {
+      
+      // Check if it's a JSON schema game
+      const isJsonSchema = code.startsWith('__JSON_SCHEMA__');
+      
+      // Extract title from JSON schema if available
+      if (isJsonSchema && data?.jsonSpec?.meta?.title) {
+        setGameTitle(data.jsonSpec.meta.title);
+        setGameDescription(data.jsonSpec.meta.description || prompt);
+      } else {
+        if (!gameTitle) setGameTitle(prompt.slice(0, 50));
+        if (!gameDescription) setGameDescription(`AI-generated: ${prompt}`);
+      }
+      
+      if (!isJsonSchema && attachments.length > 0) {
         const m = attachments.filter((a) => a.type === "music");
         const img = attachments.filter((a) => a.type === "image");
         let s = "<script>window.__OPLUS_ASSETS__={";
@@ -173,10 +193,9 @@ export default function Create() {
         if (img.length) s += `images:${JSON.stringify(img.map((a) => ({ name: a.name, url: a.url })))},`;
         code = code.replace("</head>", `${s}};</script>\n</head>`);
       }
+      
       setGeneratedCode(code);
-      if (!gameTitle) setGameTitle(prompt.slice(0, 50));
-      if (!gameDescription) setGameDescription(`AI-generated: ${prompt}`);
-      updateMessage(genId, "Your experience is ready.\nSwitch to Preview to try it, or tap Post to share.", "preview-ready");
+      updateMessage(genId, "Your game is ready! Switch to Preview to play, or tap Post to share.", "preview-ready");
       playSuccess();
     } catch (err: any) {
       if (err.message?.includes("429") || err.context?.status === 429) { updateMessage(genId, "Rate limit hit. Wait a moment and try again."); setIsGenerating(false); return; }
@@ -194,11 +213,9 @@ export default function Create() {
     playClick();
     addMessage("user", text);
     setInputText("");
-    if (/^(generate|build|create it|make it|go|do it|start building)/i.test(text) && gameDescription) {
-      await generateGame(gameDescription);
-    } else {
-      await improvePrompt(text);
-    }
+    
+    // Skip prompt improvement - go directly to generation
+    await generateGame(text);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>, type: MediaAttachment["type"]) => {
