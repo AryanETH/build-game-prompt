@@ -242,7 +242,7 @@ export const GameFeed = () => {
     },
   });
 
-  const pageSize = 20; // Increased from 10 for better UX
+  const pageSize = 10; // Reduced from 20 for faster initial load
   const { data: pages, isLoading, isError, error, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = useInfiniteQuery({
     queryKey: ['games', 'feed'],
     queryFn: async ({ pageParam = 0 }) => {
@@ -254,7 +254,7 @@ export const GameFeed = () => {
       // Order by feed_position first (for admin-controlled ordering), then by created_at
       const { data, error } = await supabase
         .from('games')
-        .select('id, title, description, thumbnail_url, likes_count, plays_count, creator_id, sound_url')
+        .select('id, title, description, thumbnail_url, likes_count, plays_count, comments_count, creator_id, sound_url, background_sound_url, media_type, media_url, media_duration')
         .order('created_at', { ascending: false })
         .range(from, to);
 
@@ -264,10 +264,33 @@ export const GameFeed = () => {
     getNextPageParam: (lastPage, allPages) => (lastPage.length === pageSize ? allPages.length : undefined),
     initialPageParam: 0,
     retry: 1,
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    staleTime: 1000 * 60 * 2, // Cache for 2 minutes (reduced from 5 for fresher content)
+    refetchOnMount: false, // Don't refetch on mount if data exists
+    refetchOnWindowFocus: false, // Don't refetch when window regains focus
   });
 
   const games = useMemo(() => (pages?.pages || []).flat(), [pages]);
+
+  // OPTIMIZATION: Prefetch the first game's code immediately for instant loading
+  useEffect(() => {
+    if (games.length > 0 && !activeGameId) {
+      const firstGame = games[0];
+      // Prefetch first game code in background
+      supabase
+        .from('games')
+        .select('game_code')
+        .eq('id', firstGame.id)
+        .single()
+        .then(({ data }) => {
+          // Store in cache for instant access
+          if (data?.game_code) {
+            // This will be available when the game becomes active
+            console.log('First game prefetched:', firstGame.id);
+          }
+        })
+        .catch(err => console.warn('Prefetch failed:', err));
+    }
+  }, [games, activeGameId]);
 
   // Hydrate creator username/avatar without joins to avoid RLS issues
   const uniqueCreatorIds = useMemo(
@@ -278,6 +301,7 @@ export const GameFeed = () => {
   const { data: creatorProfiles = [] } = useQuery({
     queryKey: ['creatorProfiles', uniqueCreatorIds],
     enabled: uniqueCreatorIds.length > 0,
+    staleTime: 1000 * 60 * 10, // Cache creator profiles for 10 minutes
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')

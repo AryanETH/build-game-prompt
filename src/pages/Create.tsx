@@ -3,6 +3,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { PublishDialog } from "@/components/PublishDialog";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft, Music, Image as ImageIcon, Video, RefreshCw,
   Plus, X, Sparkles, Eye, MessageSquare, Loader2, Check,
@@ -75,13 +77,16 @@ const SUGGESTED_TRACKS = [
   { id: "4", name: "Pixel Dreams", artist: "Synthwave", duration: "4:12" },
   { id: "5", name: "Neon Rush", artist: "Arcade FM", duration: "2:58" },
 ];
-const POPULAR_CARDS = [
-  { id: "1", bg: "#e879a0", label: "Tap Here When Done!", dark: false },
-  { id: "2", bg: "#f0f0f0", label: "YOU!", dark: true },
-  { id: "3", bg: "#8b1a1a", label: "Christmas Week", dark: false },
-  { id: "4", bg: "#4f46e5", label: "Get Ready", dark: false },
+const IDEAS = [
+  { label: "Endless runner", prompt: "Create an endless runner game where the player controls a character that automatically runs forward. The player must jump over obstacles and collect coins. The game speeds up over time. Include a score counter, lives system, and smooth animations. Use vibrant colors and particle effects when collecting items." },
+  { label: "Quiz app", prompt: "Create an interactive quiz application with multiple choice questions. Include a score tracker, timer for each question, progress indicator, and a results screen at the end showing correct/incorrect answers. Use engaging animations and sound effects for correct and wrong answers." },
+  { label: "Music visualizer", prompt: "Create a music visualizer that responds to audio input. Display animated bars, particles, or waveforms that pulse and move with the beat. Include controls to play/pause, adjust sensitivity, and change visualization styles. Use colorful gradients and smooth animations." },
+  { label: "Clicker game", prompt: "Create an incremental clicker game where each click increases the score. Include upgrade buttons that cost points but increase the points per click. Add achievements for reaching score milestones. Use satisfying click animations and sound effects." },
+  { label: "Puzzle game", prompt: "Create a puzzle game with a grid of tiles that the player must match or arrange. Include move counter, timer, shuffle button, and win condition. Use smooth tile animations and celebratory effects when completing the puzzle." },
+  { label: "Drawing canvas", prompt: "Create a drawing application with a canvas where users can draw with their finger or mouse. Include color picker, brush size slider, eraser tool, clear button, and save drawing feature. Use smooth line rendering and responsive touch controls." },
+  { label: "Trivia game", prompt: "Create a trivia game with questions from various categories. Include multiple difficulty levels, lifelines (50/50, skip), score tracking, and a leaderboard. Add timer pressure and engaging feedback for correct/incorrect answers." },
+  { label: "Platformer", prompt: "Create a platformer game where the player jumps between platforms to reach the goal. Include moving platforms, collectible items, enemies to avoid, and a lives system. Use physics-based jumping with smooth controls for both touch and keyboard." }
 ];
-const IDEAS = ["Endless runner","Quiz app","Music visualizer","Clicker game","Puzzle game","Drawing canvas","Trivia game","Platformer"];
 const TOOLS = [
   { label: "Change style", desc: "Pixel art, 3D, cartoon..." },
   { label: "Add controls", desc: "Touch, keyboard, tilt" },
@@ -109,10 +114,26 @@ export default function Create() {
   const [musicCategory, setMusicCategory] = useState("Suggested");
   const [isPublishing, setIsPublishing] = useState(false);
   const [playingTrack, setPlayingTrack] = useState<string | null>(null);
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Fetch popular games for remix cards
+  const { data: popularGames = [] } = useQuery({
+    queryKey: ['popularGames'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('games')
+        .select('id, title, thumbnail_url, cover_url')
+        .order('likes_count', { ascending: false })
+        .limit(4);
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
@@ -235,35 +256,13 @@ export default function Create() {
     setAttachments((prev) => { const a = prev.find((x) => x.id === id); if (a) URL.revokeObjectURL(a.url); return prev.filter((x) => x.id !== id); });
   };
 
-  const handlePublish = async () => {
-    if (!generatedCode || !gameTitle.trim()) { toast.error("Generate something first"); return; }
-    setIsPublishing(true);
-    playClick();
-    try {
-      const { data: userRes } = await supabase.auth.getUser();
-      const userId = userRes.user?.id;
-      if (!userId) { toast.error("Please sign in to publish"); setIsPublishing(false); return; }
-      const { data: profile } = await supabase.from("profiles").select("id").eq("id", userId).maybeSingle();
-      if (!profile) await supabase.from("profiles").insert({ id: userId, username: `user_${userId.slice(0, 8)}` });
-      let thumbnailUrl: string | null = null;
-      const imageAtt = attachments.find((a) => a.type === "image");
-      if (imageAtt) {
-        const path = `public/${userId}/${Date.now()}.${imageAtt.file.name.split(".").pop() || "png"}`;
-        const { error: ue } = await supabase.storage.from("avatars").upload(path, imageAtt.file);
-        if (!ue) { const { data: u } = supabase.storage.from("avatars").getPublicUrl(path); thumbnailUrl = u.publicUrl; }
-      }
-      const { data: game, error } = await supabase.from("games").insert({ title: gameTitle.trim(), description: gameDescription.trim().slice(0, 500), game_code: generatedCode, creator_id: userId, thumbnail_url: thumbnailUrl }).select().single();
-      if (error) throw error;
-      await logActivity({ type: "game_published", gameId: game.id, metadata: { title: game.title } });
-      toast.success("Published!");
-      playSuccess();
-      navigate("/feed");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to publish");
-      playError();
-    } finally {
-      setIsPublishing(false);
+  const handlePublish = () => {
+    if (!generatedCode) { 
+      toast.error("Generate something first"); 
+      return; 
     }
+    playClick();
+    setShowPublishDialog(true);
   };
 
   const [isListening, setIsListening] = useState(false);
@@ -314,7 +313,17 @@ export default function Create() {
   const closeAllPanels = () => { setShowMusicPanel(false); setShowIdeasPanel(false); setShowToolboxPanel(false); };
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-background text-foreground overflow-hidden">
+    <>
+      <PublishDialog
+        open={showPublishDialog}
+        onOpenChange={setShowPublishDialog}
+        gameCode={generatedCode}
+        initialTitle={gameTitle}
+        initialDescription={gameDescription}
+        attachments={attachments}
+      />
+
+      <div className="h-[100dvh] flex flex-col bg-background text-foreground overflow-hidden">
 
       {/* Header */}
       <header className="flex-shrink-0 flex items-center justify-between px-4 pt-3 pb-2">
@@ -339,9 +348,9 @@ export default function Create() {
           <button className="w-10 h-10 rounded-full bg-foreground/10 flex items-center justify-center">
             <MessageSquare className="w-5 h-5" />
           </button>
-          <button onClick={handlePublish} disabled={isPublishing || !generatedCode}
+          <button onClick={handlePublish} disabled={!generatedCode}
             className="h-10 px-5 rounded-full bg-foreground text-background text-[13px] font-bold disabled:opacity-30 flex items-center gap-1.5 active:scale-95 transition-transform">
-            {isPublishing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Post"}
+            Post
           </button>
         </div>
       </header>
@@ -356,13 +365,19 @@ export default function Create() {
               <div className="px-4 pt-3 pb-2">
                 <p className="text-[11px] font-semibold text-foreground/40 uppercase tracking-widest mb-2">Popular • Remix one</p>
                 <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-                  {POPULAR_CARDS.map((card) => (
-                    <button key={card.id}
-                      onClick={() => { setInputText(`Remix: ${card.label}`); inputRef.current?.focus(); }}
-                      style={{ backgroundColor: card.bg }}
-                      className="flex-shrink-0 w-[110px] h-[160px] rounded-2xl flex flex-col items-center justify-center gap-2 text-center p-3 active:scale-95 transition-transform">
-                      <Sparkles className={cn("w-8 h-8", card.dark ? "text-black" : "text-white")} strokeWidth={1.5} />
-                      <span className={cn("text-[11px] font-bold leading-tight", card.dark ? "text-black" : "text-white")}>{card.label}</span>
+                  {popularGames.map((game) => (
+                    <button key={game.id}
+                      onClick={() => { setInputText(`Remix: ${game.title}`); inputRef.current?.focus(); }}
+                      className="flex-shrink-0 w-[110px] h-[160px] rounded-2xl flex flex-col items-center justify-center gap-2 text-center p-3 active:scale-95 transition-transform overflow-hidden relative"
+                      style={{ 
+                        backgroundImage: game.thumbnail_url || game.cover_url ? `url(${game.thumbnail_url || game.cover_url})` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center'
+                      }}
+                    >
+                      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+                      <Sparkles className="w-8 h-8 text-white relative z-10" strokeWidth={1.5} />
+                      <span className="text-[11px] font-bold leading-tight text-white relative z-10">{game.title}</span>
                     </button>
                   ))}
                 </div>
@@ -563,9 +578,9 @@ export default function Create() {
                 <h3 className="text-center text-[15px] font-bold py-3">Ideas</h3>
                 <div className="flex-1 overflow-y-auto px-4 pb-6 grid grid-cols-2 gap-3">
                   {IDEAS.map((idea) => (
-                    <button key={idea} onClick={() => { setInputText(idea); setShowIdeasPanel(false); inputRef.current?.focus(); }}
+                    <button key={idea.label} onClick={() => { setInputText(idea.prompt); setShowIdeasPanel(false); inputRef.current?.focus(); }}
                       className="bg-foreground/8 border border-foreground/10 rounded-2xl px-4 py-3 text-left text-[13px] font-medium text-foreground/80 hover:bg-foreground/12 active:scale-95 transition-all">
-                      {idea}
+                      {idea.label}
                     </button>
                   ))}
                 </div>
@@ -611,9 +626,9 @@ export default function Create() {
                   className="flex items-center gap-2 h-10 px-5 rounded-full bg-foreground/10 text-foreground/80 text-[13px] font-semibold disabled:opacity-30">
                   <RefreshCw className={cn("w-3.5 h-3.5", isGenerating && "animate-spin")} /> Regenerate
                 </button>
-                <button onClick={handlePublish} disabled={isPublishing}
+                <button onClick={handlePublish} disabled={!generatedCode}
                   className="flex items-center gap-2 h-10 px-5 rounded-full bg-foreground text-background text-[13px] font-bold disabled:opacity-30">
-                  {isPublishing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Publish
+                  <Check className="w-3.5 h-3.5" /> Publish
                 </button>
               </div>
             </div>
@@ -632,5 +647,6 @@ export default function Create() {
         </div>
       )}
     </div>
+    </>
   );
 }
